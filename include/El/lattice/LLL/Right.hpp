@@ -36,9 +36,7 @@ void RightGivensStep
 	
     if( k == Min(m,n)-1 )
 	{
-//		if( time )
-//			formGivensTimer.Start();
-        
+		// This should never be called and should be deleted
 		const Real rho_k = QR.GetRealPart(k,k);
 		if (rho_k < Real(0))
 		{
@@ -117,6 +115,7 @@ void RightGivensStep
 		formGivensTimer.Stop();
 }
 
+// This should never be called and should be deleted
 template<typename F>
 void RightNegateRow
 ( Int k,
@@ -153,10 +152,10 @@ void RightNegateRow
 // Put the k'th column of B into the k'th column of QR and then rotate
 // said column with the first k-1 (scaled) Householder reflectors.
 
-template<typename F>
+template<typename Z, typename F>
 void RightExpandQR
 ( Int k,
-  const Matrix<F>& B,
+  const Matrix<Z>& B,
         Matrix<F>& QR,
   const Matrix<F>& t,
   const Matrix<Base<F>>& d,
@@ -253,11 +252,11 @@ void RightHouseholderStep
 }
 
 // Return true if the new column is a zero vector
-template<typename F>
+template<typename F, typename Z>
 bool RightStep
 ( Int k,
-  Matrix<F>& B,
-  Matrix<F>& U,
+  Matrix<Z>& B,
+  Matrix<Z>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -272,6 +271,7 @@ bool RightStep
 {
     DEBUG_ONLY(CSE cse("lll::RightStep"))
     typedef Base<F> Real;
+//  typedef Base<Z> RealZ;
     const Int m = B.Height();
     const Int n = B.Width();
     const Real eps = limits::Epsilon<Real>();
@@ -279,8 +279,8 @@ bool RightStep
     if( ctrl.time )
         stepTimer.Start();
 
-    F* BBuf = B.Buffer();
-    F* UBuf = U.Buffer();
+    Z* BBuf = B.Buffer();
+    Z* UBuf = U.Buffer();
     F* QRBuf = QR.Buffer();
     const Int BLDim = B.LDim();
     const Int ULDim = U.LDim();
@@ -291,7 +291,7 @@ bool RightStep
 		if( useHouseholder )
 			lll::RightExpandQR( k, B, QR, t, d, ctrl.numOrthog, hPanelStart, ctrl.time);
 		else
-			lll::RightNegateRow( k, QR, GivensBlock, GivensFirstCol, GivensLastCol, ctrl.time );
+			lll::RightNegateRow( k, QR, GivensBlock, GivensFirstCol, GivensLastCol, ctrl.time ); // Probably is unnecessary since QR and Givens always return positive diagonals.
 
         const Real oldNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
         if( !limits::IsFinite(oldNorm) )
@@ -323,7 +323,7 @@ bool RightStep
             if( rho_km1_km1 > ctrl.zeroTol )
             {
                 // TODO: Add while loop?
-                F chi = QRBuf[(k-1)+k*QRLDim]/rho_km1_km1;
+                Z chi = QRBuf[(k-1)+k*QRLDim]/rho_km1_km1;
                 if( Abs(RealPart(chi)) > ctrl.eta ||
                     Abs(ImagPart(chi)) > ctrl.eta )
                 {
@@ -357,7 +357,7 @@ bool RightStep
                 Int numNonzero = 0;
                 for( Int i=k-1; i>=0; --i )
                 {
-                    F chi = QRBuf[i+k*QRLDim]/QRBuf[i+i*QRLDim];
+                    Z chi = QRBuf[i+k*QRLDim]/QRBuf[i+i*QRLDim];
                     if( Abs(RealPart(chi)) > ctrl.eta ||
                         Abs(ImagPart(chi)) > ctrl.eta )
                     {
@@ -385,21 +385,21 @@ bool RightStep
                 {
                     blas::Gemv
                     ( 'N', m, k,
-                      F(-1), &BBuf[0*BLDim], BLDim,
+                      Z(-1), &BBuf[0*BLDim], BLDim,
                              &xBuf[0],       1,
-                      F(+1), &BBuf[k*BLDim], 1 );
+                      Z(+1), &BBuf[k*BLDim], 1 );
                     if( formU )
                         blas::Gemv
                         ( 'N', n, k,
-                          F(-1), &UBuf[0*ULDim], ULDim,
+                          Z(-1), &UBuf[0*ULDim], ULDim,
                                  &xBuf[0],       1,
-                          F(+1), &UBuf[k*ULDim], 1 );
+                          Z(+1), &UBuf[k*ULDim], 1 );
                 }
                 else
                 {
                     for( Int i=k-1; i>=0; --i )
                     {
-                        const F chi = xBuf[i];
+                        const Z chi = xBuf[i];
                         if( chi == F(0) )
                             continue;
                         blas::Axpy
@@ -444,10 +444,10 @@ bool RightStep
 // May have to dump in the event of zero columns...keep this in mind
 
 // Consider explicitly returning both Q and R rather than just R (in 'QR')
-template<typename F>
+template<typename F, typename Z>
 LLLInfo<Base<F>> RightAlg
-( Matrix<F>& B,
-  Matrix<F>& U,
+( Matrix<Z>& B,
+  Matrix<Z>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -456,6 +456,7 @@ LLLInfo<Base<F>> RightAlg
 {
     DEBUG_ONLY(CSE cse("lll::RightAlg"))
     typedef Base<F> Real;
+//	typedef Base<Z> RealZ;
     if( ctrl.time )
     {
         stepTimer.Reset();

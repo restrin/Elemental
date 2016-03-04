@@ -180,10 +180,10 @@ Base<F> LogVolume( const Matrix<F>& R )
 
 namespace El {
 
-template<typename F>
+template<typename Z, typename F>
 LLLInfo<Base<F>> LLLWithQ
-( Matrix<F>& B,
-  Matrix<F>& U,
+( Matrix<Z>& B,
+  Matrix<Z>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -240,10 +240,10 @@ LLLInfo<Base<F>> LLLWithQ
         return lll::LeftAlg( B, U, QR, t, d, formU, ctrl );
 }
 
-template<typename F>
+template<typename Z, typename F>
 LLLInfo<Base<F>> LLL
-( Matrix<F>& B,
-  Matrix<F>& U,
+( Matrix<Z>& B,
+  Matrix<Z>& U,
   Matrix<F>& R,
   const LLLCtrl<Base<F>>& ctrl )
 {
@@ -258,10 +258,10 @@ LLLInfo<Base<F>> LLL
     return info;
 }
 
-template<typename F>
+template<typename Z, typename F>
 LLLInfo<Base<F>>
 LLLWithQ
-( Matrix<F>& B,
+( Matrix<Z>& B,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -337,10 +337,10 @@ LLLWithQ
         return lll::LeftAlg( B, U, QR, t, d, formU, ctrl );
 }
 
-template<typename F>
+template<typename Z, typename F>
 LLLInfo<Base<F>>
 LLL
-( Matrix<F>& B,
+( Matrix<Z>& B,
   Matrix<F>& R,
   const LLLCtrl<Base<F>>& ctrl )
 {
@@ -373,13 +373,13 @@ LLL
 
 namespace lll {
 
-template<typename F,typename RealLower>
+template<typename Z, typename F, typename RealLower>
 LLLInfo<RealLower>
 LowerPrecisionMerge
 ( const Matrix<F>& CL,
   const Matrix<F>& CR,
-        Matrix<F>& B,
-        Matrix<F>& U,
+        Matrix<Z>& B,
+        Matrix<Z>& U,
         Matrix<F>& QR,
         Matrix<F>& t,
         Matrix<Base<F>>& d,
@@ -452,11 +452,11 @@ LowerPrecisionMerge
     return infoLower;
 }
 
-template<typename Real>
+template<typename Z, typename Real>
 LLLInfo<Real>
 RecursiveHelper
-( Matrix<Real>& B,
-  Matrix<Real>& U,
+( Matrix<Z>& B,
+  Matrix<Z>& U,
   Matrix<Real>& QR,
   Matrix<Real>& t,
   Matrix<Real>& d,
@@ -580,7 +580,7 @@ RecursiveHelper
         {
             try
             {
-                info = LowerPrecisionMerge<F,float>
+                info = LowerPrecisionMerge<Z, F,float>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -594,7 +594,7 @@ RecursiveHelper
         {
             try
             {
-                info = LowerPrecisionMerge<F,double>
+                info = LowerPrecisionMerge<Z, F,double>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -610,7 +610,7 @@ RecursiveHelper
             try
             {
                 info =
-                  LowerPrecisionMerge<F,DoubleDouble>
+                  LowerPrecisionMerge<Z, F,DoubleDouble>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -625,7 +625,7 @@ RecursiveHelper
             try
             {
                 info =
-                  LowerPrecisionMerge<F,QuadDouble>
+                  LowerPrecisionMerge<Z, F,QuadDouble>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -641,7 +641,7 @@ RecursiveHelper
             try
             {
                 info =
-                  LowerPrecisionMerge<F,Quad>
+                  LowerPrecisionMerge<Z, F,Quad>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -661,7 +661,7 @@ RecursiveHelper
             {
                 mpc::SetPrecision( neededPrec );
                 try {
-                    info = LowerPrecisionMerge<F,BigFloat>
+                    info = LowerPrecisionMerge<Z, F,BigFloat>
                       ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                     info.numSwaps += numPrevSwaps;
                     succeeded = true;
@@ -732,11 +732,11 @@ RecursiveHelper
 }
 
 // Same as the above, but with the Complex<BigFloat> datatype avoided
-template<typename Real>
+template<typename Z, typename Real>
 LLLInfo<Real>
 RecursiveHelper
-( Matrix<Complex<Real>>& B,
-  Matrix<Complex<Real>>& U,
+( Matrix<Z>& B,
+  Matrix<Z>& U,
   Matrix<Complex<Real>>& QR,
   Matrix<Complex<Real>>& t,
   Matrix<Real>& d,
@@ -860,7 +860,7 @@ RecursiveHelper
         {
             try
             {
-                info = LowerPrecisionMerge<F,float>
+                info = LowerPrecisionMerge<Z, F,float>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -872,7 +872,7 @@ RecursiveHelper
         {
             try
             {
-                info = LowerPrecisionMerge<F,double>
+                info = LowerPrecisionMerge<Z, F,double>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -886,7 +886,7 @@ RecursiveHelper
         {
             try
             {
-                info = LowerPrecisionMerge<F,Quad>
+                info = LowerPrecisionMerge<Z, F,Quad>
                   ( CL, CR, B, U, QR, t, d, maintainU, ctrl );
                 info.numSwaps += numPrevSwaps;
                 succeeded = true;
@@ -954,10 +954,10 @@ RecursiveHelper
 
 } // namespace lll
 
-template<typename F>
+template<typename Z, typename F>
 LLLInfo<Base<F>>
 RecursiveLLLWithQ
-( Matrix<F>& B,
+( Matrix<Z>& B,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -977,11 +977,11 @@ RecursiveLLLWithQ
       lll::RecursiveHelper( B, U, QR, t, d, numShuffles, maintainU, ctrlMod );
 }
 
-template<typename F>
+template<typename Z, typename F>
 LLLInfo<Base<F>>
 RecursiveLLLWithQ
-( Matrix<F>& B,
-  Matrix<F>& U,
+( Matrix<Z>& B,
+  Matrix<Z>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -1000,10 +1000,10 @@ RecursiveLLLWithQ
       ( B, U, QR, t, d, numShuffles, maintainU, ctrlMod );
 }
 
-template<typename F>
+template<typename Z, typename F>
 LLLInfo<Base<F>>
 LLL
-( Matrix<F>& B,
+( Matrix<Z>& B,
   const LLLCtrl<Base<F>>& ctrl )
 {
     DEBUG_ONLY(CSE cse("LLL"))
