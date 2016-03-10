@@ -68,7 +68,7 @@ ElError ElLLLCtrlDefault_d( ElLLLCtrl_d* ctrl )
     ElLLLCtrl_ ## SIGBASE ctrl, \
     ElLLLInfo_ ## SIGBASE * infoC ) \
   { EL_TRY( \
-      auto info = LLL( *CReflect(B), CReflect(ctrl) );\
+      auto info = LLL<T,T>( *CReflect(B), CReflect(ctrl) );\
       *infoC = CReflect(info); \
     ) } \
   ElError ElLLLFormR_ ## SIG \

@@ -28,7 +28,7 @@ void LatticeImageAndKernel
     K = U(ALL,IR(rank,n));
 
     // Reduce the columns of U that corresponded to the kernel
-    LLL( K, ctrl );
+    LLL<F,F>( K, ctrl );
 
     // Rather than explicitly inverting the Gram matrix of the kernel basis
     // as suggested by Cohen, we can simply solve a least squares problem
@@ -71,7 +71,7 @@ void LatticeKernel
     K = U(ALL,IR(rank,n));
 
     // Reduce the columns of U that corresponded to the kernel
-    LLL( K, ctrl );
+    LLL<F,F>( K, ctrl );
 }
 
 #define PROTO(F) \
