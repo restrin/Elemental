@@ -68,7 +68,7 @@ ElError ElLLLCtrlDefault_d( ElLLLCtrl_d* ctrl )
     ElLLLCtrl_ ## SIGBASE ctrl, \
     ElLLLInfo_ ## SIGBASE * infoC ) \
   { EL_TRY( \
-      auto info = LLL<F,F>( *CReflect(B), CReflect(ctrl) );\
+      auto info = LLL( *CReflect(B), CReflect(ctrl) );\
       *infoC = CReflect(info); \
     ) } \
   ElError ElLLLFormR_ ## SIG \
@@ -77,7 +77,7 @@ ElError ElLLLCtrlDefault_d( ElLLLCtrl_d* ctrl )
     ElLLLCtrl_ ## SIGBASE ctrl, \
     ElLLLInfo_ ## SIGBASE * infoC ) \
   { EL_TRY( \
-      auto info = LLL<F,F>( *CReflect(B), *CReflect(R), CReflect(ctrl) );\
+      auto info = LLL( *CReflect(B), *CReflect(R), CReflect(ctrl) );\
       *infoC = CReflect(info); \
     ) } \
   ElError ElLLLFull_ ## SIG \
@@ -88,7 +88,7 @@ ElError ElLLLCtrlDefault_d( ElLLLCtrl_d* ctrl )
     ElLLLInfo_ ## SIGBASE * infoC ) \
   { EL_TRY( \
       auto info = \
-        LLL<F,F>( *CReflect(B), *CReflect(U), *CReflect(R), CReflect(ctrl) ); \
+        LLL( *CReflect(B), *CReflect(U), *CReflect(R), CReflect(ctrl) ); \
       *infoC = CReflect(info); \
     ) } \
   ElError ElLatticeImageAndKernel_ ## SIG \

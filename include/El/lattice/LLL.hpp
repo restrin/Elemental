@@ -216,12 +216,12 @@ LLLInfo<Base<F>> LLLWithQ
     {
         if( ctrl.jumpstart )
             LogicError("Cannot combine jumpstarting with presorting");
-        QRCtrl<Real> qrCtrl;
+        QRCtrl<Base<Z>> qrCtrl;
         qrCtrl.smallestFirst = ctrl.smallestFirst;
 
         auto BCopy = B;
-        Matrix<F> tPre;
-        Matrix<Real> dPre;
+        Matrix<Z> tPre;
+        Matrix<Base<Z>> dPre;
         Permutation Omega;
         // TODO: Add support for qr::ProxyHouseholder as well
         El::QR( BCopy, tPre, dPre, Omega, qrCtrl );
@@ -285,12 +285,12 @@ LLLWithQ
         if( ctrl.jumpstart )
             LogicError("Cannot combine jumpstarting with presorting");
 
-        QRCtrl<Real> qrCtrl;
+        QRCtrl<Base<Z>> qrCtrl;
         qrCtrl.smallestFirst = ctrl.smallestFirst;
 
         auto BCopy = B;
-        Matrix<F> tPre;
-        Matrix<Real> dPre;
+        Matrix<Z> tPre;
+        Matrix<Base<Z>> dPre;
         Permutation Omega;
         // TODO: Add support for qr::ProxyHouseholder as well
         El::QR( BCopy, tPre, dPre, Omega, qrCtrl );
@@ -298,7 +298,7 @@ LLLWithQ
     }
 
     const bool formU = false;
-    Matrix<F> U;
+    Matrix<Z> U;
     if( ctrl.variant == LLL_DEEP_REDUCE )
     {
         // Start with standard LLL
@@ -376,8 +376,8 @@ namespace lll {
 template<typename Z, typename F, typename RealLower>
 LLLInfo<RealLower>
 LowerPrecisionMerge
-( const Matrix<F>& CL,
-  const Matrix<F>& CR,
+( const Matrix<Z>& CL,
+  const Matrix<Z>& CR,
         Matrix<Z>& B,
         Matrix<Z>& U,
         Matrix<F>& QR,
@@ -498,13 +498,14 @@ RecursiveHelper
         LLLInfo<Real> leftInfo;
         if( maintainU )
         {
-            Matrix<F> ULNew, QRL, tL;
+            Matrix<Z> ULNew;
+			Matrix<F> QRL, tL;
             Matrix<Real> dL;
             leftInfo = RecursiveLLLWithQ( CL, ULNew, QRL, tL, dL, ctrl );
 
             auto UL = U( ALL, indL );
             auto ULCopy( UL );
-            Gemm( NORMAL, NORMAL, F(1), ULCopy, ULNew, F(0), UL );
+            Gemm( NORMAL, NORMAL, Z(1), ULCopy, ULNew, Z(0), UL );
         }
         else
         {
@@ -522,13 +523,14 @@ RecursiveHelper
         LLLInfo<Real> rightInfo;
         if( maintainU )
         {
-            Matrix<F> URNew, QRR, tR;
+            Matrix<Z> URNew;
+			Matrix<F> QRR, tR;
             Matrix<Real> dR;
             rightInfo = RecursiveLLLWithQ( CR, URNew, QRR, tR, dR, ctrl );
 
             auto UR = U( ALL, indR );
             auto URCopy( UR );
-            Gemm( NORMAL, NORMAL, F(1), URCopy, URNew, F(0), UR );
+            Gemm( NORMAL, NORMAL, Z(1), URCopy, URNew, Z(0), UR );
         }
         else
         {
@@ -778,7 +780,8 @@ RecursiveHelper
         LLLInfo<Real> leftInfo;
         if( maintainU )
         {
-            Matrix<F> ULNew, QRL, tL;
+            Matrix<Z> ULNew;
+			Matrix<F> QRL, tL;
             Matrix<Real> dL;
             leftInfo = RecursiveLLLWithQ( CL, ULNew, QRL, tL, dL, ctrl );
 
@@ -802,7 +805,8 @@ RecursiveHelper
         LLLInfo<Real> rightInfo;
         if( maintainU )
         {
-            Matrix<F> URNew, QRR, tR;
+            Matrix<Z> URNew;
+			Matrix<F> QRR, tR;
             Matrix<Real> dR;
             rightInfo = RecursiveLLLWithQ( CR, URNew, QRR, tR, dR, ctrl );
 
@@ -971,7 +975,7 @@ RecursiveLLLWithQ
 
     // TODO: Make this runtime-tunable
     Int numShuffles = 1;
-    Matrix<F> U;
+    Matrix<Z> U;
     bool maintainU=false;
     return
       lll::RecursiveHelper( B, U, QR, t, d, numShuffles, maintainU, ctrlMod );
