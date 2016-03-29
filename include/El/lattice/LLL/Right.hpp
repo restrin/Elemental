@@ -264,10 +264,10 @@ bool RightStep
         else
             lll::RightNegateRow( k, QR, GivensBlock, GivensFirstCol, GivensLastCol, ctrl.time ); // Probably is unnecessary since QR and Givens always return positive diagonals.
 
-        const Real oldNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
+        const Base<Z> oldNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
         if( !limits::IsFinite(oldNorm) )
             RuntimeError("Encountered an unbounded norm; increase precision");
-        if( oldNorm > Real(1)/eps )
+        if( oldNorm > Base<Z>(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
         if( oldNorm <= ctrl.zeroTol )
@@ -373,7 +373,7 @@ bool RightStep
                     for( Int i=k-1; i>=0; --i )
                     {
                         const Z chi = Z(xBuf[i]);
-                        if( chi == F(0) )
+                        if( chi == Z(0) )
                             continue;
                         blas::Axpy
                         ( m, -chi,
@@ -388,12 +388,12 @@ bool RightStep
                 }
             }
         }
-        const Real newNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
+        const Base<Z> newNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
         if( ctrl.time )
             roundTimer.Stop();
         if( !limits::IsFinite(newNorm) )
             RuntimeError("Encountered an unbounded norm; increase precision");
-        if( newNorm > Real(1)/eps )
+        if( newNorm > Base<Z>(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
         if( newNorm > ctrl.reorthogTol*oldNorm )
@@ -463,6 +463,7 @@ LLLInfo<Base<F>> RightAlg
     
     //QR = Matrix<F>(B);
     Copy( B, QR );
+	// TODO: May need to use Z not F
     Matrix<Base<F>> colNorms;
     Zeros( colNorms, n, 1 );
     
@@ -473,7 +474,7 @@ LLLInfo<Base<F>> RightAlg
     for (Int i=0; i<n; i++)
     {
         auto col = B( ALL, IR(i) );
-        colNorms.Set( i, 0, El::FrobeniusNorm(col) );
+        colNorms.Set( i, 0, Base<F>(El::FrobeniusNorm(col)) );
     }
 
     if( ctrl.time )
@@ -594,7 +595,7 @@ LLLInfo<Base<F>> RightAlg
                 
             // Update column norm
             auto col = B( ALL, IR(k) );
-            colNorms.Set( k, 0, El::FrobeniusNorm(col) );
+            colNorms.Set( k, 0, Base<F>(El::FrobeniusNorm(col)) );
             
             auto rCol = QR( IR(0,k+1), IR(k) );
             Base<F> rnorm = El::FrobeniusNorm(rCol);

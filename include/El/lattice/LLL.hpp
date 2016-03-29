@@ -387,7 +387,7 @@ LowerPrecisionMerge
   const LLLCtrl<Base<F>>& ctrl )
 {
     DEBUG_ONLY(CSE cse("lll::LowerPrecisionMerge"))
-    typedef ConvertBase<F,RealLower> FLower;
+    typedef ConvertBase<Z,RealLower> ZLower;
     const string typeString = TypeName<RealLower>();
 
     const Int n = B.Width();
@@ -395,7 +395,7 @@ LowerPrecisionMerge
 
     if( ctrl.progress || ctrl.time )
         Output("  Dropping to " + typeString);
-    Matrix<FLower> BLower;
+    Matrix<ZLower> BLower;
     BLower.Resize( B.Height(), n );
 	
     // Interleave CL and CR to reform B before running LLL again
@@ -416,18 +416,19 @@ LowerPrecisionMerge
         Copy( cL, bL );
     }
 	
-    LLLCtrl<RealLower> ctrlLower( ctrl );
+    LLLCtrl<Base<F>> ctrlLower( ctrl );
     ctrlLower.recursive = false;
-    RealLower eps = limits::Epsilon<RealLower>();
-    RealLower minEta = RealLower(1)/RealLower(2)+Pow(eps,RealLower(0.9));
+    Base<F> eps = limits::Epsilon<Base<F>>();
+    Base<F> minEta = Base<F>(1)/Base<F>(2)+Pow(eps,Base<F>(0.9));
     ctrlLower.eta = Max(minEta,ctrlLower.eta);
     Timer timer;
-    Matrix<FLower> QRLower;
+    Matrix<F> QRLower;
     if( ctrl.time )
         timer.Start();
-    LLLInfo<RealLower> infoLower;
-    Matrix<FLower> UNewLower, tLower;
-    Matrix<RealLower> dLower;
+    LLLInfo<Base<F>> infoLower;
+	Matrix<ZLower> UNewLower;
+    Matrix<F> tLower;
+    Matrix<Base<F>> dLower;
     if( maintainU )
         infoLower =
           LLLWithQ( BLower, UNewLower, QRLower, tLower, dLower, ctrlLower );
@@ -443,10 +444,10 @@ LowerPrecisionMerge
 
     if( maintainU )
     {
-        Matrix<F> UNew;
+        Matrix<Z> UNew;
         Copy( UNewLower, UNew );
         auto UCopy( U );
-        Gemm( NORMAL, NORMAL, F(1), UCopy, UNew, F(0), U );
+        Gemm( NORMAL, NORMAL, Z(1), UCopy, UNew, Z(0), U );
     }
 
     return infoLower;
@@ -553,10 +554,10 @@ RecursiveHelper
             Output("  left time:  ",leftTime," seconds");
             Output("  right time: ",rightTime," seconds");
         }
-        const Real CLOneNorm = OneNorm( CL );
-        const Real CROneNorm = OneNorm( CR );
-        const Real CLMaxNorm = MaxNorm( CL );
-        const Real CRMaxNorm = MaxNorm( CR );
+        const Base<Z> CLOneNorm = OneNorm( CL );
+        const Base<Z> CROneNorm = OneNorm( CR );
+        const Base<Z> CLMaxNorm = MaxNorm( CL );
+        const Base<Z> CRMaxNorm = MaxNorm( CR );
         // TODO: Incorporate norm of U if maintaining U
         if( ctrl.progress )
         {
@@ -566,7 +567,7 @@ RecursiveHelper
             Output("  || C_R ||_max = ",CRMaxNorm);
         }
 
-        const Real COneNorm = Max(CLOneNorm,CROneNorm);
+        const Base<Z> COneNorm = Max(CLOneNorm,CROneNorm);
         const Real fudge = ctrl.precisionFudge; // TODO: Make tunable
         const unsigned neededPrec = unsigned(Ceil(Log2(COneNorm)*fudge));
         if( ctrl.progress || ctrl.time )
@@ -733,12 +734,13 @@ RecursiveHelper
     return info;
 }
 
+
 // Same as the above, but with the Complex<BigFloat> datatype avoided
-template<typename Z, typename Real>
+template<typename ZReal, typename Real>
 LLLInfo<Real>
 RecursiveHelper
-( Matrix<Z>& B,
-  Matrix<Z>& U,
+( Matrix<Complex<ZReal>>& B,
+  Matrix<Complex<ZReal>>& U,
   Matrix<Complex<Real>>& QR,
   Matrix<Complex<Real>>& t,
   Matrix<Real>& d,
@@ -749,6 +751,7 @@ RecursiveHelper
     DEBUG_ONLY(CSE cse("lll::RecursiveHelper"))
 
     typedef Complex<Real> F;
+	typedef Complex<ZReal> Z;
     const Int n = B.Width();
     if( n < ctrl.cutoff )
     {
@@ -787,7 +790,7 @@ RecursiveHelper
 
             auto UL = U( ALL, indL );
             auto ULCopy( UL );
-            Gemm( NORMAL, NORMAL, F(1), ULCopy, ULNew, F(0), UL );
+            Gemm( NORMAL, NORMAL, Z(1), ULCopy, ULNew, Z(0), UL );
         }
         else
         {
@@ -812,7 +815,7 @@ RecursiveHelper
 
             auto UR = U( ALL, indR );
             auto URCopy( UR );
-            Gemm( NORMAL, NORMAL, F(1), URCopy, URNew, F(0), UR );
+            Gemm( NORMAL, NORMAL, Z(1), URCopy, URNew, Z(0), UR );
         }
         else
         {

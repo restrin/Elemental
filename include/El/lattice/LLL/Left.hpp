@@ -151,10 +151,10 @@ bool Step
     {
         lll::ExpandQR( k, B, QR, t, d, ctrl.numOrthog, ctrl.time );
 
-        const Real oldNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
+        const Base<Z> oldNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
         if( !limits::IsFinite(oldNorm) )
             RuntimeError("Encountered an unbounded norm; increase precision");
-        if( oldNorm > Real(1)/eps )
+        if( oldNorm > Base<Z>(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
         if( oldNorm <= ctrl.zeroTol )
@@ -255,7 +255,7 @@ bool Step
                     for( Int i=k-1; i>=0; --i )
                     {
                         const Z chi = Z(xBuf[i]);
-                        if( chi == F(0) )
+                        if( chi == Z(0) )
                             continue;
                         blas::Axpy
                         ( m, -chi,
@@ -270,12 +270,12 @@ bool Step
                 }
             }
         }
-        const Real newNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
+        const Base<Z> newNorm = blas::Nrm2( m, &BBuf[k*BLDim], 1 );
         if( ctrl.time )
             roundTimer.Stop();
         if( !limits::IsFinite(newNorm) )
             RuntimeError("Encountered an unbounded norm; increase precision");
-        if( newNorm > Real(1)/eps )
+        if( newNorm > Base<Z>(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
         if( newNorm > ctrl.reorthogTol*oldNorm )
