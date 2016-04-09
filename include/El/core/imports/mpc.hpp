@@ -10,7 +10,7 @@
 #define EL_IMPORTS_MPC_HPP
 
 #ifdef EL_HAVE_MPC
-#include "mpc.h"
+#include <mpc.h>
 
 // TODO: Decide if _MPFR_EXP_FORMAT is reliable enough
 #if _MPFR_EXP_FORMAT == 4
@@ -271,6 +271,13 @@ bool operator!=( const long long int& a, const BigInt& b );
 
 std::ostream& operator<<( std::ostream& os, const BigInt& alpha );
 std::istream& operator>>( std::istream& is,       BigInt& alpha );
+
+// The following constants are provided to avoid needlessly worrying about
+// allocating them as BigInt's within number theoretic routines (such as 
+// Miller-Rabin and Pollard's (p-1) algorithm)
+const BigInt& BigIntZero();
+const BigInt& BigIntOne();
+const BigInt& BigIntTwo();
 
 // BigRational class based upon mpq?
 
