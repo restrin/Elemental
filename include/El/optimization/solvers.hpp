@@ -670,6 +670,64 @@ void SOCP
         DistMultiVec<Real>& z, 
         DistMultiVec<Real>& s,
   const socp::affine::Ctrl<Real>& ctrl=socp::affine::Ctrl<Real>() );
+ 
+// Quadratic program
+// =================
+ 
+template<typename Real>
+struct PDCOCtrl
+{
+
+};
+
+namespace pdco
+{
+// The following solves the following convex problem:
+//
+//   minimize phi(x) + 1/2 ||D1*x||^2 + 1/2 ||r||^2
+//     x,r
+//   s.t.     A*x + D2*r = b, bl <= x <= bu, r unconstrained
+//
+// using Newton's method.
+//
+
+// Control structure for the high-level pdco solver
+// ------------------------------------------------------------------
+template<typename Real>
+struct Ctrl
+{
+    PDCOCtrl<Real> pdcoCtrl;
+
+    Ctrl()
+    {
+        
+    }
+};
+
+// Structure representing objective function for pdco solver
+template<typename Real>
+struct PDCOObj
+{
+    Real (*obj)(Matrix<Real>) = 0; // Objective value
+    Matrix<Real> (*grad)(Matrix<Real>) = 0; // Gradient
+    Matrix<Real> (*hess)(Matrix<Real>) = 0; // Hessian
+};
+
+} // namespace pdco 
+
+template<typename Real>
+void PDCO
+( const pdco::PDCOObj<Real>& phi,
+  const Matrix<Real>& A,
+  const Matrix<Real>& b, 
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+        Matrix<Real>& x, 
+        Matrix<Real>& y,
+        Matrix<Real>& z, 
+  const pdco::Ctrl<Real>& ctrl=pdco::Ctrl<Real>() );
 
 } // namespace El
 
