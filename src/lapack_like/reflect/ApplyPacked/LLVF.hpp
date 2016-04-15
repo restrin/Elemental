@@ -95,10 +95,10 @@ LLVF
         GemmTimer.Stop();
     }
     LLVFTimer.Stop();
-//    Output("LLVF Total Time: ", LLVFTimer.Total());
-//    Output("  GemmTimer: ", GemmTimer.Total());
-//    Output("  HerkTimer: ", HerkTimer.Total());
-//    Output("  TrsmTimer: ", TrsmTimer.Total());
+    Output("LLVF Total Time: ", LLVFTimer.Total());
+    Output("  GemmTimer: ", GemmTimer.Total());
+    Output("  HerkTimer: ", HerkTimer.Total());
+    Output("  TrsmTimer: ", TrsmTimer.Total());
 }
 
 template<typename F> 

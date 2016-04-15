@@ -10,6 +10,8 @@
 
 namespace El {
 
+Timer ZeroTimer;
+
 template<typename T>
 void Herk
 ( UpperOrLower uplo, Orientation orientation,
@@ -26,7 +28,11 @@ void Herk
 {
     DEBUG_ONLY(CSE cse("Herk"))
     const Int n = ( orientation==NORMAL ? A.Height() : A.Width() );
+    ZeroTimer.Reset();
+    ZeroTimer.Start();
     Zeros( C, n, n );
+    ZeroTimer.Stop();
+    Output("    ZeroTimer: ", ZeroTimer.Total());
     Syrk( uplo, orientation, T(alpha), A, T(0), C, true );
 }
 
