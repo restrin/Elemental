@@ -7,7 +7,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
+#include <El.hpp>
 
 #include <algorithm>
 #include <iomanip>
@@ -53,6 +53,9 @@ std::ofstream logFile;
 // Output/logging
 Int indentLevel=0;
 Int spacesPerIndent=2;
+
+// Dynamic sieve for trial division
+DynamicSieve<unsigned long long,unsigned> trialDivSieve;
 
 // Tuning parameters for basic routines
 Int localSymvIntBlocksize = 64;
@@ -229,6 +232,9 @@ bool Using64BitBlasInt()
     return false;
 #endif
 }
+
+DynamicSieve<unsigned long long,unsigned>& TrialDivisionSieve()
+{ return ::trialDivSieve; }
 
 void SetColorMap( ColorMap map )
 { ::colorMap = map; }
@@ -1121,6 +1127,6 @@ Int Find( const vector<Int>& sortedInds, Int index )
 #define EL_ENABLE_QUADDOUBLE
 #define EL_ENABLE_QUAD
 #define EL_ENABLE_BIGFLOAT
-#include "El/macros/Instantiate.h"
+#include <El/macros/Instantiate.h>
 
 } // namespace El

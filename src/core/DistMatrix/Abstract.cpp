@@ -6,7 +6,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
+#include <El.hpp>
 
 namespace El {
 
@@ -299,7 +299,7 @@ Int AbstractDistMatrix<T>::LocalRow( Int i ) const EL_NO_RELEASE_EXCEPT
       CSE cse("ADM::LocalRow");
       if( !IsLocalRow(i) )
           LogicError
-          ("Row ",i,"is owned by ",RowOwner(i),", not ",ColRank());
+          ("Row ",i," is owned by ",RowOwner(i),", not ",ColRank());
     )
     return LocalRowOffset(i);
 }
@@ -311,7 +311,7 @@ Int AbstractDistMatrix<T>::LocalCol( Int j ) const EL_NO_RELEASE_EXCEPT
       CSE cse("ADM::LocalCol");
       if( !IsLocalCol(j) )
           LogicError
-          ("Column ",j,"is owned by ",ColOwner(j),", not ",RowRank());
+          ("Column ",j," is owned by ",ColOwner(j),", not ",RowRank());
     )
     return LocalColOffset(j);
 }
@@ -981,6 +981,6 @@ AbstractDistMatrix<T>::ShallowSwap( AbstractDistMatrix<T>& A )
 #define EL_ENABLE_QUAD
 #define EL_ENABLE_BIGINT
 #define EL_ENABLE_BIGFLOAT
-#include "El/macros/Instantiate.h"
+#include <El/macros/Instantiate.h>
 
 } // namespace El

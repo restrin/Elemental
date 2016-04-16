@@ -6,8 +6,8 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
-#include "El.h"
+#include <El.hpp>
+#include <El.h>
 using namespace El;
 
 extern "C" {
@@ -177,6 +177,7 @@ ElError ElSchurCtrlDefault_s( ElSchurCtrl_s* ctrl )
     ctrl->useSDC = false;
     ElHessQRCtrlDefault( &ctrl->qrCtrl );
     ElSDCCtrlDefault_s( &ctrl->sdcCtrl );
+    ctrl->time = false;
     return EL_SUCCESS; 
 }
 ElError ElSchurCtrlDefault_d( ElSchurCtrl_d* ctrl )
@@ -184,6 +185,7 @@ ElError ElSchurCtrlDefault_d( ElSchurCtrl_d* ctrl )
     ctrl->useSDC = false;
     ElHessQRCtrlDefault( &ctrl->qrCtrl );
     ElSDCCtrlDefault_d( &ctrl->sdcCtrl );
+    ctrl->time = false;
     return EL_SUCCESS; 
 }
 
@@ -952,6 +954,6 @@ ElError ElPseudospecCtrlDestroy_d( const ElPseudospecCtrl_d* ctrl )
   C_PROTO_COMPLEX_ONLY(SIG,SIGBASE,F) \
 
 #define EL_NO_INT_PROTO
-#include "El/macros/CInstantiate.h"
+#include <El/macros/CInstantiate.h>
 
 } // extern "C"

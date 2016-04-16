@@ -6,7 +6,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
+#include <El.hpp>
 
 namespace El {
 
@@ -308,7 +308,6 @@ Matrix<Base<F>> BatchCoordinatesToNorms
         Int numNested=1 )
 {
     DEBUG_ONLY(CSE cse("svp::BatchCoordinatesToNorms"))
-    typedef Base<F> Real;
     Matrix<F> Z( V );
     // TODO: Decide whether this branch is necessary or not...
     if( V.Width() == 1 )
@@ -328,7 +327,6 @@ Matrix<Base<F>> BatchTransposedCoordinatesToNorms
         Int numNested=1 )
 {
     DEBUG_ONLY(CSE cse("svp::BatchTransposedCoordinatesToNorms"))
-    typedef Base<F> Real;
     Matrix<F> Z( V );
     // TODO: Decide whether this branch is necessary or not...
     if( V.Width() == 1 )
@@ -1047,6 +1045,6 @@ Real PhaseEnumeration
 #define EL_ENABLE_QUAD
 #define EL_ENABLE_BIGFLOAT
 #define EL_NO_COMPLEX_PROTO
-#include "El/macros/Instantiate.h"
+#include <El/macros/Instantiate.h>
 
 } // namespace El
