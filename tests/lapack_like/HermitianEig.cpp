@@ -6,7 +6,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
+#include <El.hpp>
 using namespace El;
 
 template<typename F>
@@ -129,7 +129,7 @@ main( int argc, char* argv[] )
 
     try
     {
-        Int r = Input("--gridHeight","height of process grid",0);
+        int r = Input("--gridHeight","height of process grid",0);
         const bool colMajor = Input("--colMajor","column-major ordering?",true);
         const bool onlyEigvals = Input
             ("--onlyEigvals","only compute eigenvalues?",false);

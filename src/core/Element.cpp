@@ -6,7 +6,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
+#include <El.hpp>
 
 namespace El {
 
@@ -593,6 +593,34 @@ BigFloat Sqrt( const BigFloat& alpha )
     BigFloat alphaSqrt;
     alphaSqrt.SetPrecision( alpha.Precision() );
     Sqrt( alpha, alphaSqrt );
+    return alphaSqrt;
+}
+#endif
+
+template<>
+unsigned ISqrt( const unsigned& alpha )
+{ return static_cast<unsigned>(std::sqrt(alpha)); }
+template<>
+unsigned long ISqrt( const unsigned long& alpha )
+{ return static_cast<unsigned long>(std::sqrt(alpha)); }
+template<>
+int ISqrt( const int& alpha )
+{ return static_cast<int>(std::sqrt(alpha)); }
+template<>
+long int ISqrt( const long int& alpha )
+{ return static_cast<long int>(std::sqrt(alpha)); }
+
+#ifdef EL_HAVE_MPC
+void ISqrt( const BigInt& alpha, BigInt& alphaSqrt )
+{
+    mpz_sqrt( alphaSqrt.Pointer(), alpha.LockedPointer() );
+}
+
+template<>
+BigInt ISqrt( const BigInt& alpha )
+{
+    BigInt alphaSqrt;
+    ISqrt( alpha, alphaSqrt );
     return alphaSqrt;
 }
 #endif

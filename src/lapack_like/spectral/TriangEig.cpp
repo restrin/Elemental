@@ -6,7 +6,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
+#include <El.hpp>
 #include "./TriangEig/MultiShiftSolve.hpp"
 
 namespace El {
@@ -44,7 +44,6 @@ void TriangEig
         ElementalMatrix<F>& XPre ) 
 {
     DEBUG_ONLY(CSE cse("TriangEig"))
-    const Int m = UPre.Height();
       
     DistMatrixReadProxy<F,F,MC,MR> UProx( UPre );
     DistMatrixWriteProxy<F,F,MC,MR> XProx( XPre );
@@ -65,11 +64,10 @@ void TriangEig
     SetDiagonal( X, scales );
     
     // Normalize eigenvectors
-    for( Int j=1; j<m; ++j )
-    {
-        auto xj = X( IR(0,j+1), IR(j) );
-        xj *= 1/Nrm2(xj);
-    }
+    // TODO: Exploit the upper-triangular structure
+    DistMatrix<Base<F>,MR,STAR> colNorms(g);
+    ColumnTwoNorms( X, colNorms );
+    DiagonalSolve( RIGHT, NORMAL, colNorms, X );
 }
 
 #define PROTO(F) \
@@ -81,6 +79,6 @@ void TriangEig
           ElementalMatrix<F>& X );
 
 #define EL_NO_INT_PROTO
-#include "El/macros/Instantiate.h"
+#include <El/macros/Instantiate.h>
 
 } // namespace El
