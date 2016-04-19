@@ -21,6 +21,7 @@ void Newton
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
         Matrix<Real>& x, 
+        Matrix<Real>& r,
         Matrix<Real>& y,
         Matrix<Real>& z,
   const PDCOCtrl<Real>& ctrl=PDCOCtrl<Real>() );
