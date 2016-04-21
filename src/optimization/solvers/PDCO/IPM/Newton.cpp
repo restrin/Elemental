@@ -12,16 +12,6 @@
 namespace El {
 namespace pdco {
 
-vector<Int> IndexRange(Int n)
-{
-  vector<Int> range (n,0);
-  for (Int i = 0; i < n; i++)
-  {
-    range[i] = i;
-  }
-  return range;
-}
-
 // The following solves the following convex problem:
 //
 //   minimize phi(x) + 1/2 ||D1*x||^2 + 1/2 ||r||^2
@@ -53,6 +43,8 @@ void Newton
 {
     DEBUG_ONLY(CSE cse("pdco::Newton")) 
 
+    Output("=========== Beginning Newton's Method ===========");
+
     // Useful defined variables
     Int m = A.Height();
     Int n = A.Width();
@@ -68,6 +60,8 @@ void Newton
     Matrix<Real> Hess;  // For hessian of phi
     Matrix<Real> H;     // Used for KKT system
     Matrix<Real> ACopy; // Used for KKT system
+    Matrix<Real> At;    // A^T (after fixed variables removed)
+    Matrix<Real> AtCopy;// Copy of A^T
     Matrix<Real> w;     // Residual for KKT system
     Matrix<Real> dx;    // Primal step direction
     Matrix<Real> dy;    // Dual step direction
@@ -93,7 +87,7 @@ void Newton
     vector<Int> ixSetFix;
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
 
-    if (ixSetFix.size() > 0)
+    if( ixSetFix.size() > 0 )
     {
         // Fix b to allow for fixed variables
         Matrix<Real> Asub;
@@ -102,6 +96,10 @@ void Newton
         Copy(b, bCopy);
         Gemv(NORMAL, Real(-1), Asub, xFix, Real(1), bCopy); // b = b - A*xFix
     }
+    else
+    {
+        Copy(b, bCopy);
+    }
 
     // Scale input data?
 
@@ -109,7 +107,7 @@ void Newton
     Matrix<Real> z1;
     Matrix<Real> z2;
     pdco::Initialize(x, y, z1, z2, bl, bu, 
-      ixSetLow, ixSetUpp, ixSetFix,ctrl.x0min, ctrl.z0min);
+      ixSetLow, ixSetUpp, ixSetFix,ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
     // Compute residuals
     // Residual vectors to be populated
@@ -128,9 +126,31 @@ void Newton
     // Get Hessian
     phi.hess(x, Hess);
 
+    Pfeas = InfinityNorm(r1);
+    Dfeas = InfinityNorm(r2);
+    Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
+
+    Output("  Pfeas = ", Pfeas);
+    Output("  Dfeas = ", Dfeas);
+    Output("  Cinf0 = ", Cinf0);
+
+    Matrix<Real> zeros;
+
+    Copy(A, ACopy); // ACopy = A'
+    // Make copy of A with zero columns for fixed variables
+    if( ixSetFix.size() > 0 )
+    {
+        Zeros(zeros, ixSetFix.size(), n);
+        SetSubmatrix(ACopy, ALL_m, ixSetFix, zeros);
+    }
+    // Get transpose
+    Transpose(ACopy, At);
+
     // Main loop
     for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
     {
+        Output("========== Iteration: ", numIts, " ==========");
+        Output("  mu = ", mu);
         switch( ctrl.method )
         {
             case Method::LDLy:
@@ -138,38 +158,50 @@ void Newton
                 FormHandW( Hess, D1, x, z1, z2, bl, bu,
                   ixSetLow, ixSetUpp, ixSetFix, r2, cL, cU, H, w );
 
-                // Set rows/cols corresponding to fixed variables to zero
-                Matrix<Real> zeros;
-                Zeros(zeros, ixSetFix.size(), n);
-                Matrix<Real> ones;
-                Ones(ones, ixSetFix.size(), 1);
-                SetSubmatrix(H, ixSetFix, ALL_n, zeros);
-                Zeros(zeros, n, ixSetFix.size());
-                SetSubmatrix(H, ALL_n, ixSetFix, zeros);
-                // Fix diagonal to 1
-                SetSubmatrix(H, ixSetFix, ixSetFix, ones);
-                // Set colums of A to zero
-                Transpose(A, ACopy); // ACopy = A'
-                Zeros(zeros, m, ixSetFix.size());
-                SetSubmatrix(ACopy, ixSetFix, ALL_m, zeros);
+                if( ixSetFix.size() > 0 )
+                {
+                    // Set rows/cols corresponding to fixed variables to zero
+                    Zeros(zeros, ixSetFix.size(), n);
+                    Matrix<Real> ones;
+                    Ones(ones, ixSetFix.size(), 1);
+                    SetSubmatrix(H, ixSetFix, ALL_n, zeros);
+                    Zeros(zeros, n, ixSetFix.size());
+                    SetSubmatrix(H, ALL_n, ixSetFix, zeros);
+                    // Fix diagonal to 1
+                    SetSubmatrix(H, ixSetFix, ixSetFix, ones);
+                }
+
+//                Print(H, "H");
+//                Print(w, "w");
+//                Print(r1, "r1");
+//                Print(r2, "r2");
+//                Print(cL, "cL");
+//                Print(cU, "cU");
+
+                // Make a copy of At
+                Copy(At, AtCopy);
 
                 // Start solving for dx, dy
                 // TODO: Use pivoted?
                 Matrix<Real> S; // S = A*(H\A') + D2^2
+                Zeros(S, m, m);
                 LDL(H, false);
-                ldl::SolveAfter(H, ACopy, false); // ACopy = H\A'
-                Gemm(NORMAL, NORMAL, Real(1), A, ACopy, Real(0), S); // S = A*(H\A)
+                ldl::SolveAfter(H, AtCopy, false); // ACopy = H\A'
+                Gemm(NORMAL, NORMAL, Real(1), ACopy, AtCopy, Real(0), S); // S = A*(H\A')
                 UpdateDiagonal(S, Real(1), D2sq, 0); // S = A*(H\A) + D2^2
                 Copy(r1, dy); // dy = r1
                 ldl::SolveAfter(H, w, false); // w = H\w
-                Gemv(NORMAL, Real(-1), A, w, Real(1), dy); // dy = r1 - A*(H\w)
-                
+                Gemv(NORMAL, Real(-1), ACopy, w, Real(1), dy); // dy = r1 - A*(H\w)
+
                 LDL(S, false);
                 ldl::SolveAfter(S, dy, false); // dy = S\(r1 - A*(H\w))
 
                 // Compute dx
                 Copy(w, dx); // dx = H\w
-                Gemv(NORMAL, Real(1), ACopy, dy, Real(1), dx); // dx = H\w + (H\A')*dy
+                Gemv(NORMAL, Real(1), AtCopy, dy, Real(1), dx); // dx = H\w + (H\A')*dy
+
+//                Print(dx, "dx");
+//                Print(dy, "dy");
 
                 // Compute dz1
                 Matrix<Real> tmp1;
@@ -189,9 +221,11 @@ void Newton
                 GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
                 GetSubmatrix(dx, ixSetUpp, ZERO, dz2);
                 DiagonalScale(LEFT, NORMAL, z2, dz2);
-                dz2 *= -1;
                 dz2 += cU;
                 DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+
+//                Print(dz1, "dz1");
+//                Print(dz2, "dz2");
             }
                 break;
             case Method::LDLx:
@@ -205,13 +239,15 @@ void Newton
         }
 
         // dx, dy, dz1, dz2 should be computed at this point
-        bool success = Linesearch(phi, A, bCopy, bl, bu, D1, D2, 
-          x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, dx, dy, dz1, dz2, 
-          ixSetLow, ixSetUpp, ixSetFix, ctrl);
+        // Return stepx, stepz
+        bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1, D2, 
+          x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
+          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
 
         if( !success )
         {
             // Linesearch failed...what now?
+            Output("Linesearch failed at iteration: ", numIts);
         }
 
         // Check convergence criteria
@@ -222,22 +258,39 @@ void Newton
           && (Dfeas <= ctrl.feaTol)
           && (Cinf0 <= ctrl.optTol);
 
-        // Update mu
-        // TODO: Clarify this
-        stepmu = Min(stepx, stepz);
-        stepmu = Min(stepmu, ctrl.stepTol);
-        Real muold = mu;
-        Real mumin = Max(Pfeas, Dfeas);
-        mumin = 0.1*Max(mumin, Cfeas);
-        mu = mu - stepmu*mu;
-        if( center >= ctrl.bigcenter )
+        Output("  Pfeas    = ", Pfeas);
+        Output("  Dfeas    = ", Dfeas);
+        Output("  Cinf0    = ", Cinf0);
+        Output("  ||cL||oo = ", InfinityNorm(cL));
+        Output("  ||cU||oo = ", InfinityNorm(cU));
+        Output("  center   = ", center);
+
+        if (true)
         {
-            mu = muold;
+            // Update mu
+            // TODO: Clarify this
+            stepmu = Min(stepx, stepz);
+            stepmu = Min(stepmu, ctrl.stepTol);
+            Real muold = mu;
+            Real mumin = Max(Pfeas, Dfeas);
+            mumin = 0.1*Max(mumin, Cfeas);
+            mumin = Min(mu, mumin);
+            mu = mu - stepmu*mu;
+
+            if( center >= ctrl.bigcenter )
+            {
+                mu = muold;
+            }
+            mu = Max(mu, mumin);
+            mu = Max(mu, mulast);
         }
         else
         {
-            mu = Max(mu, mumin);
-            mu = Max(mu, mulast);
+            if( (Pfeas <= ctrl.feaTol)
+               && (Dfeas <= ctrl.feaTol) )
+            {
+                mu *= 0.5;
+            }
         }
 
         // Update gradient and Hessian
@@ -261,8 +314,49 @@ void Newton
     GetSubmatrix(bl, ixSetFix, ZERO, tmp);
     SetSubmatrix(x, ixSetFix, ZERO, tmp); 
 
+    // Report active constraints
+    Int lowerActive = 0;
+    Int upperActive = 0;
+    Int ctrLow = 0;
+    Int ctrUpp = 0;
+    for( Int i = 0; i < n; i++ )
+    {
+        if( i == ixSetLow[ctrLow])
+        {
+            if( x.Get(i,0) - bl.Get(i,0) < 1e-8 )
+                lowerActive++;
+            ctrLow++;
+        }
+        if( i == ixSetUpp[ctrUpp])
+        {
+            if( bu.Get(i,0) - x.Get(i,0) < 1e-8 )
+                upperActive++;
+            ctrUpp++;
+        }
+    }
+
     // Reconstruct z from z1 and z2
     Zeros(z, n, 1);
+    UpdateSubmatrix(z, ixSetLow, ZERO, Real(1), z1);
+    UpdateSubmatrix(z, ixSetUpp, ZERO, Real(-1), z2);
+    Matrix<Real> zFix;
+    GetSubmatrix(grad, ixSetFix, ZERO, zFix);
+    GetSubmatrix(r2, ixSetFix, ZERO, tmp);
+    Axpy(Real(-1), tmp, zFix);
+    UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
+
+    Output("=========== Completed Newton's Method ===========");
+
+    Output("  Pfeas    = ", Pfeas);
+    Output("  Dfeas    = ", Dfeas);
+    Output("  Cinf0    = ", Cinf0);
+    Output("  ||cL||oo = ", InfinityNorm(cL));
+    Output("  ||cU||oo = ", InfinityNorm(cU));
+    Output("  center   = ", center);
+
+    Output("  Number active constraints on");
+    Output("    Lower bound: ", lowerActive);
+    Output("    Upper bound: ", upperActive);
 }
 
 #define PROTO(Real) \

@@ -32,7 +32,10 @@ void Initialize
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
   const Real& x0min,
-  const Real& z0min );
+  const Real& z0min,
+  const Int& m,
+  const Int& n,
+  bool print );
 
 template<typename Real>
 void ResidualPD
@@ -69,6 +72,7 @@ void ResidualC
 template<typename Real>
 bool Linesearch
 ( const PDCOObj<Real>& phi,
+  const Real& mu,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
@@ -85,6 +89,8 @@ bool Linesearch
         Real& Cinf0,
         Matrix<Real>& cL,
         Matrix<Real>& cU,
+        Real& stepx,
+        Real& stepz,
   const Matrix<Real>& dx,
   const Matrix<Real>& dy,
   const Matrix<Real>& dz1,
@@ -132,6 +138,15 @@ void FormHandW
   const Matrix<Real>& cU,
         Matrix<Real>& H,
         Matrix<Real>& w );
+
+template <typename Real>
+void UpdateSubdiagonal
+( Matrix<Real>& A,
+  const vector<Int>& ixSet,
+  const Real& alpha,
+  Matrix<Real>& dSub );
+
+vector<Int> IndexRange(Int n);
 
 } // namespace pdco
 } // namespace El

@@ -6,7 +6,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include "El.hpp"
+#include <El.hpp>
 #include "./PDCO/IPM.hpp"
 
 namespace El {
@@ -21,16 +21,14 @@ void PDCO
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
         Matrix<Real>& x, 
+        Matrix<Real>& r,
         Matrix<Real>& y,
         Matrix<Real>& z, 
   const pdco::Ctrl<Real>& ctrl )
 {
     DEBUG_ONLY(CSE cse("PDCO"))
-/*    if( ctrl.approach == QP_MEHROTRA )
-        qp::direct::Mehrotra( Q, A, b, c, x, y, z, ctrl.mehrotraCtrl );
-    else
-        LogicError("Unsupported solver");
-*/
+
+    pdco::Newton(phi, A, b, bl, bu, D1, D2, x, r, y, z, ctrl.pdcoCtrl);
 }
 
 #define PROTO(Real) \
@@ -43,6 +41,7 @@ void PDCO
   const Matrix<Real>& D1, \
   const Matrix<Real>& D2, \
         Matrix<Real>& x, \
+        Matrix<Real>& r, \
         Matrix<Real>& y, \
         Matrix<Real>& z, \
     const pdco::Ctrl<Real>& ctrl );
@@ -53,6 +52,6 @@ void PDCO
 #define EL_ENABLE_QUADDOUBLE
 #define EL_ENABLE_QUAD
 #define EL_ENABLE_BIGFLOAT
-#include "El/macros/Instantiate.h"
+#include <El/macros/Instantiate.h>
 
 } // namespace El

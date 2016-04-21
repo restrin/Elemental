@@ -99,19 +99,19 @@ void ResidualC
 
     if( ixSetUpp.size() > 0 )
     {
-        // Compute cU = mu + (x - bu).*z2
+        // Compute cU = mu - (bu - x).*z2
         Ones(cU, ixSetUpp.size(), 1);
         cU *= mu; // cU = mu
-        Copy(x, tmp1);
-        tmp1 -= bu;
+        Copy(bu, tmp1);
+        tmp1 -= x;
         GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
-        DiagonalScale(LEFT, NORMAL, z2, tmp2); // (x - bu).*z2
-        cU += tmp2; // cU = mu + (x - bu).*z2
+        DiagonalScale(LEFT, NORMAL, z2, tmp2); // (bu - x).*z2
+        cU -= tmp2; // cU = mu - (bu - x).*z2
         
         maxXz = Max(maxXz, Max(tmp2));
         minXz = Min(minXz, Min(tmp2));
     }
-    
+
     if( ixSetLow.size() == 0 && ixSetUpp.size() == 0 )
     {
         center = Real(1.0);

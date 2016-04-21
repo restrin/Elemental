@@ -60,7 +60,7 @@ Real MaxXStepSize
       {
           if (dx.Get(i,0) > 0)
               maxStepU = (bu.Get(i,0) - x.Get(i,0))/dx.Get(i,0);
-          ctrLow++;
+          ctrUpp++;
       }
       maxStep = Min(maxStep, Min(maxStepL, maxStepU));
   }
@@ -78,7 +78,7 @@ Real MaxZStepSize
   {
       if (dz.Get(i,0) > 0)
           continue;
-      maxStep = Min(maxStep, z.Get(i,0)/dz.Get(i,0));
+      maxStep = Min(maxStep, -z.Get(i,0)/dz.Get(i,0));
   }
   return maxStep;
 }
@@ -86,6 +86,7 @@ Real MaxZStepSize
 template<typename Real>
 bool Linesearch
 ( const PDCOObj<Real>& phi,
+  const Real& mu,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
@@ -102,6 +103,8 @@ bool Linesearch
         Real& Cinf0,
         Matrix<Real>& cL,
         Matrix<Real>& cU,
+        Real& stepx,
+        Real& stepz,
   const Matrix<Real>& dx,
   const Matrix<Real>& dy,
   const Matrix<Real>& dz1,
@@ -112,13 +115,16 @@ bool Linesearch
   const PDCOCtrl<Real>& ctrl )
 {
     DEBUG_ONLY(CSE cse("pdco::Linesearch"))
-    Real stepx  = MaxXStepSize(x, dx, bl, bu, ixSetLow, ixSetUpp);
+    stepx  = MaxXStepSize(x, dx, bl, bu, ixSetLow, ixSetUpp);
     Real stepz1 = MaxZStepSize(z1, dz1); // No upper bound constraint
     Real stepz2 = MaxZStepSize(z2, dz2); // No upper bound constraint
     
-    Real stepz = Min(stepz1, stepz2);
+    stepz = Min(stepz1, stepz2);
     stepx = Min(ctrl.stepTol*stepx, Real(1));
     stepz = Min(ctrl.stepTol*stepz, Real(1));
+
+    Output("  stepx=", stepx);
+    Output("  stepz=", stepz);
 
     if( ctrl.stepSame )
     {
@@ -127,11 +133,17 @@ bool Linesearch
     }
 
     Real merit = Merit(r1, r2, cL, cU);
+
+    Output("  merit=", merit);
+
     Real meritNew;
 
     Matrix<Real> xNew, yNew, z1New, z2New, grad;
 
     bool success = false;
+
+    // TODO: Fix updating logic here
+    // Residuals are probably messed
 
     for( Int i=0 ; i < ctrl.maxLSIts; i++ )
     {
@@ -141,27 +153,26 @@ bool Linesearch
         Copy(y, yNew);
         Copy(z1, z1New);
         Copy(z2, z2New);
-        Axpy(stepx, dx, x); // xNew = x + stepx*dx
-        Axpy(stepx, dy, y); // yNew = y + stepx*dy
-        Axpy(stepz, dz1, z1); // z1New = z1 + stepz*dz1
-        Axpy(stepz, dz2, z2); // z2New = z2 + stepz*dz2
+        Axpy(stepx, dx, xNew); // xNew = x + stepx*dx
+        Axpy(stepx, dy, yNew); // yNew = y + stepx*dy
+        Axpy(stepz, dz1, z1New); // z1New = z1 + stepz*dz1
+        Axpy(stepz, dz2, z2New); // z2New = z2 + stepz*dz2
 
         // Compute residuals
         // Residual vectors to be populated
         phi.grad(x, grad); // get gradient
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
-          b, D1, D2, grad, x, y, z1, z2, r1, r2);
+          b, D1, D2, grad, xNew, yNew, z1New, z2New, r1, r2);
 
-        Matrix<Real> cL;
-        Matrix<Real> cU;
-        Real mu = ctrl.mu0;
-        ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
+        ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, xNew, z1New, z2New, center, Cinf0, cL, cU);
 
         meritNew = Merit(r1, r2, cL, cU);
 
+        Output("  meritNew=", meritNew);
+
         Real step = Min(stepx, stepz);
 
-        if ( meritNew <= (Real(1) - ctrl.eta*step) * merit )
+        if ( ~ctrl.backtrack || meritNew <= (Real(1) - ctrl.eta*step) * merit )
         {
             Copy(xNew, x);
             Copy(yNew, y);
@@ -186,6 +197,7 @@ bool Linesearch
 #define PROTO(Real) \
   template bool Linesearch \
   ( const PDCOObj<Real>& phi, \
+    const Real& mu, \
     const Matrix<Real>& A, \
     const Matrix<Real>& b, \
     const Matrix<Real>& bl, \
@@ -202,6 +214,8 @@ bool Linesearch
           Real& Cinf0, \
           Matrix<Real>& cL, \
           Matrix<Real>& cU, \
+          Real& stepx, \
+          Real& stepz, \
     const Matrix<Real>& dx, \
     const Matrix<Real>& dy, \
     const Matrix<Real>& dz1, \
@@ -224,8 +238,7 @@ bool Linesearch
     const vector<Int>& ixSetUpp ); \
   template Real MaxZStepSize \
   ( const Matrix<Real>& z, \
-    const Matrix<Real>& dz ); \
-
+    const Matrix<Real>& dz );
 
 #define EL_NO_INT_PROTO
 #define EL_NO_COMPLEX_PROTO

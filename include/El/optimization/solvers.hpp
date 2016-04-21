@@ -722,13 +722,16 @@ struct PDCOCtrl
 
     // Controls how close x or z can be to their respective bounds
     // Must be between (0,1)
-    Real stepTol = Real(0.9);
+    Real stepTol = Real(0.99);
 
     // Sufficient descent tolerance
     Real eta = Real(1e-4);
 
     // mu is reduced if center < bigcenter
     Real bigcenter = Real(1e3);
+
+    // Use backtracking linesearch?
+    bool backtrack = true;
 };
 
 namespace pdco
@@ -761,9 +764,9 @@ struct PDCOObj
 {
     // First argument is primal variable x
     // Second argument is output
-    void (*obj)(Matrix<Real>, Real) = 0; // Objective value
-    void (*grad)(Matrix<Real>, Matrix<Real>) = 0; // Gradient
-    void (*hess)(Matrix<Real>, Matrix<Real>) = 0; // Hessian
+    void (*obj)(Matrix<Real>&, Real&) = 0; // Objective value
+    void (*grad)(Matrix<Real>&, Matrix<Real>&) = 0; // Gradient
+    void (*hess)(Matrix<Real>&, Matrix<Real>&) = 0; // Hessian
 };
 
 } // namespace pdco 

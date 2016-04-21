@@ -39,7 +39,7 @@ void ClassifyBounds
 
         // Fixed variable?
         // TODO: Checking equality may be dangerous
-        if( bl.Get(i,0) == bl.Get(i,0) )
+        if( bl.Get(i,0) == bu.Get(i,0) )
         {
             ixSetFix.push_back(i);
             ctrFix++;

@@ -38,44 +38,45 @@ void FormHandW
     Matrix<Real> tmp2;
     Matrix<Real> tmp3;
 
-    // Form H = Hess + D1^2 + (x-bl)^-1*z1 - (bu-x)^-1*z2
+    // Form H = Hess + D1^2 + (x-bl)^-1*z1 + (bu-x)^-1*z2
     Copy(Hess, H);
     Copy(D1, tmp1);
     DiagonalScale(LEFT, NORMAL, D1, tmp1);
     UpdateDiagonal(H, Real(1), tmp1, 0); // H = Hess + D1^2
-    
-    // Form w = r2 - (x-bl)^-1*cL + (bu-x)^-1*cU
+
+    // Form w = -r2 + (x-bl)^-1*cL - (bu-x)^-1*cU
     Copy(r2, w);
+    w *= -1;
 
     // Form (x-bl)^-1*z1
     Copy(x, tmp1);
     tmp1 -= bl;
-    GetSubmatrix(tmp1, ixSetLow, ixSetLow, tmp2);
+    GetSubmatrix(tmp1, ixSetLow, ZERO, tmp2);
     Copy(z1, tmp1);
     DiagonalSolve(LEFT, NORMAL, tmp2, tmp1, false);
     // H = Hess + D1^2 + (x-bl)^-1*z1
-    UpdateSubmatrix(H, ixSetLow, ixSetLow, Real(1), tmp1);
+    UpdateSubdiagonal(H, ixSetLow, Real(1), tmp1);
 
     // Form (x-bl)^-1*cL
     Copy(cL, tmp3);
     DiagonalSolve(LEFT, NORMAL, tmp2, tmp3);
-    // w = r2 - (x-bl)^-1*cL
-    UpdateSubmatrix(w, ixSetLow, ZERO, Real(-1), tmp3);
+    // w = -r2 + (x-bl)^-1*cL
+    UpdateSubmatrix(w, ixSetLow, ZERO, Real(1), tmp3);
 
     // Form (bu-x)^-1*z2
     Copy(bu, tmp1);
     tmp1 -= x;
-    GetSubmatrix(tmp1, ixSetUpp, ixSetUpp, tmp2);
+    GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
     Copy(z2, tmp1);
     DiagonalSolve(LEFT, NORMAL, tmp2, tmp1, false);
-    // H = Hess + D1^2 + (x-bl)^-1*z1 - (bu-x)^-1*z2
-    UpdateSubmatrix(H, ixSetUpp, ixSetUpp, Real(-1), tmp1);
+    // H = Hess + D1^2 + (x-bl)^-1*z1 + (bu-x)^-1*z2
+    UpdateSubdiagonal(H, ixSetUpp, Real(1), tmp1);
 
-    // Form (x-bu)^-1*cU
+    // Form (bu-x)^-1*cU
     Copy(cU, tmp3);
     DiagonalSolve(LEFT, NORMAL, tmp2, tmp3);
-    // w = r2 - (x-bl)^-1*cL + (bu-x)^-1*cU
-    UpdateSubmatrix(w, ixSetUpp, ZERO, Real(1), tmp3);
+    // w = -r2 + (x-bl)^-1*cL - (bu-x)^-1*cU
+    UpdateSubmatrix(w, ixSetUpp, ZERO, Real(-1), tmp3);
 }
 
 #define PROTO(Real) \

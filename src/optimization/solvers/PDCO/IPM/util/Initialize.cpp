@@ -31,10 +31,12 @@ void Initialize
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
   const Real& x0min,
-  const Real& z0min )
+  const Real& z0min,
+  const Int& m,
+  const Int& n,
+  bool print )
 {
     DEBUG_ONLY(CSE cse("pdco::Initialize"))
-    Int n = bl.Height();
 
     // Initialize z1, z2
     Ones(z1, ixSetLow.size(), 1);
@@ -42,9 +44,13 @@ void Initialize
     Ones(z2, ixSetUpp.size(), 1);
     z2 *= z0min;
 
+    Int fixSize = ixSetFix.size();
+    Int uppSize = ixSetUpp.size();
+    Int lowSize = ixSetLow.size();
+
     //Initialize x, y
     Zeros(x, n, 1);
-    Zeros(y, n, 1);
+    Zeros(y, m, 1);
 
     Int ctrLow = 0;
     Int ctrUpp = 0;
@@ -52,12 +58,13 @@ void Initialize
 
     for( Int i = 0; i < n; i++ )
     {
-        if( i == ixSetFix[ctrFix] )
+        if( fixSize> 0 && i == ixSetFix[ctrFix] )
         {
             ctrFix++;
             continue;
         }
-        if( i == ixSetLow[ctrLow] && i == ixSetUpp[ctrUpp] )
+        if( lowSize > 0 && uppSize > 0
+            && i == ixSetLow[ctrLow] && i == ixSetUpp[ctrUpp] )
         {
             Real val = Real(0.5)*(bl.Get(i,0) + bu.Get(i,0));
             x.Set(i, 0, val);
@@ -65,18 +72,26 @@ void Initialize
             ctrUpp++;
             continue;
         }
-        if( i == ixSetLow[ctrLow] )
+        if( lowSize > 0 && i == ixSetLow[ctrLow] )
         {
             x.Set(i, 0, bl.Get(i,0) + x0min);
             ctrLow++;
             continue;
         }
-        if( i == ixSetUpp[ctrUpp] )
+        if( uppSize > 0 && i == ixSetUpp[ctrUpp] )
         {
-            x.Set(i, 0, bu.Get(i,0) + x0min);
+            x.Set(i, 0, bu.Get(i,0) - x0min);
             ctrUpp++;
             continue;
         }
+    }
+
+    if( print )
+    {
+//        Print(x, "x0");
+//        Print(y, "y0");
+//        Print(z1, "z1");
+//        Print(z2, "z2");
     }
 
 }
@@ -93,7 +108,10 @@ void Initialize
     const vector<Int>& ixSetUpp, \
     const vector<Int>& ixSetFix, \
     const Real& x0min, \
-    const Real& z0min );
+    const Real& z0min, \
+    const Int& m, \
+    const Int& n, \
+    bool print );
 
 #define EL_NO_INT_PROTO
 #define EL_NO_COMPLEX_PROTO
