@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2009-2016, Jack Poulson
+   Copyright (c) 2009-2016, Jack Poulson, 2016, Ron Estrin
    All rights reserved.
 
    This file is part of Elemental and is under the BSD 2-Clause License, 
@@ -126,10 +126,18 @@ struct LLLCtrl
     bool recursive=false;
     Int cutoff=10;
 
-    bool rightLooking=false;
+    // Fudge factor for determining whether to drop precision
     Real precisionFudge=Real(2);
-    Int givensBlockSize = 4;
+    
     Int minColThresh = 0;
+
+    // Right looking variant?
+    bool rightLooking = false;
+
+    // Ignore precision limits for QR factorization?
+    bool unsafeSizeReduct=false;
+
+    Int givensBlockSize = 2;
 	
     // Preprocessing with a "rank-obscuring" column-pivoted QR factorization
     // (in the manner suggested by Wubben et al.) can greatly decrease
@@ -173,10 +181,11 @@ struct LLLCtrl
         eta = Real(ctrl.eta);
         if( eta < etaMin )
             eta = etaMin;
-        rightLooking = ctrl.rightLooking;
         precisionFudge = Real(ctrl.precisionFudge);
-        givensBlockSize = ctrl.givensBlockSize;
         minColThresh = ctrl.minColThresh;
+        unsafeSizeReduct = ctrl.unsafeSizeReduct;
+        rightLooking = ctrl.rightLooking;
+        givensBlockSize = ctrl.givensBlockSize;
         variant = ctrl.variant; 
         recursive = ctrl.recursive;
         cutoff = ctrl.cutoff;
@@ -207,10 +216,11 @@ struct LLLCtrl
 
         delta = Real(ctrl.delta);
         eta = Max(etaMin,Real(ctrl.eta));
-        rightLooking = ctrl.rightLooking;
         precisionFudge = Real(ctrl.precisionFudge);
-        givensBlockSize = ctrl.givensBlockSize;
         minColThresh = ctrl.minColThresh;
+        unsafeSizeReduct = ctrl.unsafeSizeReduct;
+        rightLooking = ctrl.rightLooking;
+        givensBlockSize = ctrl.givensBlockSize;
         variant = ctrl.variant; 
         recursive = ctrl.recursive;
         cutoff = ctrl.cutoff;

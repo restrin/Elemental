@@ -12,6 +12,11 @@
 namespace El {
 namespace lll {
 
+static Timer formGivensTimer, colNormTimer,
+      negateRowTimer, applyGivensTimer,
+      copyGivensTimer, formQRTimer,
+      LLLTimer;
+
 template<typename F>
 void RightGivensStep
 ( Int k,

@@ -3955,6 +3955,9 @@ void Herk
   const Base<T>& beta,
         T* C, BlasInt CLDim )
 {
+    cout << "BLAS HERK2" << endl;
+    Output("BLAS HERK");
+
     // NOTE: Temporaries are avoided since constructing a BigInt/BigFloat
     //       involves a memory allocation
     if( beta == Base<T>(0) )
@@ -4694,6 +4697,9 @@ void Syrk
   const T& beta,
         T* C, BlasInt CLDim )
 {
+    cout << "BLAS SYRK2" << endl;
+    Output("BLAS SYRK");
+
     // NOTE: Temporaries are avoided since constructing a BigInt/BigFloat
     //       involves a memory allocation
     if( beta == T(0) )

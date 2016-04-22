@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2009-2016, Jack Poulson
+   Copyright (c) 2009-2016, Jack Poulson, 2016, Ron Estrin
    All rights reserved.
 
    This file is part of Elemental and is under the BSD 2-Clause License, 
@@ -69,10 +69,7 @@ namespace lll {
 static Timer stepTimer, houseStepTimer,
        houseViewTimer, houseReflectTimer,
        applyHouseTimer, roundTimer,
-       formSInvTimer, formQRTimer,
-       applyGivensTimer, copyGivensTimer,
-       formGivensTimer, colNormTimer,
-       negateRowTimer, LLLTimer;
+       formSInvTimer, normTimer;
 
 // Return the achieved delta and eta reduction properties
 template<typename F>
@@ -192,6 +189,15 @@ LLLInfo<Base<F>> LLLWithQ
     DEBUG_ONLY(CSE cse("LLLWithQ"))
     typedef Base<F> Real;
     const Int n = B.Width();
+    if( ctrl.recursive && ctrl.cutoff < n )
+        return RecursiveLLLWithQ( B, U, QR, t, d, ctrl );
+
+    if( ctrl.delta < Real(1)/Real(2) )
+        LogicError("delta is assumed to be at least 1/2");
+    if( ctrl.eta <= Real(1)/Real(2) || ctrl.eta >= Sqrt(ctrl.delta) )
+        LogicError
+        ("eta=",ctrl.eta," should be in (1/2,sqrt(delta)=",
+         Sqrt(ctrl.delta),")");
 
     if( ctrl.jumpstart )
     {
@@ -202,16 +208,6 @@ LLLInfo<Base<F>> LLLWithQ
     {
         Identity( U, n, n ); 
     }
-
-    if( ctrl.recursive && ctrl.cutoff < n )
-        return RecursiveLLLWithQ( B, U, QR, t, d, ctrl );
-
-    if( ctrl.delta < Real(1)/Real(2) )
-        LogicError("delta is assumed to be at least 1/2");
-    if( ctrl.eta <= Real(1)/Real(2) || ctrl.eta >= Sqrt(ctrl.delta) )
-        LogicError
-        ("eta=",ctrl.eta," should be in (1/2,sqrt(delta)=",
-         Sqrt(ctrl.delta),")");
 
     Int firstSwap = n;
     if( ctrl.presort )
@@ -240,8 +236,8 @@ LLLInfo<Base<F>> LLLWithQ
         info = lll::LeftDeepReduceAlg( B, U, QR, t, d, formU, ctrl );
     else if( ctrl.variant == LLL_DEEP )
         return lll::LeftDeepAlg( B, U, QR, t, d, formU, ctrl );
-    else if ( ctrl.rightLooking )
-        return lll::RightAlg( B, U, QR, t, d, formU, ctrl );
+    else if( ctrl.rightLooking )
+        info = lll::RightAlg( B, U, QR, t, d, formU, ctrl );
     else
         info = lll::LeftAlg( B, U, QR, t, d, formU, ctrl );
 
@@ -351,7 +347,7 @@ LLLWithQ
         infoDeep.firstSwap = firstSwap;
         return infoDeep;
     }
-    else if ( ctrl.rightLooking )
+    else if( ctrl.rightLooking )
         return lll::RightAlg( B, U, QR, t, d, formU, ctrl );
     else
         return lll::LeftAlg( B, U, QR, t, d, formU, ctrl );
@@ -456,7 +452,7 @@ LowerPrecisionMerge
         auto bL = BLower( ALL, IR(n-1) );
         Copy( cL, bL );
     }
-    
+ 
     LLLCtrl<RealLower> ctrlLower( ctrl );
     ctrlLower.recursive = false;
     RealLower eps = limits::Epsilon<RealLower>();
@@ -686,35 +682,31 @@ RecursiveHelper
         Int numPrevSwaps = info.numSwaps;
         if( isInteger )
         {
-			// Can we use QR for this without recomputing norms?
-			Matrix<F> CLF;
-			Copy(CL, CLF);
-			Matrix<F> CRF;
-			Copy(CR, CRF);
-			const Real CLOneNorm = OneNorm( CLF );
-			const Real CROneNorm = OneNorm( CRF );
-			const Real CLMaxNorm = MaxNorm( CLF );
-			const Real CRMaxNorm = MaxNorm( CRF );
-            //const ZReal CLOneNorm = OneNorm( CL );
-            //const ZReal CROneNorm = OneNorm( CR );
-            //const ZReal CLMaxNorm = MaxNorm( CL );
-            //const ZReal CRMaxNorm = MaxNorm( CR );
-			// TODO: Incorporate norm of U if maintaining U
+            // Can we use QR for this without recomputing norms?
+            Matrix<F> CLF;
+            Copy(CL, CLF);
+            Matrix<F> CRF;
+            Copy(CR, CRF);
+            const Real CLOneNorm = OneNorm( CLF );
+            const Real CROneNorm = OneNorm( CRF );
+            const Real CLMaxNorm = MaxNorm( CLF );
+            const Real CRMaxNorm = MaxNorm( CRF );
+            // TODO: Incorporate norm of U if maintaining U
             if( ctrl.progress )
             {
-			    Output("  || C_L ||_1 = ",CLOneNorm);
+                Output("  || C_L ||_1 = ",CLOneNorm);
                 Output("  || C_R ||_1 = ",CROneNorm);
                 Output("  || C_L ||_max = ",CLMaxNorm);
                 Output("  || C_R ||_max = ",CRMaxNorm);
             }
-			const Real COneNorm = Max(CLOneNorm,CROneNorm);
-			const Real fudge = ctrl.precisionFudge; // TODO: Make tunable
-			const unsigned neededPrec = unsigned(Ceil(Log2(COneNorm)*fudge));
-			if( ctrl.progress || ctrl.time )
-			{
-				Output("  || C ||_1 = ",COneNorm);
-				Output("  Needed precision: ",neededPrec);
-			}
+            const Real COneNorm = Max(CLOneNorm,CROneNorm);
+            const Real fudge = ctrl.precisionFudge; // TODO: Make tunable
+            const unsigned neededPrec = unsigned(Ceil(Log2(COneNorm)*fudge));
+            if( ctrl.progress || ctrl.time )
+            {
+                Output("  || C ||_1 = ",COneNorm);
+                Output("  Needed precision: ",neededPrec);
+            }
 
             succeeded = TryLowerPrecisionMerge<Z,F,float>
               ( CL, CR, B, U, QR, t, d, maintainU, ctrl, neededPrec, info );
@@ -745,7 +737,7 @@ RecursiveHelper
         // TODO: Allow for dropping with non-integer coefficients?
 
         if( !succeeded )
-        {        
+        { 
             // Interleave CL and CR to reform B before running LLL again
             for( Int jSub=0; jSub<n/2; ++jSub )
             {
@@ -762,7 +754,7 @@ RecursiveHelper
                 auto bL = B( ALL, IR(n-1) ); 
                 bL = cL;
             }
-            
+
             auto ctrlMod( ctrl );
             ctrlMod.jumpstart = true;
             ctrlMod.startCol = 0;
@@ -789,7 +781,7 @@ RecursiveHelper
                     auto uL = U( ALL, IR(n-1) );
                     uL = uCopyL;
                 }
-                
+
                 info = LLLWithQ( B, U, QR, t, d, ctrlMod );
             }
             else
@@ -952,7 +944,7 @@ RecursiveHelper
         // TODO: Allow for dropping with non-integer coefficients?
 
         if( !succeeded )
-        {            
+        {
             // Interleave CL and CR to reform B before running LLL again
             for( Int jSub=0; jSub<n/2; ++jSub )
             {
@@ -969,7 +961,7 @@ RecursiveHelper
                 auto bL = B( ALL, IR(n-1) ); 
                 bL = cL;
             }
-            
+
             auto ctrlMod( ctrl );
             ctrlMod.jumpstart = true;
             ctrlMod.startCol = 0;
