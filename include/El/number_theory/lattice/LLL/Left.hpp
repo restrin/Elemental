@@ -403,9 +403,6 @@ LLLInfo<Base<F>> LeftAlg
     {
         auto col = B( ALL, IR(i) );
         Copy(col, bcol);
-		
-		Print(bcol, "bcol");
-		
         if( ctrl.time )
             normTimer.Start();
         colNorms.Set( i, 0, El::Nrm2(bcol) );
