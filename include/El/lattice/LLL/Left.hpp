@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2009-2016, Jack Poulson, Ron Estrin
+   Copyright (c) 2009-2016, Jack Poulson, 2016, Ron Estrin
    All rights reserved.
 
    This file is part of Elemental and is under the BSD 2-Clause License, 
@@ -48,7 +48,7 @@ void ExpandQR
         applyHouseTimer.Start();
     for( Int orthog=0; orthog<numOrthog; ++orthog )
     {
-        if ( k >= 0)
+        if ( k < 0)
         {
             Output("ApplyQ for k=", k);
             auto H   = QR( ALL, IR(0,k) );
@@ -138,11 +138,17 @@ template<typename Z, typename F>
 Base<F> Norm2
 ( Matrix<Z>& B,
   Matrix<F>& bcol,
-  Int k )
+  Int k,
+  bool time  )
 {
+    if( time )
+        normTimer.Start();
     auto col = B(ALL, IR(k));
     Copy(col, bcol);
-    return El::FrobeniusNorm(bcol);
+    Base<F> norm = El::FrobeniusNorm(bcol);
+    if( time )
+        normTimer.Stop();
+    return norm;
 }
 
 // Return true if the new column is a zero vector
@@ -308,16 +314,23 @@ bool Step
             }
         }
 
-        if ( !colUpdated )
+        if( ctrl.time )
+            roundTimer.Stop();
+ 
+        if( !colUpdated )
         {
             break;
         }
 
         colUpdated = false;
 
-        Real newNorm = lll::Norm2<Z,F>(B, bcol, k);
+        Real newNorm = lll::Norm2<Z,F>(B, bcol, k, ctrl.time);
         auto rCol  = QR( ALL, IR(k) );
+        if( ctrl.time )
+            normTimer.Start();
         Real rNorm = El::FrobeniusNorm(rCol);
+        if( ctrl.time )
+            normTimer.Stop();
 
         if (Abs(newNorm - rNorm)/newNorm >= thresh)
         {
@@ -327,8 +340,6 @@ bool Step
             continue;
         }
 
-        if( ctrl.time )
-            roundTimer.Stop();
         if( !ctrl.unsafeSizeReduct && !limits::IsFinite(newNorm) )
             RuntimeError("Encountered an unbounded norm; increase precision");
         if( !ctrl.unsafeSizeReduct && newNorm > Real(1)/eps )
@@ -373,6 +384,7 @@ LLLInfo<Base<F>> LeftAlg
         houseReflectTimer.Reset();
         applyHouseTimer.Reset();
         roundTimer.Reset();
+        normTimer.Reset();
     }
 
     const Int m = B.Height();
@@ -391,9 +403,18 @@ LLLInfo<Base<F>> LeftAlg
     {
         auto col = B( ALL, IR(i) );
         Copy(col, bcol);
-        colNorms.Set( i, 0, El::FrobeniusNorm(bcol) );
+		
+		Print(bcol, "bcol");
+		
+        if( ctrl.time )
+            normTimer.Start();
+        colNorms.Set( i, 0, El::Nrm2(bcol) );
+        if( ctrl.time )
+            normTimer.Stop();
     }
 
+	Print(colNorms, "norms");
+	
     Int numSwaps=0;
     Int nullity = 0;
     Int firstSwap = n;
@@ -497,9 +518,9 @@ LLLInfo<Base<F>> LeftAlg
             ColSwap( B, k-1, k );
             if( formU )
                 ColSwap( U, k-1, k );
-				
-			// Swap the column norms
-			Base<F> tmp = colNorms.Get(k, 0);
+                
+            // Swap the column norms
+            Base<F> tmp = colNorms.Get(k, 0);
             colNorms.Set( k, 0, colNorms.Get(k-1, 0) );
             colNorms.Set( k-1, 0, tmp );
 
@@ -527,7 +548,7 @@ LLLInfo<Base<F>> LeftAlg
                         Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
                         colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
                         colNorms.Set( 0, 0, tmp );
-							
+                            
                         ++nullity;
                         ++numSwaps;
                         firstSwap = 0;
@@ -553,6 +574,7 @@ LLLInfo<Base<F>> LeftAlg
         Output("      reflect time:         ",houseReflectTimer.Total());
         Output("    Apply Householder time: ",applyHouseTimer.Total());
         Output("    Round time:             ",roundTimer.Total());
+        Output("    Norm time:              ",normTimer.Total());
     }
 
     std::pair<Real,Real> achieved = lll::Achieved(QR,ctrl);
@@ -599,12 +621,12 @@ LLLInfo<Base<F>> LeftDeepAlg
     const Int n = B.Width();
     const Int minDim = Min(m,n);
 
-	// Keep this vector around for norm computation purposes
+    // Keep this vector around for norm computation purposes
     // Avoid repeatedly reallocating memory
     Matrix<Real> bcol;
     Zeros(bcol, m, 1);
 
-	Matrix<Real> colNorms;
+    Matrix<Real> colNorms;
     Zeros( colNorms, n, 1 );
 
     for (Int i=0; i<n; i++)
@@ -613,7 +635,7 @@ LLLInfo<Base<F>> LeftDeepAlg
         Copy(col, bcol);
         colNorms.Set( i, 0, El::FrobeniusNorm(bcol) );
     }
-	
+    
     // TODO: Move into a control structure
     const bool alwaysRecomputeNorms = false;
     const Real updateTol = Sqrt(limits::Epsilon<Real>());
@@ -664,7 +686,7 @@ LLLInfo<Base<F>> LeftDeepAlg
                 Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
                 colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
                 colNorms.Set( 0, 0, tmp );
-					
+                    
                 ++nullity;
                 ++numSwaps;
                 firstSwap = 0;
@@ -725,7 +747,7 @@ LLLInfo<Base<F>> LeftDeepAlg
                 Base<F> tmp = colNorms.Get(k, 0);
                 colNorms.Set( k, 0, colNorms.Get(i, 0) );
                 colNorms.Set( i, 0, tmp );
-				
+                
                 if( i == 0 )
                 {
                     while( true )
@@ -750,7 +772,7 @@ LLLInfo<Base<F>> LeftDeepAlg
                             // Swap the column norms
                             Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
                             colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
-                            colNorms.Set( 0, 0, tmp );								
+                            colNorms.Set( 0, 0, tmp );                                
 
                             ++nullity;
                             ++numSwaps;
@@ -845,12 +867,12 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
     const Int n = B.Width();
     const Int minDim = Min(m,n);
 
-	// Keep this vector around for norm computation purposes
+    // Keep this vector around for norm computation purposes
     // Avoid repeatedly reallocating memory
     Matrix<Real> bcol;
     Zeros(bcol, m, 1);
 
-	Matrix<Real> colNorms;
+    Matrix<Real> colNorms;
     Zeros( colNorms, n, 1 );
 
     for (Int i=0; i<n; i++)
@@ -858,7 +880,7 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
         auto col = B( ALL, IR(i) );
         Copy(col, bcol);
         colNorms.Set( i, 0, El::FrobeniusNorm(bcol) );
-    }	
+    }    
 
     Int numSwaps = 0;
     Int nullity = 0;
@@ -905,7 +927,7 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
                 // Swap the column norms
                 Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
                 colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
-                colNorms.Set( 0, 0, tmp );					
+                colNorms.Set( 0, 0, tmp );                    
 
                 ++nullity;
                 ++numSwaps;
@@ -1004,8 +1026,12 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
 
                 // Update the column norms
                 colNorms.Set( k, 0, colNorms.Get(i, 0) );
-                colNorms.Set( i, 0, lll::Norm2(B, bcol, i) );						
-				
+                if( ctrl.time )
+                    normTimer.Start();
+                colNorms.Set( i, 0, lll::Norm2(B, bcol, i, ctrl.time) );
+                if( ctrl.time )
+                    normTimer.Stop();                
+                
                 if( i == 0 )
                 {
                     while( true )
