@@ -11,8 +11,6 @@
 
 namespace El {
 
-Timer LLVFTimer, GemmTimer, HerkTimer, TrsmTimer;
-
 namespace apply_packed_reflectors {
 
 //
@@ -41,13 +39,6 @@ LLVF
   const Matrix<F>& t,
         Matrix<F>& A )
 {
-    LLVFTimer.Reset();
-    GemmTimer.Reset();
-    HerkTimer.Reset();
-    TrsmTimer.Reset();
-
-    LLVFTimer.Start();
-
     DEBUG_ONLY(
       CSE cse("apply_packed_reflectors::LLVF");
       if( H.Height() != A.Height() )
@@ -79,26 +70,13 @@ LLVF
         MakeTrapezoidal( LOWER, HPanCopy );
         FillDiagonal( HPanCopy, F(1) );
 
-        HerkTimer.Start();
         Herk( LOWER, ADJOINT, Base<F>(1), HPanCopy, SInv );
-        HerkTimer.Stop();
         FixDiagonal( conjugation, t1, SInv );
 
-        GemmTimer.Start();
         Gemm( ADJOINT, NORMAL, F(1), HPanCopy, ABot, Z );
-        GemmTimer.Stop();
-        TrsmTimer.Start();
         Trsm( LEFT, LOWER, NORMAL, NON_UNIT, F(1), SInv, Z );
-        TrsmTimer.Stop();
-        GemmTimer.Start();
         Gemm( NORMAL, NORMAL, F(-1), HPanCopy, Z, F(1), ABot );
-        GemmTimer.Stop();
     }
-    LLVFTimer.Stop();
-    Output("LLVF Total Time: ", LLVFTimer.Total());
-    Output("  GemmTimer: ", GemmTimer.Total());
-    Output("  HerkTimer: ", HerkTimer.Total());
-    Output("  TrsmTimer: ", TrsmTimer.Total());
 }
 
 template<typename F> 

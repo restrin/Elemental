@@ -128,7 +128,8 @@ struct LLLCtrl
 
     // Fudge factor for determining whether to drop precision
     Real precisionFudge=Real(2);
-    
+
+    // Minimum number of columns before Gemv is used    
     Int minColThresh = 0;
 
     // Right looking variant?

@@ -318,14 +318,12 @@ bool Step
             roundTimer.Stop();
  
         if( !colUpdated )
-        {
             break;
-        }
 
         colUpdated = false;
 
         Real newNorm = lll::Norm2<Z,F>(B, bcol, k, ctrl.time);
-        auto rCol  = QR( ALL, IR(k) );
+        auto rCol  = QR( IR(ALL), IR(k) ); // <-- Check correctness of this
         if( ctrl.time )
             normTimer.Start();
         Real rNorm = El::FrobeniusNorm(rCol);
@@ -344,7 +342,6 @@ bool Step
             RuntimeError("Encountered an unbounded norm; increase precision");
         if( !ctrl.unsafeSizeReduct && newNorm > Real(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
-
         
         if( newNorm > ctrl.reorthogTol*colNorms.Get(k,0) )
         {

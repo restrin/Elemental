@@ -458,6 +458,11 @@ LowerPrecisionMerge
     RealLower eps = limits::Epsilon<RealLower>();
     RealLower minEta = RealLower(1)/RealLower(2)+Pow(eps,RealLower(0.9));
     ctrlLower.eta = Max(minEta,ctrlLower.eta);
+	
+    // If type of QR and B are same, switch to right looking
+    if( typeStringF == typeStringZ )
+	ctrlLower.rightLooking = true;
+	
     Timer timer;
     Matrix<FLower> QRLower;
     if( ctrl.time )
