@@ -43,101 +43,125 @@ void Newton
 {
     DEBUG_ONLY(CSE cse("pdco::Newton")) 
 
-    Output("=========== Beginning Newton's Method ===========");
+    Output("========== Beginning Newton's Method ==========");
 
-    // Useful defined variables
+    // ========= Declarations of oft re-used variables ==============
     Int m = A.Height();
     Int n = A.Width();
+
+    // Index sets to represent IR(ALL) and IR(0)
     vector<Int> ALL_m = IndexRange(m);
     vector<Int> ALL_n = IndexRange(n);
     vector<Int> ZERO (1,0);
-    Matrix<Real> bCopy; // Needed for fixed variables
-    Matrix<Real> D2sq;  // D2sq = D2^2
-    Matrix<Real> xFix;  // Index set for fixed variables
-    Matrix<Real> xLow;  // Index set for lower bounded variables
-    Matrix<Real> xUpp;  // Index set for upper bounded variables
-    Matrix<Real> grad;  // For gradient of phi
-    Matrix<Real> Hess;  // For hessian of phi
-    Matrix<Real> H;     // Used for KKT system
-    Matrix<Real> ACopy; // Used for KKT system
-    Matrix<Real> At;    // A^T (after fixed variables removed)
-    Matrix<Real> AtCopy;// Copy of A^T
-    Matrix<Real> w;     // Residual for KKT system
-    Matrix<Real> dx;    // Primal step direction
-    Matrix<Real> dy;    // Dual step direction
-    Matrix<Real> dz1;   // Complementarity step direction
-    Matrix<Real> dz2;   // Complementarity step direction
-    Real center;        // Centering parameter
-    Real Pfeas;         // Primal feasibility
-    Real Dfeas;         // Dual feasibility
-    Real Cfeas;         // Complementarity feasibility
-    Real Cinf0;         // Complementarity convergence criteria
-    Real stepx;
-    Real stepz;
-    Real stepmu;
-    Real mulast = 0.1*ctrl.optTol;
 
+    vector<Int> ixSetLow;  // Index set for lower bounded variables
+    vector<Int> ixSetUpp;  // Index set for upper bounded variables
+    vector<Int> ixSetFix;  // Index set for fixed bounded variables
+
+    // For objective function
+    Matrix<Real> grad;     // For gradient of phi
+    Matrix<Real> Hess;     // For hessian of phi
+
+    // Matrices used by KKT system
+    Matrix<Real> bCopy;    // Modified b due to fixed variables
+    Matrix<Real> D2sq;     // D2sq = D2^2
+    Matrix<Real> At;       // A^T (after fixed variables removed)
+    Matrix<Real> AtCopy;   // Copy of A^T
+    Matrix<Real> ACopy;    // Used for KKT system
+    Matrix<Real> H;        // Used for KKT system
+    Matrix<Real> S;        // Schur complement
+
+    // Various residuals and convergence measures
+    Matrix<Real> w;        // Residual for KKT system
+    Matrix<Real> r1;       // Primal residual
+    Matrix<Real> r2;       // Dual residual
+    Matrix<Real> cL;       // Lower bound complementarity residual
+    Matrix<Real> cU;       // Upper bound complementarity residual
+    Real center;           // Centering parameter
+    Real Pfeas;            // Primal feasibility
+    Real Dfeas;            // Dual feasibility
+    Real Cfeas;            // Complementarity feasibility
+    Real Cinf0;            // Complementarity convergence criteria
+
+    // Artificial variables, step directions and step sizes
+    Matrix<Real> xFix;
+    Matrix<Real> z1;
+    Matrix<Real> z2;
+    Matrix<Real> dx;       // Primal step direction
+    Matrix<Real> dy;       // Dual step direction
+    Matrix<Real> dz1;      // Complementarity step direction
+    Matrix<Real> dz2;      // Complementarity step direction
+    Real stepx;            // Step size for x, y
+    Real stepz;            // Step size for z1, z2
+    Real stepmu;           // Step size for mu
+
+    Real mulast = 0.1*ctrl.optTol; // Final value of mu
+    Real mu = Max(ctrl.mu0,mulast);
+    bool converged = false;
+
+    // Miscellaneous
+    Matrix<Real> zeros;    // Used to set submatrices to zero
+    Matrix<Real> ones;     // Used to set diagonals to one
+    bool diagHess = false; // Is the Hessian diagonal?
+
+    // Initialize some useful variables
     Copy(D2, D2sq);
     DiagonalScale(LEFT, NORMAL, D2, D2sq);
+    if( ctrl.method == Method::LDLy )
+        Zeros(S, m, m);
+    else if( ctrl.method == Method::LDLy )
+        Zeros(S, n, n);
+    // ==============================================================
 
     // Determine index sets for lower bounded variables,
     // upper bounded variables, and fixed variables
-    vector<Int> ixSetLow;
-    vector<Int> ixSetUpp;
-    vector<Int> ixSetFix;
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
 
+    Copy(b, bCopy);
     if( ixSetFix.size() > 0 )
     {
         // Fix b to allow for fixed variables
         Matrix<Real> Asub;
         GetSubmatrix(bl, ixSetFix, ZERO, xFix); // xFix = bl(ixSetFix)
         GetSubmatrix(A, ALL_m, ixSetFix, Asub); // Asub = A(:,ixSetFix)
-        Copy(b, bCopy);
         Gemv(NORMAL, Real(-1), Asub, xFix, Real(1), bCopy); // b = b - A*xFix
-    }
-    else
-    {
-        Copy(b, bCopy);
     }
 
     // Scale input data?
 
     // Initialize the data
-    Matrix<Real> z1;
-    Matrix<Real> z2;
     pdco::Initialize(x, y, z1, z2, bl, bu, 
-      ixSetLow, ixSetUpp, ixSetFix,ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
     // Compute residuals
-    // Residual vectors to be populated
-    Matrix<Real> r1;
-    Matrix<Real> r2;
-
     phi.grad(x, grad); // get gradient
+    phi.hess(x, Hess); // get Hessian
+
+    if( Hess.Width() == 1 ) // TODO: Better check?
+      diagHess = true;
+
     ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
       bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
 
-    Matrix<Real> cL;
-    Matrix<Real> cU;
-    Real mu = Max(ctrl.mu0,mulast);
     ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
-
-    // Get Hessian
-    phi.hess(x, Hess);
 
     Pfeas = InfinityNorm(r1);
     Dfeas = InfinityNorm(r2);
     Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
 
-    Output("  Pfeas = ", Pfeas);
-    Output("  Dfeas = ", Dfeas);
-    Output("  Cinf0 = ", Cinf0);
-
-    Matrix<Real> zeros;
+    if( ctrl.print )
+    {
+        Output("Initial feasibility: ");
+        Output("  Pfeas  = ", Pfeas);
+        Output("  Dfeas  = ", Dfeas);
+        Output("  Cinf0  = ", Cinf0);
+        Output("  ||cL||oo = ", InfinityNorm(cL));
+        Output("  ||cU||oo = ", InfinityNorm(cU));
+        Output("  center = ", center);
+    }
 
     Copy(A, ACopy); // ACopy = A'
-    // Make copy of A with zero columns for fixed variables
+    // Zero columns corresponding to fixed variables
     if( ixSetFix.size() > 0 )
     {
         Zeros(zeros, ixSetFix.size(), n);
@@ -149,44 +173,52 @@ void Newton
     // Main loop
     for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
     {
-        Output("========== Iteration: ", numIts, " ==========");
-        Output("  mu = ", mu);
+        if( ctrl.print )
+        {
+            Output("======== Iteration: ", numIts, " ========");
+            Output("  mu = ", mu);
+        }
         switch( ctrl.method )
         {
             case Method::LDLy:
             {
+                // We solve the system
+                // [H   A' ] [dx] = [w ]
+                // [A -D2^2] [dy]   [r2]
+                // using the Schur complement to compute dy first
+
                 FormHandW( Hess, D1, x, z1, z2, bl, bu,
-                  ixSetLow, ixSetUpp, ixSetFix, r2, cL, cU, H, w );
+                  ixSetLow, ixSetUpp, ixSetFix, r2, cL, cU, H, w, diagHess );
 
                 if( ixSetFix.size() > 0 )
                 {
                     // Set rows/cols corresponding to fixed variables to zero
                     Zeros(zeros, ixSetFix.size(), n);
-                    Matrix<Real> ones;
                     Ones(ones, ixSetFix.size(), 1);
                     SetSubmatrix(H, ixSetFix, ALL_n, zeros);
                     Zeros(zeros, n, ixSetFix.size());
                     SetSubmatrix(H, ALL_n, ixSetFix, zeros);
                     // Fix diagonal to 1
-                    SetSubmatrix(H, ixSetFix, ixSetFix, ones);
+                    UpdateSubdiagonal(H, ixSetFix, Real(1), ones);
                 }
-
-//                Print(H, "H");
-//                Print(w, "w");
-//                Print(r1, "r1");
-//                Print(r2, "r2");
-//                Print(cL, "cL");
-//                Print(cU, "cU");
 
                 // Make a copy of At
                 Copy(At, AtCopy);
 
                 // Start solving for dx, dy
                 // TODO: Use pivoted?
-                Matrix<Real> S; // S = A*(H\A') + D2^2
-                Zeros(S, m, m);
-                LDL(H, false);
-                ldl::SolveAfter(H, AtCopy, false); // ACopy = H\A'
+                if( !diagHess )
+                {
+                  // Hessian is dense, need LDL and solve
+                  LDL(H, false);
+                  ldl::SolveAfter(H, AtCopy, false); // AtCopy = H\A'
+                }
+                else
+                {
+                  // Diagonal Hessian, use diagonal solve
+                  DiagonalSolve(LEFT, NORMAL, H, AtCopy);
+                }
+
                 Gemm(NORMAL, NORMAL, Real(1), ACopy, AtCopy, Real(0), S); // S = A*(H\A')
                 UpdateDiagonal(S, Real(1), D2sq, 0); // S = A*(H\A) + D2^2
                 Copy(r1, dy); // dy = r1
@@ -199,9 +231,6 @@ void Newton
                 // Compute dx
                 Copy(w, dx); // dx = H\w
                 Gemv(NORMAL, Real(1), AtCopy, dy, Real(1), dx); // dx = H\w + (H\A')*dy
-
-//                Print(dx, "dx");
-//                Print(dy, "dy");
 
                 // Compute dz1
                 Matrix<Real> tmp1;
@@ -223,9 +252,6 @@ void Newton
                 DiagonalScale(LEFT, NORMAL, z2, dz2);
                 dz2 += cU;
                 DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (x-bl)^-1 * (cL - z1*dx)
-
-//                Print(dz1, "dz1");
-//                Print(dz2, "dz2");
             }
                 break;
             case Method::LDLx:
@@ -254,18 +280,21 @@ void Newton
         Pfeas = InfinityNorm(r1);
         Dfeas = InfinityNorm(r2);
         Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
-        bool converged = (Pfeas <= ctrl.feaTol)
+        converged = (Pfeas <= ctrl.feaTol)
           && (Dfeas <= ctrl.feaTol)
           && (Cinf0 <= ctrl.optTol);
 
-        Output("  Pfeas    = ", Pfeas);
-        Output("  Dfeas    = ", Dfeas);
-        Output("  Cinf0    = ", Cinf0);
-        Output("  ||cL||oo = ", InfinityNorm(cL));
-        Output("  ||cU||oo = ", InfinityNorm(cU));
-        Output("  center   = ", center);
+        if( ctrl.print )
+        {
+            Output("  Pfeas    = ", Pfeas);
+            Output("  Dfeas    = ", Dfeas);
+            Output("  Cinf0    = ", Cinf0);
+            Output("  ||cL||oo = ", InfinityNorm(cL));
+            Output("  ||cU||oo = ", InfinityNorm(cU));
+            Output("  center   = ", center);
+        }
 
-        if (true)
+        if( ctrl.adaptiveMu )
         {
             // Update mu
             // TODO: Clarify this
@@ -310,32 +339,20 @@ void Newton
     // Reconstruct solution
     // scale?
     // set x(fix) = bl(fix);
-    Matrix<Real> tmp;
-    GetSubmatrix(bl, ixSetFix, ZERO, tmp);
-    SetSubmatrix(x, ixSetFix, ZERO, tmp); 
-
-    // Report active constraints
-    Int lowerActive = 0;
-    Int upperActive = 0;
-    Int ctrLow = 0;
-    Int ctrUpp = 0;
-    for( Int i = 0; i < n; i++ )
+    if( ixSetFix.size() > 0 )
     {
-        if( i == ixSetLow[ctrLow])
-        {
-            if( x.Get(i,0) - bl.Get(i,0) < 1e-8 )
-                lowerActive++;
-            ctrLow++;
-        }
-        if( i == ixSetUpp[ctrUpp])
-        {
-            if( bu.Get(i,0) - x.Get(i,0) < 1e-8 )
-                upperActive++;
-            ctrUpp++;
-        }
+        GetSubmatrix(bl, ixSetFix, ZERO, xFix);
+        SetSubmatrix(x, ixSetFix, ZERO, xFix);
     }
 
+    Int lowerActive;
+    Int upperActive;
+    // Report active constraints
+    GetActiveConstraints(x, bl, bu, ixSetLow, ixSetUpp,
+      lowerActive, upperActive);
+
     // Reconstruct z from z1 and z2
+    Matrix<Real> tmp;
     Zeros(z, n, 1);
     UpdateSubmatrix(z, ixSetLow, ZERO, Real(1), z1);
     UpdateSubmatrix(z, ixSetUpp, ZERO, Real(-1), z2);
@@ -345,7 +362,12 @@ void Newton
     Axpy(Real(-1), tmp, zFix);
     UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
 
-    Output("=========== Completed Newton's Method ===========");
+    Output("========== Completed Newton's Method ==========");
+
+    if( converged )
+      Output("Result: Converged!");
+    else
+      Output("Result: Failed!");
 
     Output("  Pfeas    = ", Pfeas);
     Output("  Dfeas    = ", Dfeas);

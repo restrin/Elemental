@@ -43,13 +43,54 @@ void UpdateSubdiagonal
     }
 }
 
+// Get the number of active bound constraints
+template <typename Real>
+void GetActiveConstraints
+( const Matrix<Real>& x,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+        Int& lowerActive,
+        Int& upperActive )
+{
+    Int n = x.Height();
+    lowerActive = 0;
+    upperActive = 0;
+    Int ctrLow = 0;
+    Int ctrUpp = 0;
+    for( Int i = 0; i < n; i++ )
+    {
+        if( i == ixSetLow[ctrLow])
+        {
+            if( x.Get(i,0) - bl.Get(i,0) < 1e-8 )
+                lowerActive++;
+            ctrLow++;
+        }
+        if( i == ixSetUpp[ctrUpp])
+        {
+            if( bu.Get(i,0) - x.Get(i,0) < 1e-8 )
+                upperActive++;
+            ctrUpp++;
+        }
+    }
+}
+
 #define PROTO(Real) \
   vector<Int> IndexRange(Int n); \
   template void UpdateSubdiagonal \
   ( Matrix<Real>& A, \
     const vector<Int>& ixSet, \
     const Real& alpha, \
-    Matrix<Real>& dSub );
+    Matrix<Real>& dSub ); \
+  template void GetActiveConstraints \
+  ( const Matrix<Real>& x, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+          Int& lowerActive, \
+          Int& upperActive );
 
 
 

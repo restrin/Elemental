@@ -732,6 +732,9 @@ struct PDCOCtrl
 
     // Use backtracking linesearch?
     bool backtrack = true;
+
+    // Update mu ala the original PDCO (vs. naive)?
+    bool adaptiveMu = true;
 };
 
 namespace pdco

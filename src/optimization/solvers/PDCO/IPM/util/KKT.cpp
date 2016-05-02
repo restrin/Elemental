@@ -29,7 +29,8 @@ void FormHandW
   const Matrix<Real>& cL,
   const Matrix<Real>& cU,
         Matrix<Real>& H,
-        Matrix<Real>& w )
+        Matrix<Real>& w,
+  const bool diagHess )
 {
     DEBUG_ONLY(CSE cse("pdco::FormHandW"))
 
@@ -42,7 +43,10 @@ void FormHandW
     Copy(Hess, H);
     Copy(D1, tmp1);
     DiagonalScale(LEFT, NORMAL, D1, tmp1);
-    UpdateDiagonal(H, Real(1), tmp1, 0); // H = Hess + D1^2
+    if( diagHess )
+      Axpy(Real(1), tmp1, H);
+    else
+      UpdateDiagonal(H, Real(1), tmp1, 0); // H = Hess + D1^2
 
     // Form w = -r2 + (x-bl)^-1*cL - (bu-x)^-1*cU
     Copy(r2, w);
@@ -55,7 +59,10 @@ void FormHandW
     Copy(z1, tmp1);
     DiagonalSolve(LEFT, NORMAL, tmp2, tmp1, false);
     // H = Hess + D1^2 + (x-bl)^-1*z1
-    UpdateSubdiagonal(H, ixSetLow, Real(1), tmp1);
+    if( diagHess )
+      UpdateSubmatrix(H, ixSetLow, ZERO, Real(1), tmp1);
+    else
+      UpdateSubdiagonal(H, ixSetLow, Real(1), tmp1);
 
     // Form (x-bl)^-1*cL
     Copy(cL, tmp3);
@@ -70,7 +77,10 @@ void FormHandW
     Copy(z2, tmp1);
     DiagonalSolve(LEFT, NORMAL, tmp2, tmp1, false);
     // H = Hess + D1^2 + (x-bl)^-1*z1 + (bu-x)^-1*z2
-    UpdateSubdiagonal(H, ixSetUpp, Real(1), tmp1);
+    if( diagHess )
+      UpdateSubmatrix(H, ixSetUpp, ZERO, Real(1), tmp1);
+    else
+      UpdateSubdiagonal(H, ixSetUpp, Real(1), tmp1);
 
     // Form (bu-x)^-1*cU
     Copy(cU, tmp3);
@@ -95,7 +105,8 @@ void FormHandW
     const Matrix<Real>& cL, \
     const Matrix<Real>& cU, \
           Matrix<Real>& H, \
-          Matrix<Real>& w );
+          Matrix<Real>& w, \
+    const bool diagHess );
 
 #define EL_NO_INT_PROTO
 #define EL_NO_COMPLEX_PROTO

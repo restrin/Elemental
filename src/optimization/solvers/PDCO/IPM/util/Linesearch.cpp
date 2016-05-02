@@ -123,8 +123,13 @@ bool Linesearch
     stepx = Min(ctrl.stepTol*stepx, Real(1));
     stepz = Min(ctrl.stepTol*stepz, Real(1));
 
-    Output("  stepx=", stepx);
-    Output("  stepz=", stepz);
+    if( ctrl.print )
+    {
+        Output("  == Beginning linesearch ==");
+        Output("    Backtracking? : ", ctrl.backtrack);
+        Output("    Max x-step = ", stepx);
+        Output("    Max z-step = ", stepz);
+    }
 
     if( ctrl.stepSame )
     {
@@ -134,7 +139,8 @@ bool Linesearch
 
     Real merit = Merit(r1, r2, cL, cU);
 
-    Output("  merit=", merit);
+    if( ctrl.print )
+        Output("    Current merit = ", merit);
 
     Real meritNew;
 
@@ -168,7 +174,8 @@ bool Linesearch
 
         meritNew = Merit(r1, r2, cL, cU);
 
-        Output("  meritNew=", meritNew);
+        if( ctrl.print )
+            Output("      New merit = ", meritNew);
 
         Real step = Min(stepx, stepz);
 

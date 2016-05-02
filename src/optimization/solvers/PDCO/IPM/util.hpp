@@ -137,7 +137,8 @@ void FormHandW
   const Matrix<Real>& cL,
   const Matrix<Real>& cU,
         Matrix<Real>& H,
-        Matrix<Real>& w );
+        Matrix<Real>& w,
+  const bool diagHess );
 
 template <typename Real>
 void UpdateSubdiagonal
@@ -147,6 +148,16 @@ void UpdateSubdiagonal
   Matrix<Real>& dSub );
 
 vector<Int> IndexRange(Int n);
+
+template <typename Real>
+void GetActiveConstraints
+( const Matrix<Real>& x,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+        Int& lowerActive,
+        Int& upperActive );
 
 } // namespace pdco
 } // namespace El
