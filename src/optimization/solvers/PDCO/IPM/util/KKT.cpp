@@ -34,7 +34,7 @@ void FormHandW
 {
     DEBUG_ONLY(CSE cse("pdco::FormHandW"))
 
-    vector<Int> ZERO (1,0);
+    const vector<Int> ZERO (1,0);
     Matrix<Real> tmp1;
     Matrix<Real> tmp2;
     Matrix<Real> tmp3;
@@ -89,6 +89,138 @@ void FormHandW
     UpdateSubmatrix(w, ixSetUpp, ZERO, Real(-1), tmp3);
 }
 
+template<typename Real>
+void FormKKT
+(       SparseMatrix<Real>& Hess,
+  const SparseMatrix<Real>& A,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
+  const Matrix<Real>& x,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix,
+        SparseMatrix<Real>& K )
+{
+    DEBUG_ONLY(CSE cse("pdco::FormKKT"))
+
+    const Int m = A.Height();
+    const Int n = A.Width();
+    const vector<Int> ALL_n = IndexRange(n);
+    const vector<Int> ZERO (1,0);
+
+    Matrix<Real> tmp1;
+    Matrix<Real> tmp2;
+    
+    QueueUpdateSubdiagonal(Hess, ALL_n, Real(1), D1sq);
+
+    // Form (x-bl)^-1*z1
+    Copy(x, tmp1);
+    tmp1 -= bl;
+    GetSubmatrix(tmp1, ixSetLow, ZERO, tmp2);
+    Copy(z1, tmp1);
+    DiagonalSolve(LEFT, NORMAL, tmp2, tmp1, false);
+    // Queue update for H + (x-bl)\z1
+    QueueUpdateSubdiagonal(Hess, ixSetLow, Real(1), tmp1);
+
+    // Form (bu-x)^-1*z2
+    Copy(bu, tmp1);
+    tmp1 -= x;
+    GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
+    Copy(z2, tmp1);
+    DiagonalSolve(LEFT, NORMAL, tmp2, tmp1, false);
+    // Queue update for H + (x-bl)\z1 + (bu-x)\z2
+    QueueUpdateSubdiagonal(Hess, ixSetUpp, Real(1), tmp1);
+
+    Hess.ProcessQueues();
+
+    if( ixSetFix.size() > 0 )
+    {
+        // Fix the Hessian to account for fixed entries
+    }
+
+    const Int numEntriesH = Hess.NumEntries();
+    const Int numEntriesA = A.NumEntries();
+
+    Zeros( K, m+n, m+n );
+    K.Reserve( 2*numEntriesA + numEntriesH + m);
+
+    // Set K(1:n,1:n) = Hess
+    for( Int e=0; e<numEntriesH; ++e )
+        K.QueueUpdate( Hess.Row(e), Hess.Col(e), Hess.Value(e) );
+
+    // Set K(n+1:n+m,1:n) = A and K(1:n,n+1:n+m) = A'
+    for( Int e=0; e<numEntriesA; ++e )
+    {
+        K.QueueUpdate( A.Row(e)+n, A.Col(e), A.Value(e) );
+        K.QueueUpdate( A.Col(e), A.Row(e)+n, A.Value(e) );
+    }
+
+    // Set K(n+1:n+m,n+1:n+m)=-D2^2
+    const Real* dbuf = D2sq.LockedBuffer();
+    for( Int i=0; i<m; i++ )
+        K.QueueUpdate( n+i, n+i, -dbuf[i]);
+
+    K.ProcessQueues();
+    K.FreezeSparsity();
+}
+
+template<typename Real>
+void FormKKTRHS
+( const Matrix<Real>& x,
+  const Matrix<Real>& r1,
+  const Matrix<Real>& r2,
+  const Matrix<Real>& cL,
+  const Matrix<Real>& cU,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+        Matrix<Real>& w )
+{
+    DEBUG_ONLY(CSE cse("pdco::FormKKTRHS"))
+
+    const vector<Int> ZERO (1,0);
+    const Int m = r1.Height();
+    const Int n = r2.Height();
+
+    Matrix<Real> tmp1;
+    Matrix<Real> tmp2;
+
+    Zeros(w, n+m, 1);
+    // Form w = [w1] = [ -r2 + (x-bl)\cL - (bu-x)\cU ]
+    //          [w2] = [ r1                          ]
+
+    auto w1 = w(IR(0,n), IR(0));
+    Copy(r2, w1);
+    w1 *= -1;
+    auto w2 = w(IR(n,END), IR(0));
+    Copy(r1, w2);
+
+    // Form (x-bl)^-1*z1
+    Copy(x, tmp1);
+    tmp1 -= bl;
+    GetSubmatrix(tmp1, ixSetLow, ZERO, tmp2);
+    // Form (x-bl)^-1*cL
+    Copy(cL, tmp1);
+    DiagonalSolve(LEFT, NORMAL, tmp2, tmp1);
+    // w = -r2 + (x-bl)^-1*cL
+    UpdateSubmatrix(w, ixSetLow, ZERO, Real(1), tmp1);
+
+    // Form (bu-x)^-1*z2
+    Copy(bu, tmp1);
+    tmp1 -= x;
+    GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
+    // Form (bu-x)^-1*cU
+    Copy(cU, tmp1);
+    DiagonalSolve(LEFT, NORMAL, tmp2, tmp1);
+    // w = -r2 + (x-bl)^-1*cL - (bu-x)^-1*cU
+    UpdateSubmatrix(w, ixSetUpp, ZERO, Real(-1), tmp1);
+}
+
 #define PROTO(Real) \
   template void FormHandW \
   ( const Matrix<Real>& Hess, \
@@ -106,7 +238,32 @@ void FormHandW
     const Matrix<Real>& cU, \
           Matrix<Real>& H, \
           Matrix<Real>& w, \
-    const bool diagHess );
+    const bool diagHess ); \
+  template void FormKKT \
+  (       SparseMatrix<Real>& Hess, \
+    const SparseMatrix<Real>& A, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
+    const Matrix<Real>& x, \
+    const Matrix<Real>& z1, \
+    const Matrix<Real>& z2, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+    const vector<Int>& ixSetFix, \
+          SparseMatrix<Real>& K ); \
+  template void FormKKTRHS \
+  ( const Matrix<Real>& x, \
+    const Matrix<Real>& r1, \
+    const Matrix<Real>& r2, \
+    const Matrix<Real>& z1, \
+    const Matrix<Real>& z2, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+          Matrix<Real>& w );
 
 #define EL_NO_INT_PROTO
 #define EL_NO_COMPLEX_PROTO

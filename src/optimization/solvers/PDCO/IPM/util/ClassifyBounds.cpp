@@ -39,6 +39,7 @@ void ClassifyBounds
 
         // Fixed variable?
         // TODO: Checking equality may be dangerous
+        //       Should change to tolerance?
         if( bl.Get(i,0) == bu.Get(i,0) )
         {
             ixSetFix.push_back(i);

@@ -13,8 +13,28 @@ namespace El {
 
 template<typename Real>
 void PDCO
-( const pdco::PDCOObj<Real>& phi, // Change to a functor
+( const pdco::PDCOObj<Real>& phi,
   const Matrix<Real>& A,
+  const Matrix<Real>& b, 
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+        Matrix<Real>& x, 
+        Matrix<Real>& r,
+        Matrix<Real>& y,
+        Matrix<Real>& z, 
+  const pdco::Ctrl<Real>& ctrl )
+{
+    DEBUG_ONLY(CSE cse("PDCO"))
+
+    pdco::Newton(phi, A, b, bl, bu, D1, D2, x, r, y, z, ctrl.pdcoCtrl);
+}
+
+template<typename Real>
+void PDCO
+( const pdco::PDCOObj<Real>& phi,
+  const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
@@ -35,6 +55,19 @@ void PDCO
   template void PDCO \
   ( const pdco::PDCOObj<Real>& phi, \
   const Matrix<Real>& A, \
+  const Matrix<Real>& b, \
+  const Matrix<Real>& bl, \
+  const Matrix<Real>& bu, \
+  const Matrix<Real>& D1, \
+  const Matrix<Real>& D2, \
+        Matrix<Real>& x, \
+        Matrix<Real>& r, \
+        Matrix<Real>& y, \
+        Matrix<Real>& z, \
+    const pdco::Ctrl<Real>& ctrl ); \
+  template void PDCO \
+  ( const pdco::PDCOObj<Real>& phi, \
+  const SparseMatrix<Real>& A, \
   const Matrix<Real>& b, \
   const Matrix<Real>& bl, \
   const Matrix<Real>& bu, \

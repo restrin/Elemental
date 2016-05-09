@@ -58,6 +58,51 @@ void ResidualPD
     SetSubmatrix(r2, ixSetFix, ZERO, tmp1); // r2(fix) = 0
 }
 
+// Computes the residuals for the primal-dual equations
+template<typename Real>
+void ResidualPD
+( const SparseMatrix<Real>& A,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix,
+  const Matrix<Real>& b,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+  const Matrix<Real>& grad,
+  const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  Matrix<Real>& r1,
+  Matrix<Real>& r2 )
+{
+    DEBUG_ONLY(CSE cse("pdco::ResidualPD"))
+    const vector<Int> ZERO (1,0);
+    const Int n = A.Width();
+
+    Matrix<Real> tmp1;
+    Matrix<Real> tmp2;
+
+    // Compute r1 = b - A*x - D2^2*y
+    Copy(b, r1);
+    Multiply(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x
+    Hadamard(D2, y, tmp1);
+    DiagonalScale(LEFT, NORMAL, D2, tmp1); // tmp2 = D2^2*y
+    r1 -= tmp2;
+
+    // Compute r2 = grad + D1^2*x - A'*y - z1 + z2
+    Copy(grad, r2);
+    Hadamard(D1, x, tmp1);
+    DiagonalScale(LEFT, NORMAL, D1, tmp1); // tmp2 = D1^2*x
+    r2 += tmp2; // r2 = grad + D1^2*x
+    Multiply(TRANSPOSE, Real(-1), A, y, Real(1), r2); // r2 = grad + D1^2*x - A'*y
+    UpdateSubmatrix(r2, ixSetLow, ZERO, Real(-1), z1); // r2 = grad + D1^2*x - A'*y - z1
+    UpdateSubmatrix(r2, ixSetUpp, ZERO, Real(1), z2); // r2 = grad + D1^2*x - A'*y - z1 + z2
+
+    Zeros(tmp1, ixSetFix.size(), 1);
+    SetSubmatrix(r2, ixSetFix, ZERO, tmp1); // r2(fix) = 0
+}
+
 // Compute the residuals for the complementarity conditions
 template<typename Real>
 void ResidualC
@@ -75,7 +120,7 @@ void ResidualC
   Matrix<Real>& cU )
 {
     DEBUG_ONLY(CSE cse("pdco::ResidualC"))
-    vector<Int> ZERO (1,0);
+    const vector<Int> ZERO (1,0);
     Matrix<Real> tmp1;
     Matrix<Real> tmp2;
 
@@ -127,6 +172,21 @@ void ResidualC
 #define PROTO(Real) \
   template void ResidualPD \
   ( const Matrix<Real>& A, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+    const vector<Int>& ixSetFix, \
+    const Matrix<Real>& b, \
+    const Matrix<Real>& D1, \
+    const Matrix<Real>& D2, \
+    const Matrix<Real>& grad, \
+    const Matrix<Real>& x, \
+    const Matrix<Real>& y, \
+    const Matrix<Real>& z1, \
+    const Matrix<Real>& z2, \
+    Matrix<Real>& r1, \
+    Matrix<Real>& r2 ); \
+  template void ResidualPD \
+  ( const SparseMatrix<Real>& A, \
     const vector<Int>& ixSetLow, \
     const vector<Int>& ixSetUpp, \
     const vector<Int>& ixSetFix, \

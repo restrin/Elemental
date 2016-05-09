@@ -55,6 +55,23 @@ void ResidualPD
   Matrix<Real>& r2 );
 
 template<typename Real>
+void ResidualPD
+( const SparseMatrix<Real>& A,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix,
+  const Matrix<Real>& b,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+  const Matrix<Real>& grad,
+  const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  Matrix<Real>& r1,
+  Matrix<Real>& r2 );
+
+template<typename Real>
 void ResidualC
 ( const Real& mu,
   const vector<Int>& ixSetLow,
@@ -74,6 +91,37 @@ bool Linesearch
 ( const PDCOObj<Real>& phi,
   const Real& mu,
   const Matrix<Real>& A,
+  const Matrix<Real>& b, 
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+        Matrix<Real>& x,
+        Matrix<Real>& y,
+        Matrix<Real>& z1,
+        Matrix<Real>& z2,
+        Matrix<Real>& r1,
+        Matrix<Real>& r2,
+        Real& center,
+        Real& Cinf0,
+        Matrix<Real>& cL,
+        Matrix<Real>& cU,
+        Real& stepx,
+        Real& stepz,
+  const Matrix<Real>& dx,
+  const Matrix<Real>& dy,
+  const Matrix<Real>& dz1,
+  const Matrix<Real>& dz2,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix,
+  const PDCOCtrl<Real>& ctrl );
+
+template<typename Real>
+bool Linesearch
+( const PDCOObj<Real>& phi,
+  const Real& mu,
+  const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
@@ -140,16 +188,52 @@ void FormHandW
         Matrix<Real>& w,
   const bool diagHess );
 
-template <typename Real>
+template<typename Real>
+void FormKKT
+(       SparseMatrix<Real>& Hess,
+  const SparseMatrix<Real>& A,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
+  const Matrix<Real>& x,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix,
+        SparseMatrix<Real>& K );
+
+template<typename Real>
+void FormKKTRHS
+( const Matrix<Real>& x,
+  const Matrix<Real>& r1,
+  const Matrix<Real>& r2,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+        Matrix<Real>& w );
+
+template<typename Real>
 void UpdateSubdiagonal
 ( Matrix<Real>& A,
   const vector<Int>& ixSet,
   const Real& alpha,
-  Matrix<Real>& dSub );
+  const Matrix<Real>& dSub );
+
+template<typename Real>
+void QueueUpdateSubdiagonal
+( SparseMatrix<Real>& A,
+  const vector<Int>& ixSet,
+  const Real& alpha,
+  const Matrix<Real>& dSub );
 
 vector<Int> IndexRange(Int n);
 
-template <typename Real>
+template<typename Real>
 void GetActiveConstraints
 ( const Matrix<Real>& x,
   const Matrix<Real>& bl,

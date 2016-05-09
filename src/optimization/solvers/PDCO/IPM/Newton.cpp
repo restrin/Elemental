@@ -160,7 +160,7 @@ void Newton
         Output("  center = ", center);
     }
 
-    Copy(A, ACopy); // ACopy = A'
+    Copy(A, ACopy); // ACopy = A
     // Zero columns corresponding to fixed variables
     if( ixSetFix.size() > 0 )
     {
@@ -183,12 +183,16 @@ void Newton
             case Method::LDLy:
             {
                 // We solve the system
-                // [H   A' ] [dx] = [w ]
-                // [A -D2^2] [dy]   [r2]
+                // [H   -A'] [dx] = [w ]
+                // [A  D2^2] [dy]   [r2]
                 // using the Schur complement to compute dy first
 
                 FormHandW( Hess, D1, x, z1, z2, bl, bu,
                   ixSetLow, ixSetUpp, ixSetFix, r2, cL, cU, H, w, diagHess );
+
+//                Print(H,"H");
+//                Print(w,"w");
+//                Print(r1,"r1");
 
                 if( ixSetFix.size() > 0 )
                 {
@@ -232,6 +236,9 @@ void Newton
                 Copy(w, dx); // dx = H\w
                 Gemv(NORMAL, Real(1), AtCopy, dy, Real(1), dx); // dx = H\w + (H\A')*dy
 
+//                Print(dx, "dx");
+//                Print(dy, "dy");
+
                 // Compute dz1
                 Matrix<Real> tmp1;
                 Matrix<Real> tmp2;
@@ -258,7 +265,7 @@ void Newton
                 RuntimeError("LDLx not yet implemented.");
                 break;
             case Method::LDL2:
-                RuntimeError("LDLy not yet implemented.");
+                RuntimeError("LDL2 not yet implemented.");
                 break;
             default:
                 RuntimeError("Unrecognized method option.");
@@ -381,10 +388,373 @@ void Newton
     Output("    Upper bound: ", upperActive);
 }
 
+template<typename Real>
+void Newton
+( const PDCOObj<Real>& phi,
+  const SparseMatrix<Real>& A,
+  const Matrix<Real>& b, 
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+        Matrix<Real>& x,
+        Matrix<Real>& r,
+        Matrix<Real>& y,
+        Matrix<Real>& z,
+  const PDCOCtrl<Real>& ctrl )
+{
+    DEBUG_ONLY(CSE cse("pdco::Newton")) 
+
+    Output("========== Beginning Sparse Newton's Method ==========");
+
+    // ========= Declarations of oft re-used variables ==============
+    Int m = A.Height();
+    Int n = A.Width();
+
+    // Index sets to represent IR(ALL) and IR(0)
+    vector<Int> ALL_m = IndexRange(m);
+    vector<Int> ALL_n = IndexRange(n);
+    vector<Int> ZERO (1,0);
+
+    vector<Int> ixSetLow;  // Index set for lower bounded variables
+    vector<Int> ixSetUpp;  // Index set for upper bounded variables
+    vector<Int> ixSetFix;  // Index set for fixed bounded variables
+
+    // For objective function
+    Matrix<Real> grad;     // For gradient of phi
+    SparseMatrix<Real> Hess;     // For hessian of phi
+
+    // Matrices used by KKT system
+    Matrix<Real> bCopy;    // Modified b due to fixed variables
+    Matrix<Real> D2sq;     // D2sq = D2^2
+    Matrix<Real> D1sq;     // D1sqp = D1^2
+    SparseMatrix<Real> ACopy;    // Used for KKT system
+    SparseMatrix<Real> H;        // Used for KKT system
+
+    // Various residuals and convergence measures
+    Matrix<Real> w;        // Residual for KKT system
+    Matrix<Real> r1;       // Primal residual
+    Matrix<Real> r2;       // Dual residual
+    Matrix<Real> cL;       // Lower bound complementarity residual
+    Matrix<Real> cU;       // Upper bound complementarity residual
+    Real center;           // Centering parameter
+    Real Pfeas;            // Primal feasibility
+    Real Dfeas;            // Dual feasibility
+    Real Cfeas;            // Complementarity feasibility
+    Real Cinf0;            // Complementarity convergence criteria
+
+    // Artificial variables, step directions and step sizes
+    Matrix<Real> xFix;
+    Matrix<Real> z1;
+    Matrix<Real> z2;
+    Matrix<Real> dx;       // Primal step direction
+    Matrix<Real> dy;       // Dual step direction
+    Matrix<Real> dz1;      // Complementarity step direction
+    Matrix<Real> dz2;      // Complementarity step direction
+    Real stepx;            // Step size for x, y
+    Real stepz;            // Step size for z1, z2
+    Real stepmu;           // Step size for mu
+
+    Real mulast = 0.1*ctrl.optTol; // Final value of mu
+    Real mu = Max(ctrl.mu0,mulast);
+    bool converged = false;
+
+    // Miscellaneous
+    Matrix<Real> zeros;    // Used to set submatrices to zero
+    Matrix<Real> ones;     // Used to set diagonals to one
+    bool diagHess = false; // Is the Hessian diagonal?
+
+    // Initialize some useful variables
+    Copy(D2, D2sq);
+    DiagonalScale(LEFT, NORMAL, D2, D2sq);
+    Copy(D1, D1sq);
+    DiagonalScale(LEFT, NORMAL, D1, D1sq);
+    // ==============================================================
+
+    // Determine index sets for lower bounded variables,
+    // upper bounded variables, and fixed variables
+    pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
+
+    Copy(b, bCopy);
+    if( ixSetFix.size() > 0 )
+    {
+        // Fix b to allow for fixed variables
+        SparseMatrix<Real> Asub;
+        GetSubmatrix(bl, ixSetFix, IR(0), xFix); // xFix = bl(ixSetFix)
+        GetSubmatrix(A, ALL, ixSetFix, Asub); // Asub = A(:,ixSetFix)
+        Multiply(NORMAL, Real(-1), Asub, xFix, Real(1), bCopy); // b = b - A*xFix
+    }
+
+    // Scale input data?
+
+    // Initialize the data
+    pdco::Initialize(x, y, z1, z2, bl, bu, 
+      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+
+    // Compute residuals
+    phi.grad(x, grad); // get gradient
+    phi.sparseHess(x, Hess); // get Hessian
+
+    ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+      bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
+
+    ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
+
+    Pfeas = InfinityNorm(r1);
+    Dfeas = InfinityNorm(r2);
+    Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
+
+    if( ctrl.print )
+    {
+        Output("Initial feasibility: ");
+        Output("  Pfeas  = ", Pfeas);
+        Output("  Dfeas  = ", Dfeas);
+        Output("  Cinf0  = ", Cinf0);
+        Output("  ||cL||oo = ", InfinityNorm(cL));
+        Output("  ||cU||oo = ", InfinityNorm(cU));
+        Output("  center = ", center);
+    }
+
+    ACopy = SparseMatrix<Real>(A); // ACopy = A
+    // Zero columns corresponding to fixed variables
+    if( ixSetFix.size() > 0 )
+    {
+        Zeros(zeros, ixSetFix.size(), n);
+        auto Asub = ACopy(ALL, ixSetFix);
+        Zeros(Asub, m, ixSetFix.size());
+    }
+
+    // Initialize static ortion of the KKT system
+    vector<Int> map;
+    vector<Int> invMap;
+    ldl::Separator rootSep;
+    ldl::NodeInfo info;
+    SparseMatrix<Real> K;
+    ldl::Front<Real> KFront;
+
+    // Main loop
+    for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
+    {
+        if( ctrl.print )
+        {
+            Output("======== Iteration: ", numIts, " ========");
+            Output("  mu = ", mu);
+        }
+        switch( ctrl.method )
+        {
+            case Method::LDLy:
+                RuntimeError("LDLy not yet implemented.");
+                break;
+            case Method::LDLx:
+                RuntimeError("LDLx not yet implemented.");
+                break;
+            case Method::LDL2:
+            {
+                // We solve the system
+                // [H   A' ] [ dx] = [w ] = w // excuse the abuse of notation
+                // [A -D2^2] [-dy]   [r2]
+                // By solving the KKT system
+
+//                cout << "Form KKT" << endl;
+                // Form the KKT system
+                FormKKT( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
+                    ixSetLow, ixSetUpp, ixSetFix, K );
+
+//                cout.precision(16);
+                //Display(K, "K");
+//                for( Int i=0; i<K.Height(); i++) {
+//                    for( Int j=0; j<K.Width(); j++) {
+//                        cout << K.Get(i,j) << " ";
+//                    }
+//                    cout << endl;
+//                }
+
+//                cout << "Form RHS" << endl;
+                // Form the right-hand side
+                FormKKTRHS( x, r1, r2, cL, cU, bl, bu, ixSetLow, ixSetUpp, w );
+
+//                Print(w, "w");
+
+                if( numIts == 0 )
+                {
+                    // Get static nested dissection data
+                    NestedDissection( K.LockedGraph(), map, rootSep, info );
+                    InvertMap( map, invMap );
+                }
+
+//                cout << "LDL" << endl;
+                KFront.Pull( K, map, info );
+                LDL( info, KFront, LDL_2D );
+//                cout << "SolveAfter" << endl;
+                ldl::SolveAfter( invMap, info, KFront, w );
+//                cout << "After solve after" << endl;
+                dx = w( IR(0,n), IR(0) );
+                dy = w( IR(n,END), IR(0) );
+                dy *= -1;
+
+//                Print(w, "dxdy");
+
+                // Compute dz1
+                Matrix<Real> tmp1;
+                Matrix<Real> tmp2;
+                Copy(x, tmp1);
+                tmp1 -= bl;
+                GetSubmatrix(tmp1, ixSetLow, ZERO, tmp2);
+                GetSubmatrix(dx, ixSetLow, ZERO, dz1);
+                DiagonalScale(LEFT, NORMAL, z1, dz1);
+                dz1 *= -1;
+                dz1 += cL;
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz1); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+
+                // Compute dz2
+                Copy(bu, tmp1);
+                tmp1 -= x;
+                GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
+                GetSubmatrix(dx, ixSetUpp, ZERO, dz2);
+                DiagonalScale(LEFT, NORMAL, z2, dz2);
+                dz2 += cU;
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+            }
+                break;
+            default:
+                RuntimeError("Unrecognized method option.");
+        }
+
+//        cout << "Linesearch" << endl;
+        // dx, dy, dz1, dz2 should be computed at this point
+        // Return stepx, stepz
+        bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1, D2, 
+          x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
+          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
+
+        if( !success )
+        {
+            // Linesearch failed...what now?
+            Output("Linesearch failed at iteration: ", numIts);
+        }
+//        cout << "Norms" << endl;
+        // Check convergence criteria
+        Pfeas = InfinityNorm(r1);
+        Dfeas = InfinityNorm(r2);
+        Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
+        converged = (Pfeas <= ctrl.feaTol)
+          && (Dfeas <= ctrl.feaTol)
+          && (Cinf0 <= ctrl.optTol);
+
+        if( ctrl.print )
+        {
+            Output("  Pfeas    = ", Pfeas);
+            Output("  Dfeas    = ", Dfeas);
+            Output("  Cinf0    = ", Cinf0);
+            Output("  ||cL||oo = ", InfinityNorm(cL));
+            Output("  ||cU||oo = ", InfinityNorm(cU));
+            Output("  center   = ", center);
+        }
+
+        if( ctrl.adaptiveMu )
+        {
+            // Update mu
+            // TODO: Clarify this
+            stepmu = Min(stepx, stepz);
+            stepmu = Min(stepmu, ctrl.stepTol);
+            Real muold = mu;
+            Real mumin = Max(Pfeas, Dfeas);
+            mumin = 0.1*Max(mumin, Cfeas);
+            mumin = Min(mu, mumin);
+            mu = mu - stepmu*mu;
+
+            if( center >= ctrl.bigcenter )
+            {
+                mu = muold;
+            }
+            mu = Max(mu, mumin);
+            mu = Max(mu, mulast);
+        }
+        else
+        {
+            if( (Pfeas <= ctrl.feaTol)
+               && (Dfeas <= ctrl.feaTol) )
+            {
+                mu *= 0.5;
+            }
+        }
+
+        // Update gradient and Hessian
+        phi.grad(x, grad);
+        phi.sparseHess(x, Hess);
+
+        // Recompute residuals
+        ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+          bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
+
+        ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
+
+        if (converged)
+            break;
+    }
+
+    // Reconstruct solution
+    // scale?
+    // set x(fix) = bl(fix);
+    if( ixSetFix.size() > 0 )
+    {
+        GetSubmatrix(bl, ixSetFix, ZERO, xFix);
+        SetSubmatrix(x, ixSetFix, ZERO, xFix);
+    }
+
+    Int lowerActive;
+    Int upperActive;
+    // Report active constraints
+    GetActiveConstraints(x, bl, bu, ixSetLow, ixSetUpp,
+      lowerActive, upperActive);
+
+    // Reconstruct z from z1 and z2
+    Matrix<Real> tmp;
+    Zeros(z, n, 1);
+    UpdateSubmatrix(z, ixSetLow, ZERO, Real(1), z1);
+    UpdateSubmatrix(z, ixSetUpp, ZERO, Real(-1), z2);
+    Matrix<Real> zFix;
+    GetSubmatrix(grad, ixSetFix, ZERO, zFix);
+    GetSubmatrix(r2, ixSetFix, ZERO, tmp);
+    Axpy(Real(-1), tmp, zFix);
+    UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
+
+    Output("========== Completed Newton's Method ==========");
+
+    if( converged )
+      Output("Result: Converged!");
+    else
+      Output("Result: Failed!");
+
+    Output("  Pfeas    = ", Pfeas);
+    Output("  Dfeas    = ", Dfeas);
+    Output("  Cinf0    = ", Cinf0);
+    Output("  ||cL||oo = ", InfinityNorm(cL));
+    Output("  ||cU||oo = ", InfinityNorm(cU));
+    Output("  center   = ", center);
+
+    Output("  Number active constraints on");
+    Output("    Lower bound: ", lowerActive);
+    Output("    Upper bound: ", upperActive);
+}
+
 #define PROTO(Real) \
   template void Newton \
   ( const pdco::PDCOObj<Real>& phi, \
     const Matrix<Real>& A, \
+    const Matrix<Real>& b, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+    const Matrix<Real>& D1, \
+    const Matrix<Real>& D2, \
+          Matrix<Real>& x, \
+          Matrix<Real>& r, \
+          Matrix<Real>& y, \
+          Matrix<Real>& z, \
+    const PDCOCtrl<Real>& ctrl ); \
+  template void Newton \
+  ( const pdco::PDCOObj<Real>& phi, \
+    const SparseMatrix<Real>& A, \
     const Matrix<Real>& b, \
     const Matrix<Real>& bl, \
     const Matrix<Real>& bu, \

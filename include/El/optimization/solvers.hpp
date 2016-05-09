@@ -770,6 +770,7 @@ struct PDCOObj
     void (*obj)(Matrix<Real>&, Real&) = 0; // Objective value
     void (*grad)(Matrix<Real>&, Matrix<Real>&) = 0; // Gradient
     void (*hess)(Matrix<Real>&, Matrix<Real>&) = 0; // Hessian
+    void (*sparseHess)(Matrix<Real>&, SparseMatrix<Real>&) = 0; // Sparse Hessian
 };
 
 } // namespace pdco 
@@ -778,6 +779,21 @@ template<typename Real>
 void PDCO
 ( const pdco::PDCOObj<Real>& phi,
   const Matrix<Real>& A,
+  const Matrix<Real>& b, 
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+        Matrix<Real>& x,
+        Matrix<Real>& r, 
+        Matrix<Real>& y,
+        Matrix<Real>& z, 
+  const pdco::Ctrl<Real>& ctrl=pdco::Ctrl<Real>() );
+
+template<typename Real>
+void PDCO
+( const pdco::PDCOObj<Real>& phi,
+  const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,

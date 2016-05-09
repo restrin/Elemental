@@ -25,12 +25,12 @@ vector<Int> IndexRange(Int n)
 
 // Updates a (possibly non-) contiguous part
 // of the diagonal.
-template <typename Real>
+template<typename Real>
 void UpdateSubdiagonal
 ( Matrix<Real>& A,
   const vector<Int>& ixSet,
   const Real& alpha,
-  Matrix<Real>& dSub )
+  const Matrix<Real>& dSub )
 {
     const Real* dbuf = dSub.LockedBuffer();
           Real* Abuf = A.Buffer();
@@ -43,8 +43,25 @@ void UpdateSubdiagonal
     }
 }
 
+// Queues update for a (possibly non-) contiguous part
+// of the diagonal of a sparse matrix
+// A call to A.ProcessQueues() is expected afterwards
+template<typename Real>
+void QueueUpdateSubdiagonal
+( SparseMatrix<Real>& A,
+  const vector<Int>& ixSet,
+  const Real& alpha,
+  const Matrix<Real>& dSub )
+{
+    const Real* dbuf = dSub.LockedBuffer();
+    for( Int i=0; i < ixSet.size(); i++ )
+    {
+        A.QueueUpdate(ixSet[i], ixSet[i], alpha*dbuf[i]);
+    }
+}
+
 // Get the number of active bound constraints
-template <typename Real>
+template<typename Real>
 void GetActiveConstraints
 ( const Matrix<Real>& x,
   const Matrix<Real>& bl,
@@ -82,7 +99,12 @@ void GetActiveConstraints
   ( Matrix<Real>& A, \
     const vector<Int>& ixSet, \
     const Real& alpha, \
-    Matrix<Real>& dSub ); \
+    const Matrix<Real>& dSub ); \
+  template void QueueUpdateSubdiagonal \
+  ( SparseMatrix<Real>& A, \
+    const vector<Int>& ixSet, \
+    const Real& alpha, \
+    const Matrix<Real>& dSub ); \
   template void GetActiveConstraints \
   ( const Matrix<Real>& x, \
     const Matrix<Real>& bl, \

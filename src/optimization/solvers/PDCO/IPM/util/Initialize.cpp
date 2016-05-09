@@ -38,6 +38,9 @@ void Initialize
 {
     DEBUG_ONLY(CSE cse("pdco::Initialize"))
 
+    if( print )
+        Output("  Using naive initialization");
+
     // Initialize z1, z2
     Ones(z1, ixSetLow.size(), 1);
     z1 *= z0min;
@@ -85,15 +88,6 @@ void Initialize
             continue;
         }
     }
-
-    if( print )
-    {
-//        Print(x, "x0");
-//        Print(y, "y0");
-//        Print(z1, "z1");
-//        Print(z2, "z2");
-    }
-
 }
 
 #define PROTO(Real) \
