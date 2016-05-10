@@ -378,6 +378,13 @@ Complex<Real> ComplexFromPolar( const Real& r, const Real& theta=0 );
 template<> Complex<Quad> ComplexFromPolar( const Quad& r, const Quad& theta );
 #endif
 
+// Safe division (in the sense of Baudin and Smith)
+// ------------------------------------------------
+template<typename Real,typename=EnableIf<IsReal<Real>>>
+Real SafeDiv( const Real& x, const Real& y );
+template<typename Real,typename=EnableIf<IsReal<Real>>>
+Complex<Real> SafeDiv( const Complex<Real>& x, const Complex<Real>& y );
+
 // Magnitude and sign
 // ==================
 
@@ -413,9 +420,16 @@ template<> Quad SafeAbs( const Complex<Quad>& alpha ) EL_NO_EXCEPT;
 // Return the sum of the absolute values of the real and imaginary components
 // --------------------------------------------------------------------------
 template<typename Real,typename=EnableIf<IsReal<Real>>>
-Real FastAbs( const Real& alpha ) EL_NO_EXCEPT;
+Real OneAbs( const Real& alpha ) EL_NO_EXCEPT;
 template<typename Real,typename=EnableIf<IsReal<Real>>>
-Real FastAbs( const Complex<Real>& alpha ) EL_NO_EXCEPT;
+Real OneAbs( const Complex<Real>& alpha ) EL_NO_EXCEPT;
+
+// Return the max of the absolute values of the real and imaginary components
+// --------------------------------------------------------------------------
+template<typename Real,typename=EnableIf<IsReal<Real>>>
+Real MaxAbs( const Real& alpha ) EL_NO_EXCEPT;
+template<typename Real,typename=EnableIf<IsReal<Real>>>
+Real MaxAbs( const Complex<Real>& alpha ) EL_NO_EXCEPT;
 
 // Return the sign of a real element
 // ---------------------------------
@@ -471,22 +485,40 @@ template<> BigFloat Pow( const BigFloat& alpha, const BigFloat& beta );
 // Versions which accept exponents of a different type
 BigInt Pow( const BigInt& alpha, const unsigned& beta );
 BigInt Pow( const BigInt& alpha, const unsigned long& beta );
+BigInt Pow( const BigInt& alpha, const unsigned long long& beta );
 BigFloat Pow( const BigFloat& alpha, const unsigned& beta );
 BigFloat Pow( const BigFloat& alpha, const unsigned long& beta );
+BigFloat Pow( const BigFloat& alpha, const unsigned long long& beta );
 BigFloat Pow( const BigFloat& alpha, const int& beta );
 BigFloat Pow( const BigFloat& alpha, const long int& beta );
+BigFloat Pow( const BigFloat& alpha, const long long int& beta );
 BigFloat Pow( const BigFloat& alpha, const BigInt& beta );
 
 // Versions which avoid temporaries
-void Pow( const BigInt& alpha, const BigInt& beta, BigInt& gamma );
-void Pow( const BigInt& alpha, const unsigned& beta, BigInt& gamma );
-void Pow( const BigInt& alpha, const unsigned long& beta, BigInt& gamma );
-void Pow( const BigFloat& alpha, const BigFloat& beta, BigFloat& gamma );
-void Pow( const BigFloat& alpha, const unsigned& beta, BigFloat& gamma );
-void Pow( const BigFloat& alpha, const unsigned long& beta, BigFloat& gamma );
-void Pow( const BigFloat& alpha, const int& beta, BigFloat& gamma );
-void Pow( const BigFloat& alpha, const long int& beta, BigFloat& gamma );
-void Pow( const BigFloat& alpha, const BigInt& beta, BigFloat& gamma );
+void Pow
+( const BigInt& alpha, const BigInt& beta, BigInt& gamma );
+void Pow
+( const BigInt& alpha, const unsigned& beta, BigInt& gamma );
+void Pow
+( const BigInt& alpha, const unsigned long& beta, BigInt& gamma );
+void Pow
+( const BigInt& alpha, const unsigned long long& beta, BigInt& gamma );
+void Pow
+( const BigFloat& alpha, const BigFloat& beta, BigFloat& gamma );
+void Pow
+( const BigFloat& alpha, const unsigned& beta, BigFloat& gamma );
+void Pow
+( const BigFloat& alpha, const unsigned long& beta, BigFloat& gamma );
+void Pow
+( const BigFloat& alpha, const unsigned long long& beta, BigFloat& gamma );
+void Pow
+( const BigFloat& alpha, const int& beta, BigFloat& gamma );
+void Pow
+( const BigFloat& alpha, const long int& beta, BigFloat& gamma );
+void Pow
+( const BigFloat& alpha, const long long int& beta, BigFloat& gamma );
+void Pow
+( const BigFloat& alpha, const BigInt& beta, BigFloat& gamma );
 #endif
 
 template<typename F,typename=EnableIf<IsField<F>>>

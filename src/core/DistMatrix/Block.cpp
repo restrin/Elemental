@@ -6,11 +6,31 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include <El.hpp>
+#include <El-lite.hpp>
+#include <El/blas_like/level1/Axpy.hpp>
+#include <El/blas_like/level1/Copy.hpp>
+#include <El/blas_like/level1/Scale.hpp>
+
+namespace {
+
+// Default blocksizes for BlockMatrix
+El::Int blockHeight=32, blockWidth=32;
+
+}
 
 namespace El {
 
-// TODO
+Int DefaultBlockHeight()
+{ return ::blockHeight; }
+
+Int DefaultBlockWidth()
+{ return ::blockWidth; }
+
+void SetDefaultBlockHeight( Int mb )
+{ ::blockHeight = mb; }
+
+void SetDefaultBlockWidth( Int nb )
+{ ::blockWidth = nb; }
 
 // Public section
 // ##############

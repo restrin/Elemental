@@ -1,5 +1,8 @@
 /*
-   Copyright (c) 2009-2016, Jack Poulson and Tim Moon
+   Copyright (c) 2009-2016, Jack Poulson
+   All rights reserved.
+
+   Copyright (c) 2015-2016, Tim Moon
    All rights reserved.
 
    This file is part of Elemental and is under the BSD 2-Clause License, 
@@ -8,6 +11,11 @@
 */
 
 namespace El {
+
+// Forward declaration
+template<typename T>
+Base<T> MaxNorm( const Matrix<T>& A );
+
 namespace safemstrsm {
 
 /*   Note: See "Robust Triangular Solves for Use in Condition
@@ -16,8 +24,7 @@ namespace safemstrsm {
  *   bigNum.
  */
 template<typename F>
-void
-LUNBlock
+void LUNBlock
 (       Matrix<F>& U,
   const Matrix<F>& shifts,
         Matrix<F>& X,
@@ -48,7 +55,8 @@ LUNBlock
     const Int ULDim = U.LDim();
 
     // Default scale is 1
-    Ones( scales, numShifts, 1 );
+    scales.Resize( numShifts, 1 );
+    Fill( scales, F(1) );
     
     // Compute infinity norms of columns of U (excluding diagonal)
     Matrix<Real> cNorm( n, 1 );
@@ -56,7 +64,7 @@ LUNBlock
     cNormBuf[0] = Real(0);
     for( Int j=1; j<n; ++j )
     {
-        //cNormBuf[j] = MaxNorm( U(IR(0,j),IR(j)) );
+        // cNormBuf[j] = MaxNorm( U(IR(0,j),IR(j)) );
         cNormBuf[j] = 0;
         for( Int i=0; i<j; ++i )
             cNormBuf[j] = Max( cNormBuf[j], Abs(UBuf[i+j*ULDim]) );
@@ -211,8 +219,7 @@ LUNBlock
  *   bigNum.
  */
 template<typename F>
-void
-LUN
+void LUN
 (       Matrix<F>& U,
   const Matrix<F>& shifts,
         Matrix<F>& X,
@@ -245,7 +252,9 @@ LUN
           LogicError("Entries in matrix are too large");
     )
     
-    Ones( scales, n, 1 );
+    scales.Resize( n, 1 );
+    Fill( scales, F(1) );
+
     Matrix<F> scalesUpdate( n, 1 );
 
     // Determine largest entry of each RHS
@@ -346,8 +355,7 @@ LUN
 }
 
 template<typename F>
-inline void
-LUN
+void LUN
 ( const ElementalMatrix<F>& UPre, 
   const ElementalMatrix<F>& shiftsPre,
         ElementalMatrix<F>& XPre,
@@ -387,7 +395,9 @@ LUN
     DistMatrix<F,VR,  STAR> scalesUpdate_VR_STAR(g);
     DistMatrix<F,MR,  STAR> scalesUpdate_MR_STAR( X.Grid() );
 
-    Ones( scales, n, 1 );
+    scales.Resize( n, 1 );
+    Fill( scales, F(1) );
+
     scalesUpdate_VR_STAR.Resize( n, 1 );
 
     const Int XLocalWidth = X.LocalWidth();

@@ -6,7 +6,7 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include <El.hpp>
+#include <El-lite.hpp>
 
 using El::BlasInt;
 using El::scomplex;
@@ -560,7 +560,8 @@ void Axpy
     T gamma;
     for( BlasInt i=0; i<n; ++i )
     {
-        gamma = alpha*x[i*incx];
+        gamma = alpha;
+        gamma *= x[i*incx];
         y[i*incy] += gamma;
     }
 }
@@ -928,8 +929,8 @@ template<typename Real>
 Real Givens
 ( const Real& phi,
   const Real& gamma,
-  Real* c,
-  Real* s )
+  Real& c,
+  Real& s )
 {
     // NOTE: Temporaries are avoided since constructing a BigInt/BigFloat
     //       involves a memory allocation
@@ -938,8 +939,8 @@ Real Givens
     Real phiAbs = Abs(phi);
     if( phiAbs == zero )
     {
-        *c = zero;
-        *s = one;
+        c = zero;
+        s = one;
         return gamma;
     }
     else
@@ -947,17 +948,17 @@ Real Givens
         Real gammaAbs = Abs(gamma);
         Real scale = phiAbs + gammaAbs;
         Real norm = scale*lapack::SafeNorm(phi/scale,gamma/scale);
-        *c = phiAbs/norm;
-        *s = (phi/phiAbs)*gamma/norm;
-        return *c*phi + *s*gamma;
+        c = phiAbs/norm;
+        s = (phi/phiAbs)*gamma/norm;
+        return c*phi + s*gamma;
     }
 }
 template<typename Real>
 Complex<Real> Givens
 ( const Complex<Real>& phi,
   const Complex<Real>& gamma,
-  Real* c,
-  Complex<Real>* s )
+  Real& c,
+  Complex<Real>& s )
 {
     // NOTE: Temporaries are avoided since constructing a BigInt/BigFloat
     //       involves a memory allocation
@@ -966,8 +967,8 @@ Complex<Real> Givens
     Real phiAbs = Abs(phi);
     if( phiAbs == zero )
     {
-        *c = zero;
-        *s = one;
+        c = zero;
+        s = one;
         return gamma;
     }
     else
@@ -975,81 +976,81 @@ Complex<Real> Givens
         Real gammaAbs = Abs(gamma);
         Real scale = phiAbs + gammaAbs;
         Real norm = scale*lapack::SafeNorm(Abs(phi/scale),Abs(gamma/scale));
-        *c = phiAbs/norm;
-        *s = (phi/phiAbs)*Conj(gamma)/norm;
-        return *c*phi + *s*gamma;
+        c = phiAbs/norm;
+        s = (phi/phiAbs)*Conj(gamma)/norm;
+        return c*phi + s*gamma;
     }
 }
 #ifdef EL_HAVE_QD
 template DoubleDouble Givens
 ( const DoubleDouble& phi,
   const DoubleDouble& gamma,
-  DoubleDouble* c,
-  DoubleDouble* s );
+  DoubleDouble& c,
+  DoubleDouble& s );
 template QuadDouble Givens
 ( const QuadDouble& phi,
   const QuadDouble& gamma,
-  QuadDouble* c,
-  QuadDouble* s );
+  QuadDouble& c,
+  QuadDouble& s );
 #endif
 #ifdef EL_HAVE_QUAD
 template Quad Givens
 ( const Quad& phi,
   const Quad& gamma,
-  Quad* c,
-  Quad* s );
+  Quad& c,
+  Quad& s );
 template Complex<Quad> Givens
 ( const Complex<Quad>& phi,
   const Complex<Quad>& gamma,
-  Quad* c,
-  Complex<Quad>* s );
+  Quad& c,
+  Complex<Quad>& s );
 #endif
 #ifdef EL_HAVE_MPC
 template BigFloat Givens
 ( const BigFloat& phi,
   const BigFloat& gamma,
-  BigFloat* c,
-  BigFloat* s );
+  BigFloat& c,
+  BigFloat& s );
 #endif
 
 float Givens
 ( const float& phi,
   const float& gamma,
-  float* c,
-  float* s )
+  float& c,
+  float& s )
 {
     float phiCopy=phi, gammaCopy=gamma;
-    EL_BLAS(srotg)( &phiCopy, &gammaCopy, c, s );
+    EL_BLAS(srotg)( &phiCopy, &gammaCopy, &c, &s );
     return phi;
 }
 double Givens
 ( const double& phi,
   const double& gamma,
-  double* c,
-  double* s )
+  double& c,
+  double& s )
 {
     double phiCopy=phi, gammaCopy=gamma;
-    EL_BLAS(drotg)( &phiCopy, &gammaCopy, c, s );
+    EL_BLAS(drotg)( &phiCopy, &gammaCopy, &c, &s );
     return phi;
 }
 scomplex Givens
 ( const scomplex& phi,
   const scomplex& gamma,
-  float* c,
-  scomplex* s )
+  float& c,
+  scomplex& s )
 {
     scomplex phiCopy=phi, gammaCopy=gamma;
-    EL_BLAS(crotg)( &phiCopy, &gammaCopy, c, s );
+    EL_BLAS(crotg)( &phiCopy, &gammaCopy, &c, &s );
     return phi;
 }
 dcomplex Givens
 ( const dcomplex& phi,
   const dcomplex& gamma,
-  double* c,
-  dcomplex* s )
+  double& c,
+  dcomplex& s )
 {
     dcomplex phiCopy=phi, gammaCopy=gamma;
-    EL_BLAS(zrotg)( &phiCopy, &gammaCopy, c, s );
+    EL_BLAS(zrotg)( &phiCopy, &gammaCopy, &c, &s );
     return phi;
 }
 
@@ -1249,6 +1250,33 @@ double Nrm1( BlasInt n, const double* x, BlasInt incx )
 { return EL_BLAS(dasum)( &n, x, &incx ); }
 double Nrm1( BlasInt n, const dcomplex* x, BlasInt incx )
 { return EL_LAPACK(dzsum1)( &n, x, &incx ); }
+
+template<typename F>
+Base<F> NrmInf( BlasInt n, const F* x, BlasInt incx )
+{
+    // TODO: Avoid temporaries since constructing BigInt/BigFloat involves
+    //       a memory allocation
+    Base<F> maxAbs=0;
+    for( BlasInt i=0; i<n; ++i )
+        maxAbs = Max( maxAbs, Abs(x[i*incx]) );
+    return maxAbs;
+}
+template float NrmInf( BlasInt n, const float* x, BlasInt incx );
+template float NrmInf( BlasInt n, const scomplex* x, BlasInt incx );
+template double NrmInf( BlasInt n, const double* x, BlasInt incx );
+template double NrmInf( BlasInt n, const dcomplex* x, BlasInt incx );
+#ifdef EL_HAVE_QD
+template DoubleDouble NrmInf( BlasInt n, const DoubleDouble* x, BlasInt incx );
+template QuadDouble NrmInf( BlasInt n, const QuadDouble* x, BlasInt incx );
+#endif
+#ifdef EL_HAVE_QUAD
+template Quad NrmInf( BlasInt n, const Quad* x, BlasInt incx );
+template Quad NrmInf( BlasInt n, const Complex<Quad>* x, BlasInt incx );
+#endif
+#ifdef EL_HAVE_MPC
+template BigInt NrmInf( BlasInt n, const BigInt* x, BlasInt incx );
+template BigFloat NrmInf( BlasInt n, const BigFloat* x, BlasInt incx );
+#endif
 
 template<typename T>
 void Swap( BlasInt n, T* x, BlasInt incx, T* y, BlasInt incy )
@@ -1736,7 +1764,7 @@ void Hemv
     }
 
     T gamma;
-    if( uplo == LOWER )
+    if( std::toupper(uplo) == 'L' )
     {
         // Multiply with the lower triangle
         for( BlasInt j=0; j<m; ++j )
@@ -2163,7 +2191,7 @@ void Symv
     }
 
     T gamma;
-    if( uplo == LOWER )
+    if( std::toupper(uplo) == 'L' )
     {
         // Multiply with the lower triangle
         for( BlasInt j=0; j<m; ++j )
@@ -2449,17 +2477,22 @@ void Syr2
         {
             gamma = y[j*incy];
             gamma *= alpha;
+
             delta = x[j*incx];
             delta *= alpha;
+
             for( BlasInt i=j; i<m; ++i )
             {
                 // A[i+j*ALDim] +=
                 //   alpha*(x[i*incx]*y[j*incy]+y[i*incy]*x[j*incx])
                 phi = x[i*incx]; 
                 phi *= gamma;
+
                 psi = y[i*incy];
                 psi *= delta;
+
                 phi += psi;
+
                 A[i+j*ALDim] += phi;
             }
         }
@@ -2470,17 +2503,22 @@ void Syr2
         {
             gamma = y[j*incy];
             gamma *= alpha;
+
             delta = x[j*incx]; 
             delta *= alpha;
+
             for( BlasInt i=0; i<=j; ++i )
             {
                 // A[i+j*ALDim] += alpha*x[i*incx]*y[j*incy] + 
                 //                 alpha*y[i*incy]*x[j*incx];
                 phi = x[i*incx]; 
                 phi *= gamma;
+
                 psi = y[i*incy];
                 psi *= delta;
+
                 phi += psi;
+
                 A[i+j*ALDim] += phi;
             }
         }
@@ -2983,7 +3021,8 @@ void Gemm
         {
             for( BlasInt l=0; l<k; ++l )
             {
-                gamma = alpha*B[l+j*BLDim];
+                gamma = alpha;
+                gamma *= B[l+j*BLDim];
                 for( BlasInt i=0; i<m; ++i )
                 {
                     delta = A[i+l*ALDim];
@@ -3002,7 +3041,8 @@ void Gemm
             {
                 for( BlasInt l=0; l<k; ++l )
                 {
-                    gamma = alpha*B[j+l*BLDim];
+                    gamma = alpha;
+                    gamma *= B[j+l*BLDim];
                     for( BlasInt i=0; i<m; ++i )
                     {
                         delta = A[i+l*ALDim];
@@ -3019,7 +3059,8 @@ void Gemm
             {
                 for( BlasInt l=0; l<k; ++l )
                 {
-                    gamma = alpha*Conj(B[j+l*BLDim]);
+                    Conj( B[j+l*BLDim], gamma );
+                    gamma *= alpha;
                     for( BlasInt i=0; i<m; ++i )
                     {
                         delta = A[i+l*ALDim];

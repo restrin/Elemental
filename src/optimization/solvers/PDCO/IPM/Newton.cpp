@@ -190,10 +190,6 @@ void Newton
                 FormHandW( Hess, D1, x, z1, z2, bl, bu,
                   ixSetLow, ixSetUpp, ixSetFix, r2, cL, cU, H, w, diagHess );
 
-//                Print(H,"H");
-//                Print(w,"w");
-//                Print(r1,"r1");
-
                 if( ixSetFix.size() > 0 )
                 {
                     // Set rows/cols corresponding to fixed variables to zero
@@ -235,9 +231,6 @@ void Newton
                 // Compute dx
                 Copy(w, dx); // dx = H\w
                 Gemv(NORMAL, Real(1), AtCopy, dy, Real(1), dx); // dx = H\w + (H\A')*dy
-
-//                Print(dx, "dx");
-//                Print(dy, "dy");
 
                 // Compute dz1
                 Matrix<Real> tmp1;
@@ -411,6 +404,9 @@ void Newton
     Int m = A.Height();
     Int n = A.Width();
 
+    const Real eps = limits::Epsilon<Real>();
+    const Real deltaTmp = Pow(eps, Real(0.25));
+
     // Index sets to represent IR(ALL) and IR(0)
     vector<Int> ALL_m = IndexRange(m);
     vector<Int> ALL_n = IndexRange(n);
@@ -532,6 +528,11 @@ void Newton
     SparseMatrix<Real> K;
     ldl::Front<Real> KFront;
 
+    // Temporary regularization
+    Matrix<Real> regTmp;
+    Zeros(regTmp, n+m, 1);
+//    const Real twoNormEstA = TwoNormEstimate( A, 6 );
+
     // Main loop
     for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
     {
@@ -555,25 +556,22 @@ void Newton
                 // [A -D2^2] [-dy]   [r2]
                 // By solving the KKT system
 
-//                cout << "Form KKT" << endl;
                 // Form the KKT system
                 FormKKT( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
                     ixSetLow, ixSetUpp, ixSetFix, K );
-
-//                cout.precision(16);
-                //Display(K, "K");
-//                for( Int i=0; i<K.Height(); i++) {
-//                    for( Int j=0; j<K.Width(); j++) {
-//                        cout << K.Get(i,j) << " ";
-//                    }
-//                    cout << endl;
-//                }
-
-//                cout << "Form RHS" << endl;
                 // Form the right-hand side
                 FormKKTRHS( x, r1, r2, cL, cU, bl, bu, ixSetLow, ixSetUpp, w );
+                SparseMatrix<Real> KOrig(K);
 
-//                Print(w, "w");
+                // Add temporary regularization for sparse LDL
+                Real MaxNormH = MaxNorm(Hess);
+ //              Ones(regTmp, n+m, 1);
+ //               auto regTmp1 = regTmp(IR(0,n), IR(0));
+ //               regTmp1 *= (twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
+ //               auto regTmp2 = regTmp(IR(n,n+m), IR(0));
+ //               regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
+
+                UpdateDiagonal(K, Real(1), regTmp);
 
                 if( numIts == 0 )
                 {
@@ -582,17 +580,15 @@ void Newton
                     InvertMap( map, invMap );
                 }
 
-//                cout << "LDL" << endl;
                 KFront.Pull( K, map, info );
                 LDL( info, KFront, LDL_2D );
-//                cout << "SolveAfter" << endl;
-                ldl::SolveAfter( invMap, info, KFront, w );
-//                cout << "After solve after" << endl;
+
+//                ldl::SolveAfter( invMap, info, KFront, w );
+                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+
                 dx = w( IR(0,n), IR(0) );
                 dy = w( IR(n,END), IR(0) );
                 dy *= -1;
-
-//                Print(w, "dxdy");
 
                 // Compute dz1
                 Matrix<Real> tmp1;
@@ -620,7 +616,6 @@ void Newton
                 RuntimeError("Unrecognized method option.");
         }
 
-//        cout << "Linesearch" << endl;
         // dx, dy, dz1, dz2 should be computed at this point
         // Return stepx, stepz
         bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1, D2, 
@@ -632,7 +627,7 @@ void Newton
             // Linesearch failed...what now?
             Output("Linesearch failed at iteration: ", numIts);
         }
-//        cout << "Norms" << endl;
+
         // Check convergence criteria
         Pfeas = InfinityNorm(r1);
         Dfeas = InfinityNorm(r2);

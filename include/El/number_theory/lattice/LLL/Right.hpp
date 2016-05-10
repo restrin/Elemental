@@ -100,7 +100,7 @@ void RightGivensStep
     F x = QR.Get(k,k); F y = QR.Get(k+1,k);
     F w = QR.Get(k,k+1); F z = QR.Get(k+1,k+1);
 	
-    lapack::Givens( x, y, &c, &s );
+    lapack::Givens( x, y, c, s );
     Matrix<F> G1(2,2);
     c = Sgn(RealPart(x))*Abs(c);
     s = Sgn(RealPart(y))*Abs(s);

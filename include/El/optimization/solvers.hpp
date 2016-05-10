@@ -735,6 +735,10 @@ struct PDCOCtrl
 
     // Update mu ala the original PDCO (vs. naive)?
     bool adaptiveMu = true;
+
+    // The controls for quasi-(semi)definite solves
+    RegSolveCtrl<Real> solveCtrl;
+
 };
 
 namespace pdco
@@ -757,7 +761,7 @@ struct Ctrl
 
     Ctrl()
     {
-        
+
     }
 };
 

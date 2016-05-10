@@ -6,11 +6,27 @@
    which can be found in the LICENSE file in the root directory, or at 
    http://opensource.org/licenses/BSD-2-Clause
 */
-#include <El.hpp>
+#include <El-lite.hpp>
 
 #ifdef EL_HAVE_QD
 
+namespace {
+
+unsigned oldControlWord=0;
+
+}
+
 namespace El {
+
+void InitializeQD()
+{
+    fpu_fix_start( &::oldControlWord );
+}
+
+void FinalizeQD()
+{
+    fpu_fix_end( &::oldControlWord );
+}
 
 #ifdef EL_HAVE_QUAD
 DoubleDouble::DoubleDouble( const Quad& a )
