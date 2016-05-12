@@ -564,12 +564,12 @@ void Newton
                 SparseMatrix<Real> KOrig(K);
 
                 // Add temporary regularization for sparse LDL
-                Real MaxNormH = MaxNorm(Hess);
- //              Ones(regTmp, n+m, 1);
- //               auto regTmp1 = regTmp(IR(0,n), IR(0));
- //               regTmp1 *= (twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
- //               auto regTmp2 = regTmp(IR(n,n+m), IR(0));
- //               regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
+//               Real MaxNormH = MaxNorm(Hess);
+//               Ones(regTmp, n+m, 1);
+//               auto regTmp1 = regTmp(IR(0,n), IR(0));
+//               regTmp1 *= (twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
+//               auto regTmp2 = regTmp(IR(n,n+m), IR(0));
+//               regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
 
                 UpdateDiagonal(K, Real(1), regTmp);
 

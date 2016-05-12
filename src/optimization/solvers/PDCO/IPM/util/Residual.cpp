@@ -36,20 +36,20 @@ void ResidualPD
     Int n = A.Width();
 
     Matrix<Real> tmp1;
-    Matrix<Real> tmp2;
 
     // Compute r1 = b - A*x - D2^2*y
     Copy(b, r1);
     Gemv(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x
     Hadamard(D2, y, tmp1);
     DiagonalScale(LEFT, NORMAL, D2, tmp1); // tmp2 = D2^2*y
-    r1 -= tmp2;
+    r1 -= tmp1;
 
     // Compute r2 = grad + D1^2*x - A'*y - z1 + z2
     Copy(grad, r2);
     Hadamard(D1, x, tmp1);
     DiagonalScale(LEFT, NORMAL, D1, tmp1); // tmp2 = D1^2*x
-    r2 += tmp2; // r2 = grad + D1^2*x
+    r2 += tmp1; // r2 = grad + D1^2*x
+
     Gemv(TRANSPOSE, Real(-1), A, y, Real(1), r2); // r2 = grad + D1^2*x - A'*y
     UpdateSubmatrix(r2, ixSetLow, ZERO, Real(-1), z1); // r2 = grad + D1^2*x - A'*y - z1
     UpdateSubmatrix(r2, ixSetUpp, ZERO, Real(1), z2); // r2 = grad + D1^2*x - A'*y - z1 + z2
@@ -81,20 +81,19 @@ void ResidualPD
     const Int n = A.Width();
 
     Matrix<Real> tmp1;
-    Matrix<Real> tmp2;
 
     // Compute r1 = b - A*x - D2^2*y
     Copy(b, r1);
     Multiply(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x
     Hadamard(D2, y, tmp1);
     DiagonalScale(LEFT, NORMAL, D2, tmp1); // tmp2 = D2^2*y
-    r1 -= tmp2;
+    r1 -= tmp1;
 
     // Compute r2 = grad + D1^2*x - A'*y - z1 + z2
     Copy(grad, r2);
     Hadamard(D1, x, tmp1);
     DiagonalScale(LEFT, NORMAL, D1, tmp1); // tmp2 = D1^2*x
-    r2 += tmp2; // r2 = grad + D1^2*x
+    r2 += tmp1; // r2 = grad + D1^2*x
     Multiply(TRANSPOSE, Real(-1), A, y, Real(1), r2); // r2 = grad + D1^2*x - A'*y
     UpdateSubmatrix(r2, ixSetLow, ZERO, Real(-1), z1); // r2 = grad + D1^2*x - A'*y - z1
     UpdateSubmatrix(r2, ixSetUpp, ZERO, Real(1), z2); // r2 = grad + D1^2*x - A'*y - z1 + z2
@@ -120,6 +119,7 @@ void ResidualC
   Matrix<Real>& cU )
 {
     DEBUG_ONLY(CSE cse("pdco::ResidualC"))
+    const Real eps = limits::Epsilon<Real>();
     const vector<Int> ZERO (1,0);
     Matrix<Real> tmp1;
     Matrix<Real> tmp2;
@@ -164,6 +164,12 @@ void ResidualC
     }
     else
     {
+//        cout << "maxXz = " << maxXz << endl;
+//        cout << "MinXz = " << minXz << endl;
+
+        // Keep things safe against division by 0 or Nan
+        maxXz = Max(maxXz, eps);
+        minXz = Max(minXz, eps);
         center = maxXz / minXz;
         Cinf0 = maxXz;
     }
