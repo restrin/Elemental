@@ -115,7 +115,7 @@ void FormKKT
     Matrix<Real> tmp1;
     Matrix<Real> tmp2;
     
-    QueueUpdateSubdiagonal(Hess, ALL_n, Real(1), D1sq);
+    QueueUpdateSubdiagonal(Hess, ALL_n, Real(1), D1sq); // TODO: Use UpdateDiagonal?
 
     // Form (x-bl)^-1*z1
     Copy(x, tmp1);
@@ -135,12 +135,19 @@ void FormKKT
     // Queue update for H + (x-bl)\z1 + (bu-x)\z2
     QueueUpdateSubdiagonal(Hess, ixSetUpp, Real(1), tmp1);
 
-    Hess.ProcessQueues();
-
     if( ixSetFix.size() > 0 )
     {
         // Fix the Hessian to account for fixed entries
+        auto Hsub = Hess(ALL, ixSetFix);
+        Zeros(Hsub, n, ixSetFix.size());
+        Hsub = Hess(ixSetFix, ALL);
+        Zeros(Hsub, ixSetFix.size(),n);
+        Matrix<Real> tmp;
+        Ones(tmp, ixSetFix.size(), 1);
+        QueueUpdateSubdiagonal(Hess, ixSetFix, Real(1), tmp);
     }
+
+    Hess.ProcessQueues();
 
     const Int numEntriesH = Hess.NumEntries();
     const Int numEntriesA = A.NumEntries();
@@ -221,6 +228,191 @@ void FormKKTRHS
     UpdateSubmatrix(w, ixSetUpp, ZERO, Real(-1), tmp1);
 }
 
+template<typename Real>
+void FormKKT25
+(       SparseMatrix<Real>& Hess,
+  const SparseMatrix<Real>& A,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
+  const Matrix<Real>& x,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+        Matrix<Real>& xmbl,
+        Matrix<Real>& bumx,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix,
+        SparseMatrix<Real>& K )
+{
+    DEBUG_ONLY(CSE cse("pdco::FormKKT25"))
+
+    /*********
+    NOTE: Due to GetSubmatrix not being implemented for SparseMatrix for
+    non-contiguous indices, and to avoid a indexing mess, diagonal scaling
+    by (x-bl) and (bu-x) are going to be done inefficiently by using
+    a ones column with its entries modified in the correct places.
+
+    Will be fixed later
+    **********/
+
+    const Int m = A.Height();
+    const Int n = A.Width();
+    const vector<Int> ALL_n = IndexRange(n);
+    const vector<Int> ZERO (1,0);
+
+    Matrix<Real> tmp;
+    Matrix<Real> tmpSub;
+    Matrix<Real> z1Copy;
+    Matrix<Real> z2Copy;
+    Matrix<Real> d;
+    SparseMatrix<Real> ACopy;
+
+    // Form (bu-x)*z1
+    Zeros(z1Copy, n, 1);
+    SetSubmatrix( z1Copy, ixSetLow, ZERO, z1 );
+    DiagonalScale( LEFT, NORMAL, bumx, z1Copy );
+
+    // Form (x-bl)*z2
+    Zeros(z2Copy, n, 1);
+    SetSubmatrix( z2Copy, ixSetUpp, ZERO, z2 );
+    DiagonalScale( LEFT, NORMAL, xmbl, z2Copy );
+
+    // (bu-x)*z1 + (x-bl)*z2
+    z1Copy += z2Copy;
+
+    function<Real(Real)> func
+    ( []( Real alpha ) { return Sqrt(alpha); } );
+    EntrywiseMap(xmbl, func);
+    EntrywiseMap(bumx, func);
+
+    // Form (H+D1^2)
+    QueueUpdateSubdiagonal(Hess, ALL_n, Real(1), D1sq); // TODO: Use UpdateDiagonal?
+    Hess.ProcessQueues();
+
+    // d = (x-bl)^(1/2)*(bu-x)^(1/2)
+    Copy(xmbl, d);
+    DiagonalScale( LEFT, NORMAL, bumx, d );
+
+    // (x-bl)^(1/2) (bu-x)^(1/2) (H+D1) (x-bl)^(1/2) (bu-x)^(1/2)
+    DiagonalScale( LEFT, NORMAL, d, Hess );
+    DiagonalScale( RIGHT, NORMAL, d, Hess );
+
+    // Queue update for H + (bu-x)*z1 + (x-bl)*z2
+    QueueUpdateSubdiagonal(Hess, ALL_n, Real(1), z1Copy);
+
+    if( ixSetFix.size() > 0 )
+    {
+        // Fix the Hessian to account for fixed entries
+        auto Hsub = Hess(ALL, ixSetFix);
+        Zeros(Hsub, n, ixSetFix.size());
+        Hsub = Hess(ixSetFix, ALL);
+        Zeros(Hsub, ixSetFix.size(),n);
+        Matrix<Real> tmp;
+        Ones(tmp, ixSetFix.size(), 1);
+        QueueUpdateSubdiagonal(Hess, ixSetFix, Real(1), tmp);
+    }
+
+    Hess.ProcessQueues();
+
+    // A (x-bl)^(1/2) (bu-x)^(1/2)
+    Copy(A, ACopy);
+    DiagonalScale(RIGHT, NORMAL, d, ACopy);
+
+    // Form the KKT matrix
+
+    const Int numEntriesH = Hess.NumEntries();
+    const Int numEntriesA = ACopy.NumEntries();
+
+    Zeros( K, m+n, m+n );
+    K.Reserve( 2*numEntriesA + numEntriesH + m);
+
+    // Set K(1:n,1:n) = Hess
+    for( Int e=0; e<numEntriesH; ++e )
+        K.QueueUpdate( Hess.Row(e), Hess.Col(e), Hess.Value(e) );
+
+    // Set K(n+1:n+m,1:n) = A and K(1:n,n+1:n+m) = A'
+    for( Int e=0; e<numEntriesA; ++e )
+    {
+        K.QueueUpdate( ACopy.Row(e)+n, ACopy.Col(e), ACopy.Value(e) );
+        K.QueueUpdate( ACopy.Col(e), ACopy.Row(e)+n, ACopy.Value(e) );
+    }
+
+    // Set K(n+1:n+m,n+1:n+m)=-D2^2
+    const Real* dbuf = D2sq.LockedBuffer();
+    for( Int i=0; i<m; i++ )
+        K.QueueUpdate( n+i, n+i, -dbuf[i]);
+
+    K.ProcessQueues();
+    K.FreezeSparsity();
+}
+
+template<typename Real>
+void FormKKTRHS25
+( const Matrix<Real>& x,
+  const Matrix<Real>& r1,
+  const Matrix<Real>& r2,
+  const Matrix<Real>& cL,
+  const Matrix<Real>& cU,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const Matrix<Real>& xmbl,
+  const Matrix<Real>& bumx,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+        Matrix<Real>& w )
+{
+    DEBUG_ONLY(CSE cse("pdco::FormKKTRHS25"))
+
+    /*********
+    NOTE: Due to GetSubmatrix not being implemented for SparseMatrix for
+    non-contiguous indices, and to avoid a indexing mess, diagonal scaling
+    by (x-bl) and (bu-x) are going to be done inefficiently by using
+    a ones column with its entries modified in the correct places.
+
+    Will be fixed later
+    **********/
+
+    const vector<Int> ZERO (1,0);
+    const Int m = r1.Height();
+    const Int n = r2.Height();
+
+    Matrix<Real> tmp;
+    Matrix<Real> tmp2;
+    Matrix<Real> tmpSub;
+    Matrix<Real> d;
+
+    Zeros(w, n+m, 1);
+    // Form w = [w1] = [ -xl^(1/2)xu^(1/2)r2 + xl^(-1/2)xu^(1/2)cL - xl^(1/2)xu^(-1/2)cU ]
+    //          [w2] = [ r1 ]
+
+    auto w1 = w(IR(0,n), IR(0));
+    Copy(r2, w1);
+    w1 *= -1;
+    DiagonalScale( LEFT, NORMAL, bumx, w1 );
+    DiagonalScale( LEFT, NORMAL, xmbl, w1 ); // -(x-bl)^(1/2)(bu-x)^(1/2)r2
+
+    // Form xu = (x-bl)^(-1/2)(bu-x)^(1/2)
+    Copy(bumx, d);
+    DiagonalSolve( LEFT, NORMAL, xmbl, d, false );
+
+    // Form xl^(-1/2)xu^(1/2)cL and add to w1
+    GetSubmatrix( d, ixSetLow, ZERO, tmp );
+    Copy( cL, tmp2 );
+    DiagonalScale( LEFT, NORMAL, tmp, tmp2 );
+    UpdateSubmatrix( w, ixSetLow, ZERO, Real(1), tmp2 );
+
+    // Form xl^(1/2)xu^(-1/2)cU and subtract from w1
+    GetSubmatrix( d, ixSetUpp, ZERO, tmp );
+    Copy( cU, tmp2 );
+    DiagonalSolve( LEFT, NORMAL, tmp, tmp2, false );
+    UpdateSubmatrix( w, ixSetUpp, ZERO, Real(-1), tmp2 );
+
+    auto w2 = w( IR(n,END), IR(0) );
+    Copy( r1, w2 );
+}
+
 #define PROTO(Real) \
   template void FormHandW \
   ( const Matrix<Real>& Hess, \
@@ -261,6 +453,35 @@ void FormKKTRHS
     const Matrix<Real>& z2, \
     const Matrix<Real>& bl, \
     const Matrix<Real>& bu, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+          Matrix<Real>& w ); \
+  template void FormKKT25 \
+  (       SparseMatrix<Real>& Hess, \
+    const SparseMatrix<Real>& A, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
+    const Matrix<Real>& x, \
+    const Matrix<Real>& z1, \
+    const Matrix<Real>& z2, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+          Matrix<Real>& xmbl, \
+          Matrix<Real>& bumx, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+    const vector<Int>& ixSetFix, \
+          SparseMatrix<Real>& K ); \
+  template void FormKKTRHS25 \
+  ( const Matrix<Real>& x, \
+    const Matrix<Real>& r1, \
+    const Matrix<Real>& r2, \
+    const Matrix<Real>& cL, \
+    const Matrix<Real>& cU, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+    const Matrix<Real>& xmbl, \
+    const Matrix<Real>& bumx, \
     const vector<Int>& ixSetLow, \
     const vector<Int>& ixSetUpp, \
           Matrix<Real>& w );

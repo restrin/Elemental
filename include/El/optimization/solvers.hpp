@@ -679,7 +679,8 @@ namespace pdco
 enum Method {
   LDLy, // Solve (A D1^2 A' + D2^2 I) for dy via sparse LDL
   LDLx, // Solve (D1 A' A D1 + D2^2 I) for dx  via sparse LDL
-  LDL2  // Solve 2x2 KKT System with sparse LDL
+  LDL2, // Solve 2x2 KKT system with sparse LDL
+  LDL25 // Solve Diagonally scaled 2x2 KKT systemwith sparse LDL
 };
 } // namespace pdco
 

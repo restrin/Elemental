@@ -218,6 +218,39 @@ void FormKKTRHS
         Matrix<Real>& w );
 
 template<typename Real>
+void FormKKT25
+(       SparseMatrix<Real>& Hess,
+  const SparseMatrix<Real>& A,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
+  const Matrix<Real>& x,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+        Matrix<Real>& xmbl,
+        Matrix<Real>& bumx,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix,
+        SparseMatrix<Real>& K );
+
+template<typename Real>
+void FormKKTRHS25
+( const Matrix<Real>& x,
+  const Matrix<Real>& r1,
+  const Matrix<Real>& r2,
+  const Matrix<Real>& cL,
+  const Matrix<Real>& cU,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const Matrix<Real>& xmbl,
+  const Matrix<Real>& bumx,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+        Matrix<Real>& w );
+
+template<typename Real>
 void UpdateSubdiagonal
 ( Matrix<Real>& A,
   const vector<Int>& ixSet,

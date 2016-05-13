@@ -260,6 +260,9 @@ void Newton
             case Method::LDL2:
                 RuntimeError("LDL2 not yet implemented.");
                 break;
+            case Method::LDL25:
+                RuntimeError("LDL25 not yet implemented.");
+                break;
             default:
                 RuntimeError("Unrecognized method option.");
         }
@@ -412,6 +415,9 @@ void Newton
     vector<Int> ALL_n = IndexRange(n);
     vector<Int> ZERO (1,0);
 
+    function<Real(Real)> sqrtFunc
+    ( []( Real alpha ) { return Sqrt(alpha); } ); // Elementwise sqrt
+
     vector<Int> ixSetLow;  // Index set for lower bounded variables
     vector<Int> ixSetUpp;  // Index set for upper bounded variables
     vector<Int> ixSetFix;  // Index set for fixed bounded variables
@@ -451,6 +457,10 @@ void Newton
     Real stepz;            // Step size for z1, z2
     Real stepmu;           // Step size for mu
 
+    // Variables to avoid recomputation
+    Matrix<Real> xmbl;     // x-bl
+    Matrix<Real> bumx;     // bu-x
+
     Real mulast = 0.1*ctrl.optTol; // Final value of mu
     Real mu = Max(ctrl.mu0,mulast);
     bool converged = false;
@@ -458,7 +468,6 @@ void Newton
     // Miscellaneous
     Matrix<Real> zeros;    // Used to set submatrices to zero
     Matrix<Real> ones;     // Used to set diagonals to one
-    bool diagHess = false; // Is the Hessian diagonal?
 
     // Initialize some useful variables
     Copy(D2, D2sq);
@@ -589,6 +598,91 @@ void Newton
                 dx = w( IR(0,n), IR(0) );
                 dy = w( IR(n,END), IR(0) );
                 dy *= -1;
+
+                // Compute dz1
+                Matrix<Real> tmp1;
+                Matrix<Real> tmp2;
+                Copy(x, tmp1);
+                tmp1 -= bl;
+                GetSubmatrix(tmp1, ixSetLow, ZERO, tmp2);
+                GetSubmatrix(dx, ixSetLow, ZERO, dz1);
+                DiagonalScale(LEFT, NORMAL, z1, dz1);
+                dz1 *= -1;
+                dz1 += cL;
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz1); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+
+                // Compute dz2
+                Copy(bu, tmp1);
+                tmp1 -= x;
+                GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
+                GetSubmatrix(dx, ixSetUpp, ZERO, dz2);
+                DiagonalScale(LEFT, NORMAL, z2, dz2);
+                dz2 += cU;
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+            }
+                break;
+            case Method::LDL25:
+            {
+                // We solve the system
+                // [H   A' ] [ dx] = [w ] = w // excuse the abuse of notation
+                // [A -D2^2] [-dy]   [r2]
+                // By symmetrically 'preconditioning' it with
+                // [(x-bl)(bu-x) 0]^(1/2)
+                // [ 0           I]
+
+                Copy(x, xmbl);
+                xmbl -= bl;
+                Copy(bu, bumx);
+                bumx -= x;
+
+                // Form the KKT system
+                FormKKT25( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
+                    xmbl, bumx, ixSetLow, ixSetUpp, ixSetFix, K );
+
+                // NOTE: FormKKT25 takes square root of xmbl, bumx
+                // They are now to be treated as the square roots
+
+                // Only need square root
+                // TODO: Deal with garbage entries?
+//                EntrywiseMap(xmbl, sqrtFunc);
+//                EntrywiseMap(bumx, sqrtFunc);
+
+                FormKKTRHS25( x, r1, r2, cL, cU, bl, bu, 
+                    xmbl, bumx, ixSetLow, ixSetUpp, w );
+                SparseMatrix<Real> KOrig(K);
+
+                UpdateDiagonal(K, Real(1), regTmp);
+
+                if( numIts == 0 )
+                {
+                    // Get static nested dissection data
+                    NestedDissection( K.LockedGraph(), map, rootSep, info );
+                    InvertMap( map, invMap );
+                }
+
+                KFront.Pull( K, map, info );
+                LDL( info, KFront, LDL_2D );
+
+//                ldl::SolveAfter( invMap, info, KFront, w );
+                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+
+                dy = w( IR(n,END), IR(0) );
+                dy *= -1;
+                dx = w( IR(0,n), IR(0) );
+
+                Matrix<Real> dxSub;
+                Matrix<Real> xbSub;
+
+                // Undo scaling on dx
+                GetSubmatrix(xmbl, ixSetLow, ZERO, xbSub);
+                GetSubmatrix(dx, ixSetLow, ZERO, dxSub);
+                DiagonalScale(LEFT, NORMAL, xbSub, dxSub);
+                SetSubmatrix(dx, ixSetLow, ZERO, dxSub);
+
+                GetSubmatrix(bumx, ixSetUpp, ZERO, xbSub);
+                GetSubmatrix(dx, ixSetUpp, ZERO, dxSub);
+                DiagonalScale(LEFT, NORMAL, xbSub, dxSub);
+                SetSubmatrix(dx, ixSetUpp, ZERO, dxSub);
 
                 // Compute dz1
                 Matrix<Real> tmp1;
