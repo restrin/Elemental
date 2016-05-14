@@ -31,12 +31,12 @@ void ExpandQR
     const Int n = B.Width();
     const Int minDim = Min(m,n);
 
-    if (k == 0)
-        return;
-
     // Copy in the k'th column of B
     for( Int i=0; i<m; ++i )
         QR(i,k) = F(B(i,k));
+
+    if( k == 0)
+        return;
 
     if( time )
         applyHouseTimer.Start();
