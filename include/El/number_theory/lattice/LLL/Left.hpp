@@ -15,10 +15,10 @@ namespace lll {
 // Put the k'th column of B into the k'th column of QR and then rotate
 // said column with the first k-1 (scaled) Householder reflectors.
 
-template<typename Z, typename F>
+template<typename F>
 void ExpandQR
 ( Int k,
-  const Matrix<Z>& B,
+  const Matrix<F>& B,
         Matrix<F>& QR,
   const Matrix<F>& t,
   const Matrix<Base<F>>& d,
@@ -33,7 +33,7 @@ void ExpandQR
 
     // Copy in the k'th column of B
     for( Int i=0; i<m; ++i )
-        QR(i,k) = F(B(i,k));
+        QR(i,k) = B(i,k);
 
     if( time )
         applyHouseTimer.Start();
@@ -112,11 +112,11 @@ void HouseholderStep
 }
 
 // Return true if the new column is a zero vector
-template<typename Z, typename F>
+template<typename F>
 bool Step
 ( Int k,
-  Matrix<Z>& B,
-  Matrix<Z>& U,
+  Matrix<F>& B,
+  Matrix<F>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -136,7 +136,7 @@ bool Step
     {
         lll::ExpandQR( k, B, QR, t, d, ctrl.numOrthog, ctrl.time );
 
-        const Base<Z> oldNorm = blas::Nrm2( m, &B(0,k), 1 );
+        const Real oldNorm = blas::Nrm2( m, &B(0,k), 1 );
         if( !limits::IsFinite(oldNorm) )
             RuntimeError("Encountered an unbounded norm; increase precision");
         if( oldNorm > Real(1)/eps )
@@ -177,13 +177,13 @@ bool Step
                       &QR(0,k  ), 1 );
 
                     blas::Axpy
-                    ( m, Z(-chi),
+                    ( m, -chi,
                       &B(0,k-1), 1,
                       &B(0,k  ), 1 );
 
                     if( formU )
                         blas::Axpy
-                        ( n, Z(-chi),
+                        ( n, -chi,
                           &U(0,k-1), 1,
                           &U(0,k  ), 1 );
                 }
@@ -221,29 +221,24 @@ bool Step
                 const float nonzeroRatio = float(numNonzero)/float(k); 
                 if( nonzeroRatio >= ctrl.blockingThresh )
                 {
-                    vector<Z> xzBuf(k);
-                    // Need array of type Z
-                    for( Int i=0; i<k; ++i)
-                        xzBuf[i] = Z(xBuf[i]);
-                
                     blas::Gemv
                     ( 'N', m, k,
-                      Z(-1), &B(0,0),  B.LDim(),
-                             &xzBuf[0], 1,
-                      Z(+1), &B(0,k),  1 );
+                      F(-1), &B(0,0),  B.LDim(),
+                             &xBuf[0], 1,
+                      F(+1), &B(0,k),  1 );
                     if( formU )
                         blas::Gemv
                         ( 'N', n, k,
-                          Z(-1), &U(0,0),  U.LDim(),
-                                 &xzBuf[0], 1,
-                          Z(+1), &U(0,k),  1 );
+                          F(-1), &U(0,0),  U.LDim(),
+                                 &xBuf[0], 1,
+                          F(+1), &U(0,k),  1 );
                 }
                 else
                 {
                     for( Int i=k-1; i>=0; --i )
                     {
-                        const Z chi = Z(xBuf[i]);
-                        if( chi == Z(0) )
+                        const F chi = xBuf[i];
+                        if( chi == F(0) )
                             continue;
                         blas::Axpy
                         ( m, -chi,
@@ -258,7 +253,7 @@ bool Step
                 }
             }
         }
-        const Base<Z> newNorm = blas::Nrm2( m, &B(0,k), 1 );
+        const Real newNorm = blas::Nrm2( m, &B(0,k), 1 );
         if( ctrl.time )
             roundTimer.Stop();
         if( !limits::IsFinite(newNorm) )
@@ -282,10 +277,10 @@ bool Step
 }
 
 // Consider explicitly returning both Q and R rather than just R (in 'QR')
-template<typename Z, typename F>
+template<typename F>
 LLLInfo<Base<F>> LeftAlg
-( Matrix<Z>& B,
-  Matrix<Z>& U,
+( Matrix<F>& B,
+  Matrix<F>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -469,10 +464,10 @@ LLLInfo<Base<F>> LeftAlg
     return info;
 }
 
-template<typename Z, typename F>
+template<typename F>
 LLLInfo<Base<F>> LeftDeepAlg
-( Matrix<Z>& B,
-  Matrix<Z>& U,
+( Matrix<F>& B,
+  Matrix<F>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -684,10 +679,10 @@ LLLInfo<Base<F>> LeftDeepAlg
     return info;
 }
 
-template<typename Z, typename F>
+template<typename F>
 LLLInfo<Base<F>> LeftDeepReduceAlg
-( Matrix<Z>& B,
-  Matrix<Z>& U,
+( Matrix<F>& B,
+  Matrix<F>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
@@ -835,12 +830,12 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
                     if( Abs(RealPart(chi)) > 0 || Abs(ImagPart(chi)) > 0 )
                     {
                         blas::Axpy
-                        ( m, Z(-chi),
+                        ( m, -chi,
                           &B(0,l), 1,
                           &B(0,k), 1 );
                         if( formU )
                             blas::Axpy
-                            ( n, Z(-chi),
+                            ( n, -chi,
                               &U(0,l), 1,
                               &U(0,k), 1 );
                     }

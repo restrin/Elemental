@@ -126,11 +126,6 @@ struct LLLCtrl
     bool recursive=false;
     Int cutoff=10;
 
-    bool rightLooking=false;
-    Real precisionFudge=Real(2);
-    Int givensBlockSize = 4;
-    Int minColThresh = 0;
-	
     // Preprocessing with a "rank-obscuring" column-pivoted QR factorization
     // (in the manner suggested by Wubben et al.) can greatly decrease
     // the number of swaps within LLL in some circumstances
@@ -173,10 +168,6 @@ struct LLLCtrl
         eta = Real(ctrl.eta);
         if( eta < etaMin )
             eta = etaMin;
-        rightLooking = ctrl.rightLooking;
-        precisionFudge = Real(ctrl.precisionFudge);
-        givensBlockSize = ctrl.givensBlockSize;
-        minColThresh = ctrl.minColThresh;
         variant = ctrl.variant; 
         recursive = ctrl.recursive;
         cutoff = ctrl.cutoff;
@@ -207,10 +198,6 @@ struct LLLCtrl
 
         delta = Real(ctrl.delta);
         eta = Max(etaMin,Real(ctrl.eta));
-        rightLooking = ctrl.rightLooking;
-        precisionFudge = Real(ctrl.precisionFudge);
-        givensBlockSize = ctrl.givensBlockSize;
-        minColThresh = ctrl.minColThresh;
         variant = ctrl.variant; 
         recursive = ctrl.recursive;
         cutoff = ctrl.cutoff;
@@ -235,36 +222,36 @@ struct LLLCtrl
 
 // TODO: Maintain B in BigInt form
 
-template<typename Z, typename F=Z>
+template<typename F>
 LLLInfo<Base<F>> LLL
-( Matrix<Z>& B,
+( Matrix<F>& B,
   const LLLCtrl<Base<F>>& ctrl=LLLCtrl<Base<F>>() );
 
-template<typename Z, typename F=Z>
+template<typename F>
 LLLInfo<Base<F>> LLL
-( Matrix<Z>& B,
+( Matrix<F>& B,
   Matrix<F>& R,
   const LLLCtrl<Base<F>>& ctrl=LLLCtrl<Base<F>>() );
 
-template<typename Z, typename F=Z>
+template<typename F>
 LLLInfo<Base<F>> LLL
-( Matrix<Z>& B,
-  Matrix<Z>& U,
+( Matrix<F>& B,
+  Matrix<F>& U,
   Matrix<F>& R,
   const LLLCtrl<Base<F>>& ctrl=LLLCtrl<Base<F>>() );
 
-template<typename Z, typename F=Z>
+template<typename F>
 LLLInfo<Base<F>> LLLWithQ
-( Matrix<Z>& B,
+( Matrix<F>& B,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
   const LLLCtrl<Base<F>>& ctrl=LLLCtrl<Base<F>>() );
 
-template<typename Z, typename F=Z>
+template<typename F>
 LLLInfo<Base<F>> LLLWithQ
-( Matrix<Z>& B,
-  Matrix<Z>& U,
+( Matrix<F>& B,
+  Matrix<F>& U,
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
