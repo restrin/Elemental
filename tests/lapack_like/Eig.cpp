@@ -12,73 +12,88 @@
 #include <El.hpp>
 using namespace El;
 
+template<typename Real>
 void TestCorrectness
 ( bool print,
-  const Matrix<Complex<double>>& A,
-  const Matrix<Complex<double>>& w,
-  const Matrix<Complex<double>>& V )
+  const Matrix<Complex<Real>>& A,
+  const Matrix<Complex<Real>>& w,
+  const Matrix<Complex<Real>>& V )
 {
+    const Int n = A.Height();
+    const Real eps = limits::Epsilon<Real>();
+    const Real oneNormA = OneNorm( A );
+
     // Find the residual R = AV-VW
-    Matrix<Complex<double>> R( V.Height(), V.Width() );
+    Matrix<Complex<Real>> R( V.Height(), V.Width() );
     Gemm
     ( NORMAL, NORMAL,
-      Complex<double>(1), A, V,
-      Complex<double>(0), R);
-    Matrix<Complex<double>> VW( V );
+      Complex<Real>(1), A, V,
+      Complex<Real>(0), R);
+    Matrix<Complex<Real>> VW( V );
     DiagonalScale( RIGHT, NORMAL, w, VW );
     R -= VW;
     
-    // Find the Frobenius norms of A and AV-VW
-    double frobNormA = FrobeniusNorm( A );
-    double frobNormR = FrobeniusNorm( R );
+    const Real infError = InfinityNorm( R );
+    const Real relError = infError / (eps*n*oneNormA);
+    Output("|| A V - V W ||_oo / (eps n || A ||_1) = ",relError);
 
-    Output("||A V - V W||_F / ||A||_F = ",frobNormR/frobNormA);
+    // TODO: A more refined failure condition
+    if( relError > Real(100) )
+        LogicError("Relative error was unacceptably large");
 }
 
+template<typename Real>
 void TestCorrectness
 ( bool print,
-  const ElementalMatrix<Complex<double>>& A,
-  const ElementalMatrix<Complex<double>>& w,
-  const ElementalMatrix<Complex<double>>& V )
+  const ElementalMatrix<Complex<Real>>& A,
+  const ElementalMatrix<Complex<Real>>& w,
+  const ElementalMatrix<Complex<Real>>& V )
 {
+    const Int n = A.Height();
+    const Real eps = limits::Epsilon<Real>();
+    const Real oneNormA = OneNorm( A );
+
     // Find the residual R = AV-VW
-    DistMatrix<Complex<double>> R( V.Height(), V.Width(), A.Grid() );
+    DistMatrix<Complex<Real>> R( V.Height(), V.Width(), A.Grid() );
     Gemm
     ( NORMAL, NORMAL,
-      Complex<double>(1), A, V,
-      Complex<double>(0), R);
-    DistMatrix<Complex<double>> VW( V );
+      Complex<Real>(1), A, V,
+      Complex<Real>(0), R);
+    DistMatrix<Complex<Real>> VW( V );
     DiagonalScale( RIGHT, NORMAL, w, VW );
     R -= VW;
     
-    // Find the Frobenius norms of A and AV-VW
-    double frobNormA = FrobeniusNorm( A );
-    double frobNormR = FrobeniusNorm( R );
+    const Real infError = InfinityNorm( R );
+    const Real relError = infError / (eps*n*oneNormA);
+    OutputFromRoot
+    (A.Grid().Comm(),"|| A V - V W ||_oo / (eps n || A ||_1) = ",relError);
 
-    if( A.Grid().Rank() == 0 )
-        Output("||A V - V W||_F / ||A||_F = ",frobNormR/frobNormA);
+    // TODO: A more refined failure condition
+    if( relError > Real(100) )
+        LogicError("Relative error was unacceptably large");
 }
 
-void SequentialEigBenchmark
-( bool testCorrectness,
+template<typename Real>
+void EigBenchmark
+( Int m,
+  bool correctness,
   bool print,
-  Int m,
-  Int testMatrix )
+  Int whichMatrix )
 {
-    Matrix<Complex<double>> A(m,m), AOrig(m,m);
-    Matrix<Complex<double>> w(m,1), V(m,m);
-    Matrix<Complex<double>> X, tau;
+    Output( "Testing with ", TypeName<Real>() );
+    Matrix<Complex<Real>> A(m,m), AOrig(m,m);
+    Matrix<Complex<Real>> w(m,1), V(m,m);
+    Matrix<Complex<Real>> X, tau;
     
-    //double foxLiOmega = -0.179;
-    double foxLiOmega = 16*M_PI;
+    const Real foxLiOmega = 16*M_PI;
 
     // Generate test matrix
-    switch( testMatrix )
+    switch( whichMatrix )
     {
     case 0: Gaussian( AOrig, m, m );       break;
     case 1: FoxLi( AOrig, m, foxLiOmega ); break;
     case 2: Grcar( AOrig, m );             break;
-    case 3: Jordan( AOrig, m, Complex<double>(7) ); break;
+    case 3: Jordan( AOrig, m, Complex<Real>(7) ); break;
     default: LogicError("Unknown test matrix");
     }
     if( print )
@@ -86,7 +101,7 @@ void SequentialEigBenchmark
  
     Timer timer;
 
-    SchurCtrl<double> schurCtrl;
+    SchurCtrl<Real> schurCtrl;
     schurCtrl.time = true;
 
     // Compute eigenvectors with Elemental
@@ -115,7 +130,7 @@ void SequentialEigBenchmark
     Output("Transforming to get eigenvectors...");
     PushIndent();
     timer.Start();
-    Trmm( RIGHT, UPPER, NORMAL, NON_UNIT, Complex<double>(1), X, V );
+    Trmm( RIGHT, UPPER, NORMAL, NON_UNIT, Complex<Real>(1), X, V );
     Output("Time = ",timer.Stop()," seconds");
     PopIndent();
     Output("Total Time = ",timer.Total()," seconds");
@@ -124,7 +139,7 @@ void SequentialEigBenchmark
         Print( w, "eigenvalues:" );
         Print( V, "eigenvectors:" );
     }
-    if( testCorrectness )
+    if( correctness )
         TestCorrectness( print, AOrig, w, V );
     PopIndent();
     
@@ -178,7 +193,7 @@ void SequentialEigBenchmark
         Print( w, "eigenvalues:" );
         Print( V, "eigenvectors:" );
     }
-    if( testCorrectness )
+    if( correctness )
         TestCorrectness( print, AOrig, w, V );
     PopIndent();
 
@@ -199,36 +214,35 @@ void SequentialEigBenchmark
         Print( w, "eigenvalues:" );
         Print( V, "eigenvectors:" );
     }
-    if( testCorrectness )
+    if( correctness )
         TestCorrectness( print, AOrig, w, V );
     PopIndent();
 }
 
+template<typename Real>
 void EigBenchmark
-( bool testCorrectness,
-  bool print,
+( const Grid& g,
   Int m,
-  Int testMatrix,
+  bool correctness,
+  bool print,
+  Int whichMatrix,
   bool distAED,
-  Int blockHeight,
-  const Grid& g )
+  Int blockHeight )
 {
-    const int gridRank = g.Rank();
-
+    OutputFromRoot( g.Comm(), "Testing with ", TypeName<Real>() );
     // TODO: Convert to distributed analogue
-    DistMatrix<Complex<double>> A(m,m,g), AOrig(m,m,g);
-    DistMatrix<Complex<double>> w(m,1,g), V(m,m,g), X(g);
+    DistMatrix<Complex<Real>> A(m,m,g), AOrig(m,m,g);
+    DistMatrix<Complex<Real>> w(m,1,g), V(m,m,g), X(g);
 
-    //double foxLiOmega = -0.179;
-    double foxLiOmega = 16*M_PI;
+    const Real foxLiOmega = 16*M_PI;
     
     // Generate test matrix
-    switch( testMatrix )
+    switch( whichMatrix )
     {
     case 0: Gaussian( AOrig, m, m );       break;
     case 1: FoxLi( AOrig, m, foxLiOmega ); break;
     case 2: Grcar( AOrig, m );             break;
-    case 3: Jordan( AOrig, m, Complex<double>(7) ); break;
+    case 3: Jordan( AOrig, m, Complex<Real>(7) ); break;
     default: LogicError("Unknown test matrix");
     }
     if( print )
@@ -236,7 +250,7 @@ void EigBenchmark
 
     Timer timer;
  
-    SchurCtrl<double> schurCtrl;
+    SchurCtrl<Real> schurCtrl;
     schurCtrl.qrCtrl.distAED = distAED;
     schurCtrl.qrCtrl.blockHeight = blockHeight;
     schurCtrl.time = true;
@@ -267,7 +281,7 @@ void EigBenchmark
     OutputFromRoot(g.Comm(),"Transforming to get eigenvectors...");
     PushIndent();
     timer.Start();
-    Trmm( RIGHT, UPPER, NORMAL, NON_UNIT, Complex<double>(1), X, V );
+    Trmm( RIGHT, UPPER, NORMAL, NON_UNIT, Complex<Real>(1), X, V );
     OutputFromRoot(g.Comm(),"Time = ",timer.Stop()," seconds");
     PopIndent();
     OutputFromRoot(g.Comm(),"Total Time = ",timer.Total()," seconds");
@@ -276,7 +290,7 @@ void EigBenchmark
         Print( w, "eigenvalues:" );
         Print( V, "eigenvectors:" );
     }
-    if( testCorrectness )
+    if( correctness )
         TestCorrectness( print, AOrig, w, V );
     PopIndent();
 }
@@ -303,11 +317,12 @@ main( int argc, char* argv[] )
           ("--distAED",
            "Distributed Aggressive Early Deflation? (it can be buggy...)",
            false);
-        const bool testCorrectness = Input
-            ("--correctness","test correctness?",false);
+        const bool sequential = Input("--sequential","test sequential?",true);
+        const bool correctness =
+          Input("--correctness","test correctness?",true);
         const bool print = Input("--print","print matrices?",false);
-        const Int testMatrix =
-          Input("--testMatrix","(0=Gaussian,1=Fox-Li,2=Grcar,3=Jordan)",0);
+        const Int whichMatrix =
+          Input("--whichMatrix","(0=Gaussian,1=Fox-Li,2=Grcar,3=Jordan)",0);
         ProcessInput();
         PrintInputReport();
 
@@ -319,12 +334,18 @@ main( int argc, char* argv[] )
         const GridOrder order = ( colMajor ? COLUMN_MAJOR : ROW_MAJOR ); 
         const Grid grid( comm, gridHeight, order );
        
-        if( commRank == 0 )
-            SequentialEigBenchmark( testCorrectness, print, n, testMatrix );
+        if( sequential && commRank == 0 )
+        {
+            EigBenchmark<float>
+            ( n, correctness, print, whichMatrix );
+            EigBenchmark<double>
+            ( n, correctness, print, whichMatrix );
+        }
 
-        EigBenchmark
-        ( testCorrectness, print, n, testMatrix,
-          distAED, blockHeight, grid );
+        EigBenchmark<float>
+        ( grid, n, correctness, print, whichMatrix, distAED, blockHeight );
+        EigBenchmark<double>
+        ( grid, n, correctness, print, whichMatrix, distAED, blockHeight );
     }
     catch( exception& e ) { ReportException(e); }
 
