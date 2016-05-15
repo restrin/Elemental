@@ -12,6 +12,18 @@
 namespace El {
 namespace lll {
 
+// This struct is used as a 'global' variable
+// to avoid reallocating memory for the 'local'
+// variables inside.
+template<typename Z, typename F>
+struct SharedNorms
+{
+	Matrix<F> colNorms;
+	Matrix<Int> colExpo;
+	Matrix<F> bcol;
+	Matrix<Z> bzcol;
+};
+
 // Put the k'th column of B into the k'th column of QR and then rotate
 // said column with the first k-1 (scaled) Householder reflectors.
 
@@ -129,15 +141,15 @@ void HouseholderStep
 template<typename Z, typename F>
 Base<F> Norm2
 ( Matrix<Z>& B,
-  Matrix<F>& bcol,
+  SharedNorms<Z,F>& sharedNorms,
   Int k,
-  bool time  )
+  bool time )
 {
     if( time )
         normTimer.Start();
     auto col = B(ALL, IR(k));
-    Copy(col, bcol);
-    Base<F> norm = El::FrobeniusNorm(bcol);
+    Copy(col, sharedNorms.bcol);
+    Base<F> norm = El::FrobeniusNorm(sharedNorms.bcol);
     if( time )
         normTimer.Stop();
     return norm;
@@ -152,9 +164,8 @@ bool Step
   Matrix<F>& QR,
   Matrix<F>& t,
   Matrix<Base<F>>& d,
-  Matrix<F>& bcol,
-  Matrix<Base<F>>& colNorms,
   bool formU,
+  SharedNorms<Z,F> sharedNorms,
   const LLLCtrl<Base<F>>& ctrl )
 {
     DEBUG_ONLY(CSE cse("lll::Step"))
@@ -170,12 +181,12 @@ bool Step
 
     while( true ) 
     {
-        if( !ctrl.unsafeSizeReduct && !limits::IsFinite(colNorms.Get(k,0)) )
+        if( !ctrl.unsafeSizeReduct && !limits::IsFinite(sharedNorms.colNorms.Get(k,0)) )
             RuntimeError("Encountered an unbounded norm; increase precision");
-        if( !ctrl.unsafeSizeReduct && colNorms.Get(k,0) > Real(1)/eps )
+        if( !ctrl.unsafeSizeReduct && sharedNorms.colNorms.Get(k,0) > Real(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
-        if( colNorms.Get(k,0) <= ctrl.zeroTol )
+        if( sharedNorms.colNorms.Get(k,0) <= ctrl.zeroTol )
         {
             for( Int i=0; i<m; ++i )
                 B(i,k) = 0;
@@ -308,7 +319,7 @@ bool Step
 
         colUpdated = false;
 
-        Real newNorm = lll::Norm2<Z,F>(B, bcol, k, ctrl.time);
+        Real newNorm = lll::Norm2<Z,F>(B, sharedNorms, k, ctrl.time);
         auto rCol  = QR( ALL, IR(k) );
         if( ctrl.time )
             normTimer.Start();
@@ -330,16 +341,16 @@ bool Step
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
         
-        if( newNorm > ctrl.reorthogTol*colNorms.Get(k,0) )
+        if( newNorm > ctrl.reorthogTol*sharedNorms.colNorms.Get(k,0) )
         {
             break;
         }
         else if( ctrl.progress )
             Output
             ("  Reorthogonalizing with k=",k,
-             " since oldNorm=",colNorms.Get(k,0)," and newNorm=",newNorm);
+             " since oldNorm=",sharedNorms.colNorms.Get(k,0)," and newNorm=",newNorm);
 
-        colNorms.Set(k,0, newNorm);
+        sharedNorms.colNorms.Set(k,0, newNorm);
     }
     lll::HouseholderStep( k, QR, t, d, ctrl.time );
     if( ctrl.time )
@@ -375,26 +386,24 @@ LLLInfo<Base<F>> LeftAlg
     const Int n = B.Width();
     const Int minDim = Min(m,n);
 
-    // Keep this vector around for norm computation purposes
+    // Keep this struct around for norm computation purposes
     // Avoid repeatedly reallocating memory
-    Matrix<Real> bcol;
-    Zeros(bcol, m, 1);
+	SharedNorms<Z,F> sharedNorms;
+    Zeros( sharedNorms.bcol, m, 1);
+//	Zeros( sharedNorms.bzcol, m, 1);
+    Zeros( sharedNorms.colNorms, n, 1 );
+//	Zeros( sharedNorms.colExpo, n, 1 );
 
-    Matrix<Real> colNorms;
-    Zeros( colNorms, n, 1 );
-
+	if( ctrl.time )
+        normTimer.Start();
     for (Int i=0; i<n; i++)
     {
         auto col = B( ALL, IR(i) );
-        Copy(col, bcol);
-        if( ctrl.time )
-            normTimer.Start();
-        colNorms.Set( i, 0, El::Nrm2(bcol) );
-        if( ctrl.time )
-            normTimer.Stop();
+        Copy(col, sharedNorms.bcol);
+        sharedNorms.colNorms(i, 0) = El::Nrm2(sharedNorms.bcol);
     }
-
-	Print(colNorms, "norms");
+    if( ctrl.time )
+        normTimer.Stop();
 	
     Int numSwaps=0;
     Int nullity = 0;
@@ -438,9 +447,7 @@ LLLInfo<Base<F>> LeftAlg
                     ColSwap( U, 0, (n-1)-nullity );
 
                 // Swap the column norms
-                Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
-                colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
-                colNorms.Set( 0, 0, tmp );
+                RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
 
                 ++nullity;
                 ++numSwaps;
@@ -456,7 +463,7 @@ LLLInfo<Base<F>> LeftAlg
     Int k = ( ctrl.jumpstart ? Max(ctrl.startCol,1) : 1 );
     while( k < n-nullity )
     {
-        bool zeroVector = lll::Step( k, B, U, QR, t, d, bcol, colNorms, formU, ctrl );
+        bool zeroVector = lll::Step( k, B, U, QR, t, d, formU, sharedNorms, ctrl );
         if( zeroVector )
         {
             ColSwap( B, k, (n-1)-nullity );
@@ -499,11 +506,7 @@ LLLInfo<Base<F>> LeftAlg
             ColSwap( B, k-1, k );
             if( formU )
                 ColSwap( U, k-1, k );
-                
-            // Swap the column norms
-            Base<F> tmp = colNorms.Get(k, 0);
-            colNorms.Set( k, 0, colNorms.Get(k-1, 0) );
-            colNorms.Set( k-1, 0, tmp );
+			RowSwap( sharedNorms.colNorms, k-1, k );
 
             if( k == 1 )
             {
@@ -524,11 +527,7 @@ LLLInfo<Base<F>> LeftAlg
                         ColSwap( B, 0, (n-1)-nullity );
                         if( formU )
                             ColSwap( U, 0, (n-1)-nullity );
-
-                        // Swap the column norms
-                        Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
-                        colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
-                        colNorms.Set( 0, 0, tmp );
+						RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
                             
                         ++nullity;
                         ++numSwaps;
@@ -602,19 +601,17 @@ LLLInfo<Base<F>> LeftDeepAlg
     const Int n = B.Width();
     const Int minDim = Min(m,n);
 
-    // Keep this vector around for norm computation purposes
+    // Keep this struct around for norm computation purposes
     // Avoid repeatedly reallocating memory
-    Matrix<Real> bcol;
-    Zeros(bcol, m, 1);
-
-    Matrix<Real> colNorms;
-    Zeros( colNorms, n, 1 );
+	SharedNorms<Z,F> sharedNorms;
+    Zeros( sharedNorms.bcol, m, 1);
+    Zeros( sharedNorms.colNorms, n, 1 );
 
     for (Int i=0; i<n; i++)
     {
         auto col = B( ALL, IR(i) );
-        Copy(col, bcol);
-        colNorms.Set( i, 0, El::FrobeniusNorm(bcol) );
+        Copy(col, sharedNorms.bcol);
+        sharedNorms.colNorms(i, 0) = El::FrobeniusNorm(sharedNorms.bcol);
     }
     
     // TODO: Move into a control structure
@@ -662,11 +659,7 @@ LLLInfo<Base<F>> LeftDeepAlg
                 ColSwap( B, 0, (n-1)-nullity );
                 if( formU )
                     ColSwap( U, 0, (n-1)-nullity );
-
-                // Swap the column norms
-                Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
-                colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
-                colNorms.Set( 0, 0, tmp );
+				RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
                     
                 ++nullity;
                 ++numSwaps;
@@ -682,12 +675,13 @@ LLLInfo<Base<F>> LeftDeepAlg
     Int k = ( ctrl.jumpstart ? Max(ctrl.startCol,1) : 1 );
     while( k < n-nullity )
     {
-        bool zeroVector = lll::Step( k, B, U, QR, t, d, bcol, colNorms, formU, ctrl );
+        bool zeroVector = lll::Step( k, B, U, QR, t, d, formU, sharedNorms, ctrl );
         if( zeroVector )
         {
             ColSwap( B, k, (n-1)-nullity );
             if( formU )
                 ColSwap( U, k, (n-1)-nullity );
+			RowSwap( sharedNorms.colNorms, k, (n-1)-nullity );
             ++nullity;
             ++numSwaps;
             firstSwap = Min(firstSwap,k);
@@ -725,9 +719,7 @@ LLLInfo<Base<F>> LeftDeepAlg
 
                 // Todo: Check that this is actually correct behaviour
                 // Swap the column norms
-                Base<F> tmp = colNorms.Get(k, 0);
-                colNorms.Set( k, 0, colNorms.Get(i, 0) );
-                colNorms.Set( i, 0, tmp );
+				RowSwap( sharedNorms.colNorms, i, k );
                 
                 if( i == 0 )
                 {
@@ -749,11 +741,7 @@ LLLInfo<Base<F>> LeftDeepAlg
                             ColSwap( B, 0, (n-1)-nullity );
                             if( formU )
                                 ColSwap( U, 0, (n-1)-nullity );
-
-                            // Swap the column norms
-                            Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
-                            colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
-                            colNorms.Set( 0, 0, tmp );                                
+							RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
 
                             ++nullity;
                             ++numSwaps;
@@ -848,19 +836,17 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
     const Int n = B.Width();
     const Int minDim = Min(m,n);
 
-    // Keep this vector around for norm computation purposes
+    // Keep this struct around for norm computation purposes
     // Avoid repeatedly reallocating memory
-    Matrix<Real> bcol;
-    Zeros(bcol, m, 1);
-
-    Matrix<Real> colNorms;
-    Zeros( colNorms, n, 1 );
+	SharedNorms<Z,F> sharedNorms;
+    Zeros( sharedNorms.bcol, m, 1);
+    Zeros( sharedNorms.colNorms, n, 1 );
 
     for (Int i=0; i<n; i++)
     {
         auto col = B( ALL, IR(i) );
-        Copy(col, bcol);
-        colNorms.Set( i, 0, El::FrobeniusNorm(bcol) );
+        Copy(col, sharedNorms.bcol);
+        sharedNorms.colNorms(i, 0) = El::FrobeniusNorm(sharedNorms.bcol);
     }    
 
     Int numSwaps = 0;
@@ -904,11 +890,7 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
                 ColSwap( B, 0, (n-1)-nullity );
                 if( formU )
                     ColSwap( U, 0, (n-1)-nullity );
-
-                // Swap the column norms
-                Base<F> tmp = colNorms.Get((n-1)-nullity, 0);
-                colNorms.Set( (n-1)-nullity, 0, colNorms.Get(0, 0) );
-                colNorms.Set( 0, 0, tmp );                    
+				RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
 
                 ++nullity;
                 ++numSwaps;
@@ -924,12 +906,13 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
     Int k = ( ctrl.jumpstart ? Max(ctrl.startCol,1) : 1 );
     while( k < n-nullity )
     {
-        bool zeroVector = lll::Step( k, B, U, QR, t, d, bcol, colNorms, formU, ctrl );
+        bool zeroVector = lll::Step( k, B, U, QR, t, d, formU, sharedNorms, ctrl );
         if( zeroVector )
         {
             ColSwap( B, k, (n-1)-nullity );
             if( formU )
                 ColSwap( U, k, (n-1)-nullity );
+			RowSwap( sharedNorms.colNorms, k, (n-1)-nullity );
             ++nullity;
             ++numSwaps;
             firstSwap = Min(firstSwap,k);
@@ -1006,10 +989,10 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
                     DeepColSwap( U, i, k );
 
                 // Update the column norms
-                colNorms.Set( k, 0, colNorms.Get(i, 0) );
+                sharedNorms.colNorms(k, 0) = sharedNorms.colNorms.Get(i, 0);
                 if( ctrl.time )
                     normTimer.Start();
-                colNorms.Set( i, 0, lll::Norm2(B, bcol, i, ctrl.time) );
+                sharedNorms.colNorms(i, 0) = lll::Norm2(B, sharedNorms, i, ctrl.time);
                 if( ctrl.time )
                     normTimer.Stop();                
                 
@@ -1033,7 +1016,8 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
                             ColSwap( B, 0, (n-1)-nullity );
                             if( formU )
                                 ColSwap( U, 0, (n-1)-nullity );
-                       
+							RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
+							
                             ++nullity;
                             ++numSwaps;
                             firstSwap = 0;
