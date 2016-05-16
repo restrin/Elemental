@@ -163,6 +163,9 @@ struct LLLCtrl
     bool jumpstart=false;
     Int startCol=0;
 
+    // Use column exponent trick?
+    bool colExpo = false;
+
     // In case of conversion from BigFloat to BigFloat with different precision
     LLLCtrl<Real>& operator=( const LLLCtrl<Real>& ctrl )
     {
@@ -196,6 +199,7 @@ struct LLLCtrl
         time = ctrl.time;
         jumpstart = ctrl.jumpstart;
         startCol = ctrl.startCol;
+        colExpo = ctrl.colExpo;
         return *this;
     }
 
@@ -225,6 +229,7 @@ struct LLLCtrl
         time = ctrl.time;
         jumpstart = ctrl.jumpstart;
         startCol = ctrl.startCol;
+        colExpo = ctrl.colExpo;
         return *this;
     }
 

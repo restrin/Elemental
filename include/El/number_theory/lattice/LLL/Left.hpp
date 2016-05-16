@@ -18,7 +18,7 @@ namespace lll {
 template<typename Z, typename F>
 struct SharedNorms
 {
-	Matrix<F> colNorms;
+	Matrix<Base<F>> colNorms;
 	Matrix<Int> colExpo;
 	Matrix<F> bcol;
 	Matrix<Z> bzcol;
@@ -34,7 +34,9 @@ void ExpandQR
         Matrix<F>& QR,
   const Matrix<F>& t,
   const Matrix<Base<F>>& d,
+  const SharedNorms<Z,F>& sharedNorms,
   Int numOrthog,
+  bool colExpo,
   bool time )
 {
     DEBUG_ONLY(CSE cse("lll::ExpandQR"))
@@ -44,8 +46,17 @@ void ExpandQR
     const Int minDim = Min(m,n);
 
     // Copy in the k'th column of B
-    for( Int i=0; i<m; ++i )
-        QR(i,k) = F(B(i,k));
+	if( colExpo )
+	{
+		Real scale = Pow(F(2), F(sharedNorms.colExpo(k,0)));
+		for( Int i=0; i<m; ++i )
+			QR(i,k) = F(B(i,k)) / scale;
+	}
+	else
+	{
+		for( Int i=0; i<m; ++i )
+			QR(i,k) = F(B(i,k));
+	}
 
     if( k == 0 )
         return;
@@ -143,13 +154,27 @@ Base<F> Norm2
 ( Matrix<Z>& B,
   SharedNorms<Z,F>& sharedNorms,
   Int k,
+  bool colExpo,
   bool time )
 {
     if( time )
         normTimer.Start();
-    auto col = B(ALL, IR(k));
-    Copy(col, sharedNorms.bcol);
-    Base<F> norm = El::FrobeniusNorm(sharedNorms.bcol);
+	if( colExpo )
+	{
+		auto col = B( ALL, IR(k) );
+		Base<Z> maxNorm = El::MaxNorm( col );
+		Copy( col, sharedNorms.bzcol );
+		Int expo = Int(Ceil(Log2(maxNorm)));
+		sharedNorms.bzcol *= Pow(Z(2),Z(-expo));
+		Copy(sharedNorms.bzcol, sharedNorms.bcol);
+		sharedNorms.colExpo(k, 0) = expo;
+	}
+	else
+	{
+		auto col = B(ALL, IR(k));
+		Copy(col, sharedNorms.bcol);
+	}
+	Base<F> norm = El::FrobeniusNorm(sharedNorms.bcol);
     if( time )
         normTimer.Stop();
     return norm;
@@ -165,7 +190,7 @@ bool Step
   Matrix<F>& t,
   Matrix<Base<F>>& d,
   bool formU,
-  SharedNorms<Z,F> sharedNorms,
+  SharedNorms<Z,F>& sharedNorms,
   const LLLCtrl<Base<F>>& ctrl )
 {
     DEBUG_ONLY(CSE cse("lll::Step"))
@@ -179,14 +204,15 @@ bool Step
 
     bool colUpdated = false;
 
-    while( true ) 
+    while( true )
     {
-        if( !ctrl.unsafeSizeReduct && !limits::IsFinite(sharedNorms.colNorms.Get(k,0)) )
+	    Real oldNorm = sharedNorms.colNorms.Get(k,0);
+        if( !ctrl.unsafeSizeReduct && !limits::IsFinite(oldNorm) )
             RuntimeError("Encountered an unbounded norm; increase precision");
-        if( !ctrl.unsafeSizeReduct && sharedNorms.colNorms.Get(k,0) > Real(1)/eps )
+        if( !ctrl.unsafeSizeReduct && oldNorm > Real(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
-        if( sharedNorms.colNorms.Get(k,0) <= ctrl.zeroTol )
+        if( oldNorm <= ctrl.zeroTol ) //  Adjust for scale
         {
             for( Int i=0; i<m; ++i )
                 B(i,k) = 0;
@@ -202,20 +228,30 @@ bool Step
             return true;
         }
 
-        lll::ExpandQR( k, B, QR, t, d, ctrl.numOrthog, ctrl.time );
-
+		//Print(sharedNorms.colExpo, "colExpo");
+		//Print(QR, "QR before expandqr");
+        lll::ExpandQR( k, B, QR, t, d, sharedNorms, ctrl.numOrthog, ctrl.colExpo, ctrl.time );
+		//Print(sharedNorms.colExpo, "colExpo");
+		//Print(QR, "QR after expandqr");
+		
         if( ctrl.time )
             roundTimer.Start();
 
         if( ctrl.variant == LLL_WEAK )
         {
             const Real rho_km1_km1 = RealPart(QR(k-1,k-1));
-            if( rho_km1_km1 > ctrl.zeroTol )
+            if( rho_km1_km1 > ctrl.zeroTol ) // TODO: Adjust for scale
             {
                 // TODO: Add while loop?
                 F chi = QR(k-1,k)/rho_km1_km1;
-                if( Abs(RealPart(chi)) > ctrl.eta ||
-                    Abs(ImagPart(chi)) > ctrl.eta )
+				Real scale = 1;
+				if( ctrl.colExpo )
+				{
+					Int expo = (sharedNorms.colExpo(k-1,0) - sharedNorms.colExpo(k,0));
+					scale = Pow(F(2), F(-expo));
+				}
+                if( Abs(RealPart(chi*scale)) > ctrl.eta ||
+                    Abs(ImagPart(chi*scale)) > ctrl.eta )
                 {
                     chi = Round(chi);
                     blas::Axpy
@@ -224,13 +260,13 @@ bool Step
                       &QR(0,k  ), 1 );
 
                     blas::Axpy
-                    ( m, Z(-chi),
+                    ( m, Z(-chi*scale),
                       &B(0,k-1), 1,
                       &B(0,k  ), 1 );
 
                     if( formU )
                         blas::Axpy
-                        ( n, Z(-chi),
+                        ( n, Z(-chi*scale),
                           &U(0,k-1), 1,
                           &U(0,k  ), 1 );
 
@@ -246,23 +282,33 @@ bool Step
             const Int maxSizeReductions = 128;
             for( Int reduce=0; reduce<maxSizeReductions; ++reduce )
             {
+			    //Print(QR, "QR pre reduction");
+			
                 Int numNonzero = 0;
                 for( Int i=k-1; i>=0; --i )
                 {
                     F chi = QR(i,k)/QR(i,i);
-                    if( Abs(RealPart(chi)) > ctrl.eta ||
-                        Abs(ImagPart(chi)) > ctrl.eta )
+					Real scale = 1;
+					if( ctrl.colExpo )
+					{
+						Int expo = (sharedNorms.colExpo(i,0) - sharedNorms.colExpo(k,0));
+						scale = Pow(F(2), F(-expo));
+					}
+					//cout << "ii = " << i << endl;
+					//cout << "chi = " << chi*scale << endl;
+                    if( Abs(RealPart(chi*scale)) > ctrl.eta ||
+                        Abs(ImagPart(chi*scale)) > ctrl.eta )
                     {
-                        chi = Round(chi);
-                        blas::Axpy
-                        ( i+1, -chi,
-                          &QR(0,i), 1,
-                          &QR(0,k), 1 );
+						chi = Round(chi*scale)/scale;
+						blas::Axpy
+						( i+1, -chi,
+						  &QR(0,i), 1,
+						  &QR(0,k), 1 );
                         ++numNonzero;
                     }
                     else
                         chi = 0;
-                    xBuf[i] = chi;
+                    xBuf[i] = scale*chi;
                 }
                 if( numNonzero == 0 )
                     break;
@@ -319,17 +365,46 @@ bool Step
 
         colUpdated = false;
 
-        Real newNorm = lll::Norm2<Z,F>(B, sharedNorms, k, ctrl.time);
-        auto rCol  = QR( ALL, IR(k) );
+//		//Print(QR, "QR after size reduction");
+		
+		Int oldExpo = 0;
+		if( ctrl.colExpo )
+			oldExpo = sharedNorms.colExpo(k,0);
+		
+        Real newNorm = lll::Norm2<Z,F>(B, sharedNorms, k, ctrl.colExpo, ctrl.time);
+
+		F scale = 1;
+		if( ctrl.colExpo )
+		{
+//			cout << "k = " << k << endl;
+//			Print( sharedNorms.colExpo, "colExpo" );
+//			cout << "oldExpo = " << oldExpo << endl;
+//			cout << "newNorm = " << newNorm << endl;
+//			auto bcol = B(ALL,IR(k));
+//			cout << "||b_k|| = " << El::FrobeniusNorm(bcol) << endl;
+			
+			scale = Pow(F(2), F(-sharedNorms.colExpo(k,0) + oldExpo));
+		}
+
+//		//cout << "newNorm = " << newNorm << endl;
+
+		auto rCol  = QR( ALL, IR(k) );
+		rCol *= scale;
         if( ctrl.time )
             normTimer.Start();
         Real rNorm = El::FrobeniusNorm(rCol);
         if( ctrl.time )
             normTimer.Stop();
 
-        if (Abs(newNorm - rNorm)/newNorm >= thresh)
+//		cout << "||r_k|| = " << rNorm << endl;
+//		cout << "||r_k||scaled = " << rNorm*Pow(F(2), F(sharedNorms.colExpo(k,0))) << endl;
+//		cout << endl;
+			
+		Real error = Abs(newNorm - rNorm)/newNorm;
+
+        if( error >= thresh )
         {
-            if ( ctrl.progress )
+            if( ctrl.progress )
                 Output("Repeating size reduction with k=", k, 
                        " because ||bk||=", newNorm, ", ||rk||=", rNorm);
             continue;
@@ -340,8 +415,7 @@ bool Step
         if( !ctrl.unsafeSizeReduct && newNorm > Real(1)/eps )
             RuntimeError("Encountered norm greater than 1/eps, where eps=",eps);
 
-        
-        if( newNorm > ctrl.reorthogTol*sharedNorms.colNorms.Get(k,0) )
+        if( newNorm > ctrl.reorthogTol*oldNorm )
         {
             break;
         }
@@ -388,20 +462,37 @@ LLLInfo<Base<F>> LeftAlg
 
     // Keep this struct around for norm computation purposes
     // Avoid repeatedly reallocating memory
-	SharedNorms<Z,F> sharedNorms;
+	SharedNorms<Z, F> sharedNorms;
     Zeros( sharedNorms.bcol, m, 1);
-//	Zeros( sharedNorms.bzcol, m, 1);
+	Zeros( sharedNorms.bzcol, m, 1);
     Zeros( sharedNorms.colNorms, n, 1 );
-//	Zeros( sharedNorms.colExpo, n, 1 );
-
+	Zeros( sharedNorms.colExpo, n, 1 );
+	
 	if( ctrl.time )
         normTimer.Start();
-    for (Int i=0; i<n; i++)
-    {
-        auto col = B( ALL, IR(i) );
-        Copy(col, sharedNorms.bcol);
-        sharedNorms.colNorms(i, 0) = El::Nrm2(sharedNorms.bcol);
-    }
+	if( ctrl.colExpo )
+	{
+		for (Int i=0; i<n; i++)
+		{
+			auto col = B( ALL, IR(i) );
+			Base<Z> maxNorm = El::MaxNorm( col );
+			Copy( col, sharedNorms.bzcol );
+			Int expo = Int(Ceil(Log2(maxNorm)));
+			sharedNorms.bzcol *= Pow(Z(2),Z(-expo));
+			Copy(sharedNorms.bzcol, sharedNorms.bcol);
+			sharedNorms.colNorms(i, 0) = El::Nrm2(sharedNorms.bcol);
+			sharedNorms.colExpo(i, 0) = expo;
+		}
+	}
+	else
+	{
+		for (Int i=0; i<n; i++)
+		{
+			auto col = B( ALL, IR(i) );
+			Copy(col, sharedNorms.bcol);
+			sharedNorms.colNorms(i, 0) = El::Nrm2(sharedNorms.bcol);
+		}
+	}
     if( ctrl.time )
         normTimer.Stop();
 	
@@ -431,9 +522,12 @@ LLLInfo<Base<F>> LeftAlg
         while( true )
         {
             // Perform the first step of Householder reduction
-            lll::ExpandQR( 0, B, QR, t, d, ctrl.numOrthog, ctrl.time );
+            lll::ExpandQR( 0, B, QR, t, d, sharedNorms, ctrl.numOrthog, ctrl.colExpo, ctrl.time );
             lll::HouseholderStep( 0, QR, t, d, ctrl.time );
-            if( RealPart(QR(0,0)) <= ctrl.zeroTol )
+			Real scale = 1;
+			if( ctrl.colExpo )
+				scale = Pow(F(2), F(sharedNorms.colExpo(0,0)));
+            if( RealPart(QR(0,0)) <= ctrl.zeroTol/scale )
             {
                 auto b0 = B(ALL,IR(0));
                 auto QR0 = QR(ALL,IR(0));
@@ -448,6 +542,8 @@ LLLInfo<Base<F>> LeftAlg
 
                 // Swap the column norms
                 RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
+				if( ctrl.colExpo )
+					RowSwap( sharedNorms.colExpo, 0, (n-1)-nullity );
 
                 ++nullity;
                 ++numSwaps;
@@ -463,7 +559,11 @@ LLLInfo<Base<F>> LeftAlg
     Int k = ( ctrl.jumpstart ? Max(ctrl.startCol,1) : 1 );
     while( k < n-nullity )
     {
+		//Print(sharedNorms.colExpo, "colExpo");
+		//Print(QR, "QR before step");
         bool zeroVector = lll::Step( k, B, U, QR, t, d, formU, sharedNorms, ctrl );
+		//Print(sharedNorms.colExpo, "colExpo");		
+		//Print(QR, "QR after step");
         if( zeroVector )
         {
             ColSwap( B, k, (n-1)-nullity );
@@ -480,12 +580,32 @@ LLLInfo<Base<F>> LeftAlg
         const Real rho_k_k = ( k >= m ? Real(0) : RealPart(QR(k,k)) ); 
         
         const Real leftTerm = Sqrt(ctrl.delta)*rho_km1_km1;
-        const Real rightTerm = lapack::SafeNorm(rho_k_k,rho_km1_k);
+        Real rightTerm = lapack::SafeNorm(rho_k_k,rho_km1_k);
+		if( ctrl.colExpo )
+		{
+//			Print(sharedNorms.colExpo, "colExpo swap");
+//			cout << "rightTerm = " << rightTerm << endl;
+//			cout << "rightTermPrescale = " << F(rightTerm*Pow(F(2), F(sharedNorms.colExpo(k,0)))) << endl;
+			Int expo = (sharedNorms.colExpo(k,0) - sharedNorms.colExpo(k-1,0));
+			rightTerm *= Pow(F(2), F(expo));
+//			auto bcol1 = B(ALL, IR(k-1));
+//			cout << "||b_k-1|| = " << F(El::FrobeniusNorm(bcol1)) << endl;
+//			auto bcol2 = B(ALL, IR(k));
+//			cout << "||b_k|| = " << F(El::FrobeniusNorm(bcol2)) << endl;
+//			cout << "leftTerm  = " << F(leftTerm*Pow(F(2), F(sharedNorms.colExpo(k-1,0)))) << endl;
+//			cout << "rightTerm = " << F(rightTerm*Pow(F(2), F(sharedNorms.colExpo(k-1,0)))) << endl;
+//			cout << endl;
+//			cout << endl;
+			//cout << "rho_kk    = " << rho_k_k << endl;
+		}
         // NOTE: It is possible that, if delta < 1/2, that rho_k_k could be
         //       zero and the usual Lovasz condition would be satisifed.
         //       For this reason, we explicitly force a pivot if R(k,k) is
         //       deemed to be numerically zero.
-        if( leftTerm <= rightTerm && rho_k_k > ctrl.zeroTol )
+		Real scale = 1;
+		if( ctrl.colExpo )
+			scale = Pow(F(2), F(sharedNorms.colExpo(k,0)));
+        if( leftTerm <= rightTerm && rho_k_k > ctrl.zeroTol/scale )
         {
             ++k;
         }
@@ -495,7 +615,7 @@ LLLInfo<Base<F>> LeftAlg
             firstSwap = Min(firstSwap,k-1);
             if( ctrl.progress )
             {
-                if( rho_k_k <= ctrl.zeroTol )
+                if( !ctrl.colExpo && rho_k_k <= ctrl.zeroTol/scale )
                     Output("Dropping from k=",k," because R(k,k) ~= 0");
                 else
                     Output
@@ -507,15 +627,17 @@ LLLInfo<Base<F>> LeftAlg
             if( formU )
                 ColSwap( U, k-1, k );
 			RowSwap( sharedNorms.colNorms, k-1, k );
+			if( ctrl.colExpo )
+				RowSwap( sharedNorms.colExpo, k-1, k );
 
             if( k == 1 )
             {
                 while( true )
                 {
                     // We must reinitialize since we keep k=1
-                    lll::ExpandQR( 0, B, QR, t, d, ctrl.numOrthog, ctrl.time );
+                    lll::ExpandQR( 0, B, QR, t, d, sharedNorms, ctrl.numOrthog, ctrl.colExpo, ctrl.time );
                     lll::HouseholderStep( 0, QR, t, d, ctrl.time );
-                    if( RealPart(QR(0,0)) <= ctrl.zeroTol )
+                    if( RealPart(QR(0,0)) <= ctrl.zeroTol/scale )
                     {
                         auto b0 = B(ALL,IR(0));
                         auto QR0 = QR(ALL,IR(0));
@@ -528,6 +650,8 @@ LLLInfo<Base<F>> LeftAlg
                         if( formU )
                             ColSwap( U, 0, (n-1)-nullity );
 						RowSwap( sharedNorms.colNorms, 0, (n-1)-nullity );
+						if( ctrl.colExpo )
+							RowSwap( sharedNorms.colExpo, 0, (n-1)-nullity );
                             
                         ++nullity;
                         ++numSwaps;
@@ -645,7 +769,7 @@ LLLInfo<Base<F>> LeftDeepAlg
         while( true )
         {   
             // Perform the first step of Householder reduction
-            lll::ExpandQR( 0, B, QR, t, d, ctrl.numOrthog, ctrl.time );
+            lll::ExpandQR( 0, B, QR, t, d, sharedNorms, ctrl.numOrthog, ctrl.colExpo, ctrl.time );
             lll::HouseholderStep( 0, QR, t, d, ctrl.time );
             if( RealPart(QR(0,0)) <= ctrl.zeroTol )
             {
@@ -727,7 +851,7 @@ LLLInfo<Base<F>> LeftDeepAlg
                     {
                         // We must reinitialize since we keep k=1
                         lll::ExpandQR
-                        ( 0, B, QR, t, d, ctrl.numOrthog, ctrl.time );
+                        ( 0, B, QR, t, d, sharedNorms, ctrl.numOrthog, ctrl.colExpo, ctrl.time );
                         lll::HouseholderStep( 0, QR, t, d, ctrl.time );
                         if( RealPart(QR(0,0)) <= ctrl.zeroTol )
                         {
@@ -876,7 +1000,7 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
         while( true )
         {
             // Perform the first step of Householder reduction
-            lll::ExpandQR( 0, B, QR, t, d, ctrl.numOrthog, ctrl.time );
+            lll::ExpandQR( 0, B, QR, t, d, sharedNorms, ctrl.numOrthog, ctrl.colExpo, ctrl.time );
             lll::HouseholderStep( 0, QR, t, d, ctrl.time );
             if( RealPart(QR(0,0)) <= ctrl.zeroTol )
             {
@@ -992,7 +1116,7 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
                 sharedNorms.colNorms(k, 0) = sharedNorms.colNorms.Get(i, 0);
                 if( ctrl.time )
                     normTimer.Start();
-                sharedNorms.colNorms(i, 0) = lll::Norm2(B, sharedNorms, i, ctrl.time);
+                sharedNorms.colNorms(i, 0) = lll::Norm2(B, sharedNorms, i, ctrl.colExpo, ctrl.time);
                 if( ctrl.time )
                     normTimer.Stop();                
                 
@@ -1002,7 +1126,7 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
                     {
                         // We must reinitialize since we keep k=1
                         lll::ExpandQR
-                        ( 0, B, QR, t, d, ctrl.numOrthog, ctrl.time );
+                        ( 0, B, QR, t, d, sharedNorms, ctrl.numOrthog, ctrl.colExpo, ctrl.time );
                         lll::HouseholderStep( 0, QR, t, d, ctrl.time );
                         if( RealPart(QR(0,0)) <= ctrl.zeroTol )
                         {
