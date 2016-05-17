@@ -731,6 +731,9 @@ struct PDCOCtrl
     // mu is reduced if center < bigcenter
     Real bigcenter = Real(1e3);
 
+    // Temporary regularization level (for sparse LDL)
+    Real deltaTmp = Pow(limits::Epsilon<Real>(),Real(0.25));
+
     // Use backtracking linesearch?
     bool backtrack = true;
 

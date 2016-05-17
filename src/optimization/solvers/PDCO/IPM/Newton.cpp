@@ -408,7 +408,7 @@ void Newton
     Int n = A.Width();
 
     const Real eps = limits::Epsilon<Real>();
-    const Real deltaTmp = Pow(eps, Real(0.25));
+    const Real deltaTmp = ctrl.deltaTmp;
 
     // Index sets to represent IR(ALL) and IR(0)
     vector<Int> ALL_m = IndexRange(m);
@@ -540,7 +540,7 @@ void Newton
     // Temporary regularization
     Matrix<Real> regTmp;
     Zeros(regTmp, n+m, 1);
-//    const Real twoNormEstA = TwoNormEstimate( A, 6 );
+    const Real twoNormEstA = TwoNormEstimate( A, 6 );
 
     // Main loop
     for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
@@ -565,20 +565,20 @@ void Newton
                 // [A -D2^2] [-dy]   [r2]
                 // By solving the KKT system
 
+                // Add temporary regularization for sparse LDL
+                Real MaxNormH = MaxNorm(Hess);
+                Ones(regTmp, n+m, 1);
+                auto regTmp1 = regTmp(IR(0,n), IR(0));
+                regTmp1 *= (twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
+                auto regTmp2 = regTmp(IR(n,n+m), IR(0));
+                regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
+
                 // Form the KKT system
                 FormKKT( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
                     ixSetLow, ixSetUpp, ixSetFix, K );
                 // Form the right-hand side
                 FormKKTRHS( x, r1, r2, cL, cU, bl, bu, ixSetLow, ixSetUpp, w );
                 SparseMatrix<Real> KOrig(K);
-
-                // Add temporary regularization for sparse LDL
-//               Real MaxNormH = MaxNorm(Hess);
-//               Ones(regTmp, n+m, 1);
-//               auto regTmp1 = regTmp(IR(0,n), IR(0));
-//               regTmp1 *= (twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
-//               auto regTmp2 = regTmp(IR(n,n+m), IR(0));
-//               regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
 
                 UpdateDiagonal(K, Real(1), regTmp);
 
@@ -630,10 +630,19 @@ void Newton
                 // [(x-bl)(bu-x) 0]^(1/2)
                 // [ 0           I]
 
+                // Form (x-bl) and (bu-x)
                 Copy(x, xmbl);
                 xmbl -= bl;
                 Copy(bu, bumx);
                 bumx -= x;
+
+                // Add temporary regularization
+                Real MaxNormH = MaxNorm(Hess);
+                Ones(regTmp, n+m, 1);
+                auto regTmp1 = regTmp(IR(0,n), IR(0));
+                regTmp1 *= (twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
+                auto regTmp2 = regTmp(IR(n,n+m), IR(0));
+                regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
 
                 // Form the KKT system
                 FormKKT25( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
@@ -641,11 +650,7 @@ void Newton
 
                 // NOTE: FormKKT25 takes square root of xmbl, bumx
                 // They are now to be treated as the square roots
-
-                // Only need square root
-                // TODO: Deal with garbage entries?
-//                EntrywiseMap(xmbl, sqrtFunc);
-//                EntrywiseMap(bumx, sqrtFunc);
+                // TODO: Deal with garbage entries due to infs?
 
                 FormKKTRHS25( x, r1, r2, cL, cU, bl, bu, 
                     xmbl, bumx, ixSetLow, ixSetUpp, w );
