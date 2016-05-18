@@ -54,6 +54,7 @@ void ResidualPD
     UpdateSubmatrix(r2, ixSetLow, ZERO, Real(-1), z1); // r2 = grad + D1^2*x - A'*y - z1
     UpdateSubmatrix(r2, ixSetUpp, ZERO, Real(1), z2); // r2 = grad + D1^2*x - A'*y - z1 + z2
 
+    // This is probably unnecessary
     Zeros(tmp1, ixSetFix.size(), 1);
     SetSubmatrix(r2, ixSetFix, ZERO, tmp1); // r2(fix) = 0
 }

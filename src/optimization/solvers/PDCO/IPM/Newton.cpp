@@ -31,8 +31,8 @@ void Newton
 ( const PDCOObj<Real>& phi,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
-  const Matrix<Real>& bl,
-  const Matrix<Real>& bu,
+        Matrix<Real>  bl,
+        Matrix<Real>  bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
         Matrix<Real>& x,
@@ -118,6 +118,8 @@ void Newton
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
 
     Copy(b, bCopy);
+    Copy(A, ACopy); // ACopy = A
+    // Zero columns corresponding to fixed variables
     if( ixSetFix.size() > 0 )
     {
         // Fix b to allow for fixed variables
@@ -125,6 +127,9 @@ void Newton
         GetSubmatrix(bl, ixSetFix, ZERO, xFix); // xFix = bl(ixSetFix)
         GetSubmatrix(A, ALL_m, ixSetFix, Asub); // Asub = A(:,ixSetFix)
         Gemv(NORMAL, Real(-1), Asub, xFix, Real(1), bCopy); // b = b - A*xFix
+
+        Zeros(zeros, ixSetFix.size(), n);
+        SetSubmatrix(ACopy, ALL_m, ixSetFix, zeros);
     }
 
     // Scale input data?
@@ -160,13 +165,6 @@ void Newton
         Output("  center = ", center);
     }
 
-    Copy(A, ACopy); // ACopy = A
-    // Zero columns corresponding to fixed variables
-    if( ixSetFix.size() > 0 )
-    {
-        Zeros(zeros, ixSetFix.size(), n);
-        SetSubmatrix(ACopy, ALL_m, ixSetFix, zeros);
-    }
     // Get transpose
     Transpose(ACopy, At);
 
@@ -330,7 +328,7 @@ void Newton
         phi.hess(x, Hess);
 
         // Recompute residuals
-        ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+        ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
           bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
 
         ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
@@ -389,8 +387,8 @@ void Newton
 ( const PDCOObj<Real>& phi,
   const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
-  const Matrix<Real>& bl,
-  const Matrix<Real>& bu,
+        Matrix<Real>  bl,
+        Matrix<Real>  bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
         Matrix<Real>& x,
@@ -432,6 +430,8 @@ void Newton
     Matrix<Real> D1sq;     // D1sqp = D1^2
     SparseMatrix<Real> ACopy;    // Used for KKT system
     SparseMatrix<Real> H;        // Used for KKT system
+    Matrix<Real> dRow;     // Row scaling when equilibrating
+    Matrix<Real> dCol;     // Column scaling when equilibrating
 
     // Various residuals and convergence measures
     Matrix<Real> w;        // Residual for KKT system
@@ -481,13 +481,27 @@ void Newton
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
 
     Copy(b, bCopy);
+    ACopy = SparseMatrix<Real>(A); // ACopy = A
     if( ixSetFix.size() > 0 )
     {
         // Fix b to allow for fixed variables
-        SparseMatrix<Real> Asub;
-        GetSubmatrix(bl, ixSetFix, IR(0), xFix); // xFix = bl(ixSetFix)
-        GetSubmatrix(A, ALL, ixSetFix, Asub); // Asub = A(:,ixSetFix)
+        auto xFix = x( ixSetFix, IR(0) );// xFix = bl(ixSetFix)
+        auto Asub = ACopy( ALL, ixSetFix );
         Multiply(NORMAL, Real(-1), Asub, xFix, Real(1), bCopy); // b = b - A*xFix
+
+        // Zero out columns of A for fixed variables
+        Zeros(Asub, m, ixSetFix.size());
+    }
+
+    // Equilibrate the A matrix
+    if( ctrl.outerEquil )
+    {
+        GeomEquil( ACopy, dRow, dCol, ctrl.print );
+        DiagonalSolve( LEFT, NORMAL, dRow, bCopy );
+
+        // Fix the bounds
+        DiagonalSolve( LEFT, NORMAL, dCol, bl );
+        DiagonalSolve( LEFT, NORMAL, dCol, bu );
     }
 
     // Scale input data?
@@ -499,8 +513,13 @@ void Newton
     // Compute residuals
     phi.grad(x, grad); // get gradient
     phi.sparseHess(x, Hess); // get Hessian
+    if( ctrl.outerEquil )
+    {
+        DiagonalSolve( LEFT, NORMAL, dCol, grad );
+        SymmetricDiagonalSolve( dCol, Hess );
+    }
 
-    ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+    ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
       bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
 
     ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
@@ -511,6 +530,10 @@ void Newton
 
     if( ctrl.print )
     {
+        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter");
+        Output("Init : \t", "x\t", Pfeas, "\t", Dfeas, "\t", 
+               Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
+/*
         Output("Initial feasibility: ");
         Output("  Pfeas  = ", Pfeas);
         Output("  Dfeas  = ", Dfeas);
@@ -518,15 +541,7 @@ void Newton
         Output("  ||cL||oo = ", InfinityNorm(cL));
         Output("  ||cU||oo = ", InfinityNorm(cU));
         Output("  center = ", center);
-    }
-
-    ACopy = SparseMatrix<Real>(A); // ACopy = A
-    // Zero columns corresponding to fixed variables
-    if( ixSetFix.size() > 0 )
-    {
-        Zeros(zeros, ixSetFix.size(), n);
-        auto Asub = ACopy(ALL, ixSetFix);
-        Zeros(Asub, m, ixSetFix.size());
+*/
     }
 
     // Initialize static ortion of the KKT system
@@ -547,8 +562,10 @@ void Newton
     {
         if( ctrl.print )
         {
+/*
             Output("======== Iteration: ", numIts, " ========");
             Output("  mu = ", mu);
+*/
         }
         switch( ctrl.method )
         {
@@ -737,12 +754,16 @@ void Newton
 
         if( ctrl.print )
         {
+	    Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
+	       Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
+/*
             Output("  Pfeas    = ", Pfeas);
             Output("  Dfeas    = ", Dfeas);
             Output("  Cinf0    = ", Cinf0);
             Output("  ||cL||oo = ", InfinityNorm(cL));
             Output("  ||cU||oo = ", InfinityNorm(cU));
             Output("  center   = ", center);
+*/
         }
 
         if( ctrl.adaptiveMu )
@@ -776,9 +797,14 @@ void Newton
         // Update gradient and Hessian
         phi.grad(x, grad);
         phi.sparseHess(x, Hess);
+        if( ctrl.outerEquil )
+        {
+            DiagonalSolve( LEFT, NORMAL, dCol, grad );
+            SymmetricDiagonalSolve( dCol, Hess );
+        }
 
         // Recompute residuals
-        ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+        ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
           bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
 
         ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
@@ -813,6 +839,14 @@ void Newton
     Axpy(Real(-1), tmp, zFix);
     UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
 
+    // Undo scaling due to equilibration
+    if( ctrl.outerEquil )
+    {
+        DiagonalSolve( LEFT, NORMAL, dCol, x );
+        DiagonalSolve( LEFT, NORMAL, dRow, y );
+        DiagonalScale( LEFT, NORMAL, dCol, z );
+    }
+
     Output("========== Completed Newton's Method ==========");
 
     if( converged )
@@ -837,8 +871,8 @@ void Newton
   ( const pdco::PDCOObj<Real>& phi, \
     const Matrix<Real>& A, \
     const Matrix<Real>& b, \
-    const Matrix<Real>& bl, \
-    const Matrix<Real>& bu, \
+          Matrix<Real>  bl, \
+          Matrix<Real>  bu, \
     const Matrix<Real>& D1, \
     const Matrix<Real>& D2, \
           Matrix<Real>& x, \
@@ -850,8 +884,8 @@ void Newton
   ( const pdco::PDCOObj<Real>& phi, \
     const SparseMatrix<Real>& A, \
     const Matrix<Real>& b, \
-    const Matrix<Real>& bl, \
-    const Matrix<Real>& bu, \
+          Matrix<Real>  bl, \
+          Matrix<Real>  bu, \
     const Matrix<Real>& D1, \
     const Matrix<Real>& D2, \
           Matrix<Real>& x, \

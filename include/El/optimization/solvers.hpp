@@ -743,6 +743,9 @@ struct PDCOCtrl
     // The controls for quasi-(semi)definite solves
     RegSolveCtrl<Real> solveCtrl;
 
+    // Perform geometric-mean equilibration?
+    bool outerEquil = true;
+
 };
 
 namespace pdco
