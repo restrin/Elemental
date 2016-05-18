@@ -64,6 +64,7 @@ void Newton
 
     // Matrices used by KKT system
     Matrix<Real> bCopy;    // Modified b due to fixed variables
+    Matrix<Real> D1sq;     // D1sq = D1^2
     Matrix<Real> D2sq;     // D2sq = D2^2
     Matrix<Real> At;       // A^T (after fixed variables removed)
     Matrix<Real> AtCopy;   // Copy of A^T
@@ -107,6 +108,9 @@ void Newton
     // Initialize some useful variables
     Copy(D2, D2sq);
     DiagonalScale(LEFT, NORMAL, D2, D2sq);
+    Copy(D1, D1sq);
+    DiagonalScale(LEFT, NORMAL, D1, D1sq);
+
     if( ctrl.method == Method::LDLy )
         Zeros(S, m, m);
     else if( ctrl.method == Method::LDLy )
@@ -146,7 +150,7 @@ void Newton
       diagHess = true;
 
     ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
-      bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
+      bCopy, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
 
     ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
 
@@ -156,6 +160,10 @@ void Newton
 
     if( ctrl.print )
     {
+        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter");
+        Output("Init : \t", "x\t", Pfeas, "\t", Dfeas, "\t", 
+               Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
+/*
         Output("Initial feasibility: ");
         Output("  Pfeas  = ", Pfeas);
         Output("  Dfeas  = ", Dfeas);
@@ -163,6 +171,7 @@ void Newton
         Output("  ||cL||oo = ", InfinityNorm(cL));
         Output("  ||cU||oo = ", InfinityNorm(cU));
         Output("  center = ", center);
+*/
     }
 
     // Get transpose
@@ -185,7 +194,7 @@ void Newton
                 // [A  D2^2] [dy]   [r2]
                 // using the Schur complement to compute dy first
 
-                FormHandW( Hess, D1, x, z1, z2, bl, bu,
+                FormHandW( Hess, D1sq, x, z1, z2, bl, bu,
                   ixSetLow, ixSetUpp, ixSetFix, r2, cL, cU, H, w, diagHess );
 
                 if( ixSetFix.size() > 0 )
@@ -267,7 +276,7 @@ void Newton
 
         // dx, dy, dz1, dz2 should be computed at this point
         // Return stepx, stepz
-        bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1, D2, 
+        bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1sq, D2sq, 
           x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
           dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
 
@@ -287,13 +296,18 @@ void Newton
 
         if( ctrl.print )
         {
+	    Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
+	       Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
+/*
             Output("  Pfeas    = ", Pfeas);
             Output("  Dfeas    = ", Dfeas);
             Output("  Cinf0    = ", Cinf0);
             Output("  ||cL||oo = ", InfinityNorm(cL));
             Output("  ||cU||oo = ", InfinityNorm(cU));
             Output("  center   = ", center);
+*/
         }
+
 
         if( ctrl.adaptiveMu )
         {
@@ -329,7 +343,7 @@ void Newton
 
         // Recompute residuals
         ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
-          bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
+          bCopy, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
 
         ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
 
@@ -520,7 +534,7 @@ void Newton
     }
 
     ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
-      bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
+      bCopy, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
 
     ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
 
@@ -734,7 +748,7 @@ void Newton
 
         // dx, dy, dz1, dz2 should be computed at this point
         // Return stepx, stepz
-        bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1, D2, 
+        bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1sq, D2sq, 
           x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
           dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
 
@@ -805,7 +819,7 @@ void Newton
 
         // Recompute residuals
         ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
-          bCopy, D1, D2, grad, x, y, z1, z2, r1, r2);
+          bCopy, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
 
         ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
 

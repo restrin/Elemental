@@ -21,8 +21,8 @@ void ResidualPD
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
   const Matrix<Real>& b,
-  const Matrix<Real>& D1,
-  const Matrix<Real>& D2,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
   const Matrix<Real>& grad,
   const Matrix<Real>& x,
   const Matrix<Real>& y,
@@ -40,14 +40,12 @@ void ResidualPD
     // Compute r1 = b - A*x - D2^2*y
     Copy(b, r1);
     Gemv(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x
-    Hadamard(D2, y, tmp1);
-    DiagonalScale(LEFT, NORMAL, D2, tmp1); // tmp2 = D2^2*y
+    Hadamard(D2sq, y, tmp1); // tmp1 = D2^2 y
     r1 -= tmp1;
 
     // Compute r2 = grad + D1^2*x - A'*y - z1 + z2
     Copy(grad, r2);
-    Hadamard(D1, x, tmp1);
-    DiagonalScale(LEFT, NORMAL, D1, tmp1); // tmp2 = D1^2*x
+    Hadamard(D1sq, x, tmp1); // tmp1 = D1^2*x
     r2 += tmp1; // r2 = grad + D1^2*x
 
     Gemv(TRANSPOSE, Real(-1), A, y, Real(1), r2); // r2 = grad + D1^2*x - A'*y
@@ -67,8 +65,8 @@ void ResidualPD
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
   const Matrix<Real>& b,
-  const Matrix<Real>& D1,
-  const Matrix<Real>& D2,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
   const Matrix<Real>& grad,
   const Matrix<Real>& x,
   const Matrix<Real>& y,
@@ -86,15 +84,14 @@ void ResidualPD
     // Compute r1 = b - A*x - D2^2*y
     Copy(b, r1);
     Multiply(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x
-    Hadamard(D2, y, tmp1);
-    DiagonalScale(LEFT, NORMAL, D2, tmp1); // tmp2 = D2^2*y
+    Hadamard(D2sq, y, tmp1); // tmp1 = D2^2*y
     r1 -= tmp1;
 
     // Compute r2 = grad + D1^2*x - A'*y - z1 + z2
     Copy(grad, r2);
-    Hadamard(D1, x, tmp1);
-    DiagonalScale(LEFT, NORMAL, D1, tmp1); // tmp2 = D1^2*x
+    Hadamard(D1sq, x, tmp1); // tmp2 = D1^2*x
     r2 += tmp1; // r2 = grad + D1^2*x
+
     Multiply(TRANSPOSE, Real(-1), A, y, Real(1), r2); // r2 = grad + D1^2*x - A'*y
     UpdateSubmatrix(r2, ixSetLow, ZERO, Real(-1), z1); // r2 = grad + D1^2*x - A'*y - z1
     UpdateSubmatrix(r2, ixSetUpp, ZERO, Real(1), z2); // r2 = grad + D1^2*x - A'*y - z1 + z2
@@ -183,8 +180,8 @@ void ResidualC
     const vector<Int>& ixSetUpp, \
     const vector<Int>& ixSetFix, \
     const Matrix<Real>& b, \
-    const Matrix<Real>& D1, \
-    const Matrix<Real>& D2, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
     const Matrix<Real>& grad, \
     const Matrix<Real>& x, \
     const Matrix<Real>& y, \
@@ -198,8 +195,8 @@ void ResidualC
     const vector<Int>& ixSetUpp, \
     const vector<Int>& ixSetFix, \
     const Matrix<Real>& b, \
-    const Matrix<Real>& D1, \
-    const Matrix<Real>& D2, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
     const Matrix<Real>& grad, \
     const Matrix<Real>& x, \
     const Matrix<Real>& y, \

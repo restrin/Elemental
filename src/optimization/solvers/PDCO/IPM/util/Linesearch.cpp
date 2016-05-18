@@ -91,8 +91,8 @@ bool Linesearch
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
-  const Matrix<Real>& D1,
-  const Matrix<Real>& D2,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
         Matrix<Real>& x,
         Matrix<Real>& y,
         Matrix<Real>& z1,
@@ -168,7 +168,7 @@ bool Linesearch
         // Residual vectors to be populated
         phi.grad(x, grad); // get gradient
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
-          b, D1, D2, grad, xNew, yNew, z1New, z2New, r1, r2);
+          b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);
 
         ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, xNew, z1New, z2New, center, Cinf0, cL, cU);
 
@@ -209,8 +209,8 @@ bool Linesearch
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
-  const Matrix<Real>& D1,
-  const Matrix<Real>& D2,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
         Matrix<Real>& x,
         Matrix<Real>& y,
         Matrix<Real>& z1,
@@ -286,7 +286,7 @@ bool Linesearch
         // Residual vectors to be populated
         phi.grad(x, grad); // get gradient
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
-          b, D1, D2, grad, xNew, yNew, z1New, z2New, r1, r2);
+          b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);
 
         ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, xNew, z1New, z2New, center, Cinf0, cL, cU);
 
@@ -328,8 +328,8 @@ bool Linesearch
     const Matrix<Real>& b, \
     const Matrix<Real>& bl, \
     const Matrix<Real>& bu, \
-    const Matrix<Real>& D1, \
-    const Matrix<Real>& D2, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
           Matrix<Real>& x, \
           Matrix<Real>& y, \
           Matrix<Real>& z1, \
@@ -357,8 +357,8 @@ bool Linesearch
     const Matrix<Real>& b, \
     const Matrix<Real>& bl, \
     const Matrix<Real>& bu, \
-    const Matrix<Real>& D1, \
-    const Matrix<Real>& D2, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
           Matrix<Real>& x, \
           Matrix<Real>& y, \
           Matrix<Real>& z1, \

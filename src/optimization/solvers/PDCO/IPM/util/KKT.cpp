@@ -16,7 +16,7 @@ namespace pdco {
 template<typename Real>
 void FormHandW
 ( const Matrix<Real>& Hess,
-  const Matrix<Real>& D1,
+  const Matrix<Real>& D1sq,
   const Matrix<Real>& x,
   const Matrix<Real>& z1,
   const Matrix<Real>& z2,
@@ -41,8 +41,7 @@ void FormHandW
 
     // Form H = Hess + D1^2 + (x-bl)^-1*z1 + (bu-x)^-1*z2
     Copy(Hess, H);
-    Copy(D1, tmp1);
-    DiagonalScale(LEFT, NORMAL, D1, tmp1);
+    Copy(D1sq, tmp1);
     if( diagHess )
       Axpy(Real(1), tmp1, H);
     else
@@ -416,7 +415,7 @@ void FormKKTRHS25
 #define PROTO(Real) \
   template void FormHandW \
   ( const Matrix<Real>& Hess, \
-    const Matrix<Real>& D1, \
+    const Matrix<Real>& D1sq, \
     const Matrix<Real>& x, \
     const Matrix<Real>& z1, \
     const Matrix<Real>& z2, \
