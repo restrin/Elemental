@@ -230,6 +230,7 @@ bool Linesearch
   const vector<Int>& ixSetLow,
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
+  const Matrix<Real>& dCol,
   const PDCOCtrl<Real>& ctrl )
 {
     DEBUG_ONLY(CSE cse("pdco::Linesearch"))
@@ -285,6 +286,9 @@ bool Linesearch
         // Compute residuals
         // Residual vectors to be populated
         phi.grad(x, grad); // get gradient
+        if( ctrl.outerEquil )
+            DiagonalSolve( LEFT, NORMAL, dCol, grad );
+
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
           b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);
 
@@ -378,6 +382,7 @@ bool Linesearch
     const vector<Int>& ixSetLow, \
     const vector<Int>& ixSetUpp, \
     const vector<Int>& ixSetFix, \
+    const Matrix<Real>& dCol, \
     const PDCOCtrl<Real>& ctrl ); \
   template Real Merit \
   ( const Matrix<Real>& r1, \

@@ -146,6 +146,7 @@ bool Linesearch
   const vector<Int>& ixSetLow,
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
+  const Matrix<Real>& dCol,
   const PDCOCtrl<Real>& ctrl );
 
 template<typename Real>

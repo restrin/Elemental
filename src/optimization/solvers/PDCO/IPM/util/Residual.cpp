@@ -162,9 +162,6 @@ void ResidualC
     }
     else
     {
-//        cout << "maxXz = " << maxXz << endl;
-//        cout << "MinXz = " << minXz << endl;
-
         // Keep things safe against division by 0 or Nan
         maxXz = Max(maxXz, eps);
         minXz = Max(minXz, eps);

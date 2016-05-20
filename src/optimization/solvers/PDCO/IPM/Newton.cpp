@@ -161,7 +161,7 @@ void Newton
     if( ctrl.print )
     {
         Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter");
-        Output("Init : \t", "x\t", Pfeas, "\t", Dfeas, "\t", 
+        Output("Init : \t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
 /*
         Output("Initial feasibility: ");
@@ -180,11 +180,6 @@ void Newton
     // Main loop
     for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
     {
-        if( ctrl.print )
-        {
-            Output("======== Iteration: ", numIts, " ========");
-            Output("  mu = ", mu);
-        }
         switch( ctrl.method )
         {
             case Method::LDLy:
@@ -511,11 +506,12 @@ void Newton
     if( ctrl.outerEquil )
     {
         GeomEquil( ACopy, dRow, dCol, ctrl.print );
+        DiagonalSolve( LEFT, NORMAL, dRow, ACopy );
         DiagonalSolve( LEFT, NORMAL, dRow, bCopy );
 
         // Fix the bounds
-        DiagonalSolve( LEFT, NORMAL, dCol, bl );
-        DiagonalSolve( LEFT, NORMAL, dCol, bu );
+        DiagonalScale( LEFT, NORMAL, dCol, bl );
+        DiagonalScale( LEFT, NORMAL, dCol, bu );
     }
 
     // Scale input data?
@@ -545,7 +541,7 @@ void Newton
     if( ctrl.print )
     {
         Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter");
-        Output("Init : \t", "x\t", Pfeas, "\t", Dfeas, "\t", 
+        Output("Init : \t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
 /*
         Output("Initial feasibility: ");
@@ -593,7 +589,7 @@ void Newton
             {
                 // We solve the system
                 // [H   A' ] [ dx] = [w ] = w // excuse the abuse of notation
-                // [A -D2^2] [-dy]   [r2]
+                // [A -D2^2] [-dy]   [r1]
                 // By solving the KKT system
 
                 // Add temporary regularization for sparse LDL
@@ -649,14 +645,14 @@ void Newton
                 GetSubmatrix(dx, ixSetUpp, ZERO, dz2);
                 DiagonalScale(LEFT, NORMAL, z2, dz2);
                 dz2 += cU;
-                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz2 = (bu-x)^-1 * (cU + z2*dx)
             }
                 break;
             case Method::LDL25:
             {
                 // We solve the system
                 // [H   A' ] [ dx] = [w ] = w // excuse the abuse of notation
-                // [A -D2^2] [-dy]   [r2]
+                // [A -D2^2] [-dy]   [r1]
                 // By symmetrically 'preconditioning' it with
                 // [(x-bl)(bu-x) 0]^(1/2)
                 // [ 0           I]
@@ -730,7 +726,7 @@ void Newton
                 DiagonalScale(LEFT, NORMAL, z1, dz1);
                 dz1 *= -1;
                 dz1 += cL;
-                DiagonalSolve(LEFT, NORMAL, tmp2, dz1); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz1); // dz2 = (x-bl)^-1 * (cL - z1*dx)
 
                 // Compute dz2
                 Copy(bu, tmp1);
@@ -739,7 +735,7 @@ void Newton
                 GetSubmatrix(dx, ixSetUpp, ZERO, dz2);
                 DiagonalScale(LEFT, NORMAL, z2, dz2);
                 dz2 += cU;
-                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (bu-x)^-1 * (cU + z2*dx)
             }
                 break;
             default:
@@ -750,7 +746,7 @@ void Newton
         // Return stepx, stepz
         bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1sq, D2sq, 
           x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
-          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
+          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, dCol, ctrl);
 
         if( !success )
         {
@@ -768,8 +764,8 @@ void Newton
 
         if( ctrl.print )
         {
-	    Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
-	       Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
+            Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
+	            Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
 /*
             Output("  Pfeas    = ", Pfeas);
             Output("  Dfeas    = ", Dfeas);

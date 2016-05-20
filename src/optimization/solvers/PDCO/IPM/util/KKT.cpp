@@ -206,7 +206,7 @@ void FormKKTRHS
     auto w2 = w(IR(n,END), IR(0));
     Copy(r1, w2);
 
-    // Form (x-bl)^-1*z1
+    // Form (x-bl)^-1*cL
     Copy(x, tmp1);
     tmp1 -= bl;
     GetSubmatrix(tmp1, ixSetLow, ZERO, tmp2);
@@ -216,7 +216,7 @@ void FormKKTRHS
     // w = -r2 + (x-bl)^-1*cL
     UpdateSubmatrix(w, ixSetLow, ZERO, Real(1), tmp1);
 
-    // Form (bu-x)^-1*z2
+    // Form (bu-x)^-1*cU
     Copy(bu, tmp1);
     tmp1 -= x;
     GetSubmatrix(tmp1, ixSetUpp, ZERO, tmp2);
