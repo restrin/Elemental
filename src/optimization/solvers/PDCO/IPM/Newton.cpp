@@ -505,8 +505,10 @@ void Newton
     // Equilibrate the A matrix
     if( ctrl.outerEquil )
     {
-        GeomEquil( ACopy, dRow, dCol, ctrl.print );
-        DiagonalSolve( LEFT, NORMAL, dRow, ACopy );
+//        GeomEquil( ACopy, dRow, dCol, ctrl.print );
+        Ones(dCol, n, 1);
+        Ones(dRow, m, 1);
+        dCol *= Real(2);
         DiagonalSolve( LEFT, NORMAL, dRow, bCopy );
 
         // Fix the bounds
