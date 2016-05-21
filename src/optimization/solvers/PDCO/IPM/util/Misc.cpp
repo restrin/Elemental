@@ -76,15 +76,17 @@ void GetActiveConstraints
     upperActive = 0;
     Int ctrLow = 0;
     Int ctrUpp = 0;
+    Int ixLowSize = ixSetLow.size();
+    Int ixUppSize = ixSetUpp.size();
     for( Int i = 0; i < n; i++ )
     {
-        if( i == ixSetLow[ctrLow])
+        if( ixLowSize > 0 && i == ixSetLow[ctrLow])
         {
             if( x.Get(i,0) - bl.Get(i,0) < 1e-8 )
                 lowerActive++;
             ctrLow++;
         }
-        if( i == ixSetUpp[ctrUpp])
+        if( ixUppSize > 0 && i == ixSetUpp[ctrUpp])
         {
             if( bu.Get(i,0) - x.Get(i,0) < 1e-8 )
                 upperActive++;

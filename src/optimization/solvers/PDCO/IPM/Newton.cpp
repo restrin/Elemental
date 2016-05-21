@@ -483,6 +483,9 @@ void Newton
     DiagonalScale(LEFT, NORMAL, D2, D2sq);
     Copy(D1, D1sq);
     DiagonalScale(LEFT, NORMAL, D1, D1sq);
+
+    Ones( xmbl, n, 1 );
+    Ones( bumx, n, 1 );
     // ==============================================================
 
     // Determine index sets for lower bounded variables,
@@ -503,6 +506,7 @@ void Newton
     }
 
     // Equilibrate the A matrix
+    // TODO: Adjust feas- and opt-tol?
     if( ctrl.outerEquil )
     {
         GeomEquil( ACopy, dRow, dCol, ctrl.print );
@@ -550,15 +554,6 @@ void Newton
         Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter");
         Output("Init : \t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
-/*
-        Output("Initial feasibility: ");
-        Output("  Pfeas  = ", Pfeas);
-        Output("  Dfeas  = ", Dfeas);
-        Output("  Cinf0  = ", Cinf0);
-        Output("  ||cL||oo = ", InfinityNorm(cL));
-        Output("  ||cU||oo = ", InfinityNorm(cU));
-        Output("  center = ", center);
-*/
     }
 
     // Initialize static ortion of the KKT system
@@ -610,6 +605,7 @@ void Newton
                 // Form the KKT system
                 FormKKT( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
                     ixSetLow, ixSetUpp, ixSetFix, K );
+
                 // Form the right-hand side
                 FormKKTRHS( x, r1, r2, cL, cU, bl, bu, ixSetLow, ixSetUpp, w );
                 SparseMatrix<Real> KOrig(K);
@@ -665,10 +661,16 @@ void Newton
                 // [ 0           I]
 
                 // Form (x-bl) and (bu-x)
-                Copy(x, xmbl);
-                xmbl -= bl;
-                Copy(bu, bumx);
-                bumx -= x;
+                Matrix<Real> xmbSub;
+                Matrix<Real> tmp;
+                Copy(x, xmbSub);
+                xmbSub -= bl;
+                GetSubmatrix( xmbSub, ixSetLow, ZERO, tmp );
+                SetSubmatrix( xmbl, ixSetLow, ZERO, tmp );
+                Copy(bu, xmbSub);
+                xmbSub -= x;
+                GetSubmatrix( xmbSub, ixSetUpp, ZERO, tmp );
+                SetSubmatrix( bumx, ixSetUpp, ZERO, tmp );
 
                 // Add temporary regularization
                 Real MaxNormH = MaxNorm(Hess);
@@ -773,14 +775,6 @@ void Newton
         {
             Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
 	            Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
-/*
-            Output("  Pfeas    = ", Pfeas);
-            Output("  Dfeas    = ", Dfeas);
-            Output("  Cinf0    = ", Cinf0);
-            Output("  ||cL||oo = ", InfinityNorm(cL));
-            Output("  ||cU||oo = ", InfinityNorm(cU));
-            Output("  center   = ", center);
-*/
         }
 
         if( ctrl.adaptiveMu )

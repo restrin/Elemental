@@ -45,18 +45,20 @@ Real MaxXStepSize
   Real maxStepL, maxStepU;
   Int ctrLow = 0;
   Int ctrUpp = 0;
+  Int ixLowSize = ixSetLow.size();
+  Int ixUppSize = ixSetUpp.size();
 
   for( Int i=0; i < n; i++ )
   {
       maxStepL = Inf;
       maxStepU = Inf;
-      if (ixSetLow[ctrLow] == i)
+      if (ixLowSize > 0 && ixSetLow[ctrLow] == i)
       {
           if (dx.Get(i,0) < 0)
               maxStepL = (bl.Get(i,0) - x.Get(i,0))/dx.Get(i,0);
           ctrLow++;
       }
-      if (ixSetUpp[ctrUpp] == i)
+      if (ixUppSize > 0 && ixSetUpp[ctrUpp] == i)
       {
           if (dx.Get(i,0) > 0)
               maxStepU = (bu.Get(i,0) - x.Get(i,0))/dx.Get(i,0);
