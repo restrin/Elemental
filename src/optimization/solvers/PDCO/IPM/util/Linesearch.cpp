@@ -285,9 +285,18 @@ bool Linesearch
 
         // Compute residuals
         // Residual vectors to be populated
-        phi.grad(x, grad); // get gradient
         if( ctrl.outerEquil )
+        {
+            Matrix<Real> dColx;
+            Copy(x, dColx);
+            DiagonalSolve( LEFT, NORMAL, dCol, dColx );
+            phi.grad( dColx, grad ); // get gradient
             DiagonalSolve( LEFT, NORMAL, dCol, grad );
+        }
+        else
+        {
+            phi.grad(x, grad); // get gradient
+        }
 
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
           b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);

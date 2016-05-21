@@ -505,10 +505,7 @@ void Newton
     // Equilibrate the A matrix
     if( ctrl.outerEquil )
     {
-//        GeomEquil( ACopy, dRow, dCol, ctrl.print );
-        Ones(dCol, n, 1);
-        Ones(dRow, m, 1);
-        dCol *= Real(2);
+        GeomEquil( ACopy, dRow, dCol, ctrl.print );
         DiagonalSolve( LEFT, NORMAL, dRow, bCopy );
 
         // Fix the bounds
@@ -522,15 +519,23 @@ void Newton
     pdco::Initialize(x, y, z1, z2, bl, bu, 
       ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
-    // Compute residuals
-    phi.grad(x, grad); // get gradient
-    phi.sparseHess(x, Hess); // get Hessian
     if( ctrl.outerEquil )
     {
+        Matrix<Real> dColx;
+        Copy(x, dColx);
+        DiagonalSolve( LEFT, NORMAL, dCol, dColx );
+        phi.grad( dColx, grad ); // get gradient
+        phi.sparseHess( dColx, Hess ); // get Hessian
         DiagonalSolve( LEFT, NORMAL, dCol, grad );
         SymmetricDiagonalSolve( dCol, Hess );
     }
+    else
+    {
+        phi.grad(x, grad); // get gradient
+        phi.sparseHess(x, Hess); // get Hessian
+    }
 
+    // Compute residuals
     ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
       bCopy, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
 
@@ -807,12 +812,20 @@ void Newton
         }
 
         // Update gradient and Hessian
-        phi.grad(x, grad);
-        phi.sparseHess(x, Hess);
         if( ctrl.outerEquil )
         {
+            Matrix<Real> dColx;
+            Copy(x, dColx);
+            DiagonalSolve( LEFT, NORMAL, dCol, dColx );
+            phi.grad( dColx, grad ); // get gradient
+            phi.sparseHess( dColx, Hess ); // get Hessian
             DiagonalSolve( LEFT, NORMAL, dCol, grad );
             SymmetricDiagonalSolve( dCol, Hess );
+        }
+        else
+        {
+            phi.grad(x, grad); // get gradient
+            phi.sparseHess(x, Hess); // get Hessian
         }
 
         // Recompute residuals
@@ -834,12 +847,6 @@ void Newton
         SetSubmatrix(x, ixSetFix, ZERO, xFix);
     }
 
-    Int lowerActive;
-    Int upperActive;
-    // Report active constraints
-    GetActiveConstraints(x, bl, bu, ixSetLow, ixSetUpp,
-      lowerActive, upperActive);
-
     // Reconstruct z from z1 and z2
     Matrix<Real> tmp;
     Zeros(z, n, 1);
@@ -857,7 +864,16 @@ void Newton
         DiagonalSolve( LEFT, NORMAL, dCol, x );
         DiagonalSolve( LEFT, NORMAL, dRow, y );
         DiagonalScale( LEFT, NORMAL, dCol, z );
+
+        DiagonalSolve( LEFT, NORMAL, dCol, bl );
+        DiagonalSolve( LEFT, NORMAL, dCol, bu );
     }
+
+    Int lowerActive;
+    Int upperActive;
+    // Report active constraints
+    GetActiveConstraints(x, bl, bu, ixSetLow, ixSetUpp,
+      lowerActive, upperActive);
 
     Output("========== Completed Newton's Method ==========");
 
