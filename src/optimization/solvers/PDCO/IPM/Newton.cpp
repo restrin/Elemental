@@ -71,6 +71,8 @@ void Newton
     Matrix<Real> ACopy;    // Used for KKT system
     Matrix<Real> H;        // Used for KKT system
     Matrix<Real> S;        // Schur complement
+    Matrix<Real> dRow;     // Row scaling when equilibrating
+    Matrix<Real> dCol;     // Column scaling when equilibrating
 
     // Various residuals and convergence measures
     Matrix<Real> w;        // Residual for KKT system
@@ -95,6 +97,12 @@ void Newton
     Real stepx;            // Step size for x, y
     Real stepz;            // Step size for z1, z2
     Real stepmu;           // Step size for mu
+    Matrix<Real> xin;      // Scaled x variable for input to phi
+
+    // For scaling purposes
+    Real beta = 1;
+    Real zeta = 1;
+    Real theta = 1;
 
     Real mulast = 0.1*ctrl.optTol; // Final value of mu
     Real mu = Max(ctrl.mu0,mulast);
@@ -136,15 +144,75 @@ void Newton
         SetSubmatrix(ACopy, ALL_m, ixSetFix, zeros);
     }
 
-    // Scale input data?
+    // Equilibrate the A matrix
+    // TODO: Adjust feas- and opt-tol?
+    if( ctrl.outerEquil )
+    {
+        GeomEquil( ACopy, dRow, dCol, ctrl.print );
+        DiagonalSolve( LEFT, NORMAL, dRow, bCopy );
+
+        // Fix the bounds
+        DiagonalScale( LEFT, NORMAL, dCol, bl );
+        DiagonalScale( LEFT, NORMAL, dCol, bu );
+    }
 
     // Initialize the data
     pdco::Initialize(x, y, z1, z2, bl, bu, 
       ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
+    // Scale input data
+    if( ctrl.scale )
+    {
+        beta = Max(InfinityNorm(b), Real(1));
+
+        if( ctrl.outerEquil )
+        {
+            DiagonalSolve( LEFT, NORMAL, dCol, xin );
+            phi.grad( x, grad ); // get gradient
+            DiagonalSolve( LEFT, NORMAL, dCol, grad );            
+        }
+        else
+            phi.grad( x, grad ); // get gradient
+
+        zeta = Max(InfinityNorm(grad),Real(1));
+
+        theta = beta*zeta;
+
+        x *= beta;
+        y *= zeta;
+        z1 *= zeta;
+        z2 *= zeta;
+
+        bl *= Real(1)/beta;
+        bu *= Real(1)/beta;
+        bCopy *= Real(1)/zeta;
+
+        D1sq *= beta*beta/(theta);
+        D2sq *= theta/(beta*beta);
+
+        theta = beta*zeta;
+    }
+
+    //==== End of Initialization stuff =====
+
     // Compute residuals
-    phi.grad(x, grad); // get gradient
-    phi.hess(x, Hess); // get Hessian
+    Copy(x, xin);
+    xin *= beta;
+    if( ctrl.outerEquil )
+    {
+        DiagonalSolve( LEFT, NORMAL, dCol, xin );
+        phi.grad( xin, grad ); // get gradient
+        phi.hess( xin, Hess ); // get Hessian
+        DiagonalSolve( LEFT, NORMAL, dCol, grad );
+        SymmetricDiagonalSolve( dCol, Hess );
+    }
+    else
+    {
+        phi.grad(xin, grad); // get gradient
+        phi.hess(xin, Hess); // get Hessian
+    }
+    grad *= beta/theta;
+    Hess *= beta*beta/theta;
 
     if( Hess.Width() == 1 ) // TODO: Better check?
       diagHess = true;
@@ -273,7 +341,7 @@ void Newton
         // Return stepx, stepz
         bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1sq, D2sq, 
           x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
-          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
+          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, dCol, beta, theta, ctrl);
 
         if( !success )
         {
@@ -333,8 +401,23 @@ void Newton
         }
 
         // Update gradient and Hessian
-        phi.grad(x, grad);
-        phi.hess(x, Hess);
+        Copy(x, xin);
+        xin *= beta;
+        if( ctrl.outerEquil )
+        {
+            DiagonalSolve( LEFT, NORMAL, dCol, xin );
+            phi.grad( xin, grad ); // get gradient
+            phi.hess( xin, Hess ); // get Hessian
+            DiagonalSolve( LEFT, NORMAL, dCol, grad );
+            SymmetricDiagonalSolve( dCol, Hess );
+        }
+        else
+        {
+            phi.grad(xin, grad); // get gradient
+            phi.hess(xin, Hess); // get Hessian
+        }
+        grad *= beta/theta;
+        Hess *= beta*beta/theta;
 
         // Recompute residuals
         ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
@@ -355,12 +438,6 @@ void Newton
         SetSubmatrix(x, ixSetFix, ZERO, xFix);
     }
 
-    Int lowerActive;
-    Int upperActive;
-    // Report active constraints
-    GetActiveConstraints(x, bl, bu, ixSetLow, ixSetUpp,
-      lowerActive, upperActive);
-
     // Reconstruct z from z1 and z2
     Matrix<Real> tmp;
     Zeros(z, n, 1);
@@ -371,6 +448,28 @@ void Newton
     GetSubmatrix(r2, ixSetFix, ZERO, tmp);
     Axpy(Real(-1), tmp, zFix);
     UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
+
+    // Undo scaling due to equilibration
+    if( ctrl.outerEquil )
+    {
+        x *= beta;
+        y *= zeta;
+        z *= zeta;
+        DiagonalSolve( LEFT, NORMAL, dCol, x );
+        DiagonalSolve( LEFT, NORMAL, dRow, y );
+        DiagonalScale( LEFT, NORMAL, dCol, z );
+
+        bl *= beta;
+        bu *= beta;
+        DiagonalSolve( LEFT, NORMAL, dCol, bl );
+        DiagonalSolve( LEFT, NORMAL, dCol, bu );
+    }
+
+    Int lowerActive;
+    Int upperActive;
+    // Report active constraints
+    GetActiveConstraints(x, bl, bu, ixSetLow, ixSetUpp,
+      lowerActive, upperActive);
 
     Output("========== Completed Newton's Method ==========");
 
@@ -465,6 +564,12 @@ void Newton
     Real stepx;            // Step size for x, y
     Real stepz;            // Step size for z1, z2
     Real stepmu;           // Step size for mu
+    Matrix<Real> xin;      // Scaled x variable for input to phi
+
+    // For scaling purposes
+    Real beta = 1;
+    Real zeta = 1;
+    Real theta = 1;
 
     // Variables to avoid recomputation
     Matrix<Real> xmbl;     // x-bl
@@ -486,8 +591,11 @@ void Newton
 
     Ones( xmbl, n, 1 );
     Ones( bumx, n, 1 );
+
+    Zeros( xin, n, 1 );
     // ==============================================================
 
+    // ======= Begin initialization stuff =======
     // Determine index sets for lower bounded variables,
     // upper bounded variables, and fixed variables
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
@@ -517,27 +625,62 @@ void Newton
         DiagonalScale( LEFT, NORMAL, dCol, bu );
     }
 
-    // Scale input data?
-
     // Initialize the data
     pdco::Initialize(x, y, z1, z2, bl, bu, 
       ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
+    // Scale input data
+    if( ctrl.scale )
+    {
+        beta = Max(InfinityNorm(b), Real(1));
+
+        if( ctrl.outerEquil )
+        {
+            DiagonalSolve( LEFT, NORMAL, dCol, xin );
+            phi.grad( x, grad ); // get gradient
+            DiagonalSolve( LEFT, NORMAL, dCol, grad );            
+        }
+        else
+            phi.grad( x, grad ); // get gradient
+
+        zeta = Max(InfinityNorm(grad),Real(1));
+
+        theta = beta*zeta;
+
+        x *= beta;
+        y *= zeta;
+        z1 *= zeta;
+        z2 *= zeta;
+
+        bl *= Real(1)/beta;
+        bu *= Real(1)/beta;
+        bCopy *= Real(1)/zeta;
+
+        D1sq *= beta*beta/(theta);
+        D2sq *= theta/(beta*beta);
+
+        theta = beta*zeta;
+    }
+
+    //==== End of Initialization stuff =====
+
+    Copy(x, xin);
+    xin *= beta;
     if( ctrl.outerEquil )
     {
-        Matrix<Real> dColx;
-        Copy(x, dColx);
-        DiagonalSolve( LEFT, NORMAL, dCol, dColx );
-        phi.grad( dColx, grad ); // get gradient
-        phi.sparseHess( dColx, Hess ); // get Hessian
+        DiagonalSolve( LEFT, NORMAL, dCol, xin );
+        phi.grad( xin, grad ); // get gradient
+        phi.sparseHess( xin, Hess ); // get Hessian
         DiagonalSolve( LEFT, NORMAL, dCol, grad );
         SymmetricDiagonalSolve( dCol, Hess );
     }
     else
     {
-        phi.grad(x, grad); // get gradient
-        phi.sparseHess(x, Hess); // get Hessian
+        phi.grad(xin, grad); // get gradient
+        phi.sparseHess(xin, Hess); // get Hessian
     }
+    grad *= beta/theta;
+    Hess *= beta*beta/theta;
 
     // Compute residuals
     ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
@@ -755,7 +898,7 @@ void Newton
         // Return stepx, stepz
         bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1sq, D2sq, 
           x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
-          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, dCol, ctrl);
+          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, dCol, beta, theta, ctrl);
 
         if( !success )
         {
@@ -801,26 +944,28 @@ void Newton
             if( (Pfeas <= ctrl.feaTol)
                && (Dfeas <= ctrl.feaTol) )
             {
-                mu *= 0.5;
+                mu /= 0.5;
             }
         }
 
         // Update gradient and Hessian
+        Copy(x, xin);
+        xin *= beta;
         if( ctrl.outerEquil )
         {
-            Matrix<Real> dColx;
-            Copy(x, dColx);
-            DiagonalSolve( LEFT, NORMAL, dCol, dColx );
-            phi.grad( dColx, grad ); // get gradient
-            phi.sparseHess( dColx, Hess ); // get Hessian
+            DiagonalSolve( LEFT, NORMAL, dCol, xin );
+            phi.grad( xin, grad ); // get gradient
+            phi.sparseHess( xin, Hess ); // get Hessian
             DiagonalSolve( LEFT, NORMAL, dCol, grad );
             SymmetricDiagonalSolve( dCol, Hess );
         }
         else
         {
-            phi.grad(x, grad); // get gradient
-            phi.sparseHess(x, Hess); // get Hessian
+            phi.grad(xin, grad); // get gradient
+            phi.sparseHess(xin, Hess); // get Hessian
         }
+        grad *= beta/theta;
+        Hess *= beta*beta/theta;
 
         // Recompute residuals
         ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
@@ -855,10 +1000,15 @@ void Newton
     // Undo scaling due to equilibration
     if( ctrl.outerEquil )
     {
+        x *= beta;
+        y *= zeta;
+        z *= zeta;
         DiagonalSolve( LEFT, NORMAL, dCol, x );
         DiagonalSolve( LEFT, NORMAL, dRow, y );
         DiagonalScale( LEFT, NORMAL, dCol, z );
 
+        bl *= beta;
+        bu *= beta;
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
     }

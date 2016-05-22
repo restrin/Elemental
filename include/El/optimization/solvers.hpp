@@ -740,12 +740,15 @@ struct PDCOCtrl
     // Update mu ala the original PDCO (vs. naive)?
     bool adaptiveMu = true;
 
-    // The controls for quasi-(semi)definite solves
-    RegSolveCtrl<Real> solveCtrl;
-
     // Perform geometric-mean equilibration?
     bool outerEquil = true;
 
+    // Scale the input data
+    // Typically results in better convergence
+    bool scale = true;
+
+    // The controls for quasi-(semi)definite solves
+    RegSolveCtrl<Real> solveCtrl;
 };
 
 namespace pdco

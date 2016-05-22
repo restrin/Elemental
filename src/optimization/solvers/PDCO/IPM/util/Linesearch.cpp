@@ -114,6 +114,9 @@ bool Linesearch
   const vector<Int>& ixSetLow,
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
+  const Matrix<Real>& dCol,
+  const Real& beta,
+  const Real& theta,
   const PDCOCtrl<Real>& ctrl )
 {
     DEBUG_ONLY(CSE cse("pdco::Linesearch"))
@@ -146,7 +149,7 @@ bool Linesearch
 
     Real meritNew;
 
-    Matrix<Real> xNew, yNew, z1New, z2New, grad;
+    Matrix<Real> xNew, yNew, z1New, z2New, grad, xin;
 
     bool success = false;
 
@@ -167,8 +170,20 @@ bool Linesearch
         Axpy(stepz, dz2, z2New); // z2New = z2 + stepz*dz2
 
         // Compute residuals
-        // Residual vectors to be populated
-        phi.grad(x, grad); // get gradient
+        // Compute residuals
+        Copy( x, xin );
+        xin *= beta;
+        if( ctrl.outerEquil )
+        {
+            DiagonalSolve( LEFT, NORMAL, dCol, xin );
+            phi.grad( xin, grad ); // get gradient
+            DiagonalSolve( LEFT, NORMAL, dCol, grad );
+        }
+        else
+        {
+            phi.grad(xin, grad); // get gradient
+        }
+        grad *= beta/theta;
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
           b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);
 
@@ -233,6 +248,8 @@ bool Linesearch
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
   const Matrix<Real>& dCol,
+  const Real& beta,
+  const Real& theta,
   const PDCOCtrl<Real>& ctrl )
 {
     DEBUG_ONLY(CSE cse("pdco::Linesearch"))
@@ -265,7 +282,7 @@ bool Linesearch
 
     Real meritNew;
 
-    Matrix<Real> xNew, yNew, z1New, z2New, grad;
+    Matrix<Real> xNew, yNew, z1New, z2New, grad, xin;
 
     bool success = false;
 
@@ -286,19 +303,19 @@ bool Linesearch
         Axpy(stepz, dz2, z2New); // z2New = z2 + stepz*dz2
 
         // Compute residuals
-        // Residual vectors to be populated
+        Copy( x, xin );
+        xin *= beta;
         if( ctrl.outerEquil )
         {
-            Matrix<Real> dColx;
-            Copy(x, dColx);
-            DiagonalSolve( LEFT, NORMAL, dCol, dColx );
-            phi.grad( dColx, grad ); // get gradient
+            DiagonalSolve( LEFT, NORMAL, dCol, xin );
+            phi.grad( xin, grad ); // get gradient
             DiagonalSolve( LEFT, NORMAL, dCol, grad );
         }
         else
         {
-            phi.grad(x, grad); // get gradient
+            phi.grad(xin, grad); // get gradient
         }
+        grad *= beta/theta;
 
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
           b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);
@@ -364,6 +381,9 @@ bool Linesearch
     const vector<Int>& ixSetLow, \
     const vector<Int>& ixSetUpp, \
     const vector<Int>& ixSetFix, \
+    const Matrix<Real>& dCol, \
+    const Real& beta, \
+    const Real& theta, \
     const PDCOCtrl<Real>& ctrl ); \
   template bool Linesearch \
   ( const PDCOObj<Real>& phi, \
@@ -394,6 +414,8 @@ bool Linesearch
     const vector<Int>& ixSetUpp, \
     const vector<Int>& ixSetFix, \
     const Matrix<Real>& dCol, \
+    const Real& beta, \
+    const Real& theta, \
     const PDCOCtrl<Real>& ctrl ); \
   template Real Merit \
   ( const Matrix<Real>& r1, \
