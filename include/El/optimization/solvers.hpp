@@ -749,6 +749,9 @@ struct PDCOCtrl
 
     // The controls for quasi-(semi)definite solves
     RegSolveCtrl<Real> solveCtrl;
+
+    // Profile timings?
+    bool time = false;
 };
 
 namespace pdco

@@ -12,6 +12,11 @@
 namespace El {
 namespace pdco {
 
+static Timer totalTimer, ldlTimer,
+             kktTimer, kktrhsTimer,
+             hessTimer, gradTimer,
+             solveAfterTimer;
+
 // The following solves the following convex problem:
 //
 //   minimize phi(x) + 1/2 ||D1*x||^2 + 1/2 ||r||^2
@@ -125,6 +130,7 @@ void Newton
         Zeros(S, n, n);
     // ==============================================================
 
+    // ======= Begin initialization stuff =======
     // Determine index sets for lower bounded variables,
     // upper bounded variables, and fixed variables
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
@@ -155,10 +161,6 @@ void Newton
         DiagonalScale( LEFT, NORMAL, dCol, bl );
         DiagonalScale( LEFT, NORMAL, dCol, bu );
     }
-
-    // Initialize the data
-    pdco::Initialize(x, y, z1, z2, bl, bu, 
-      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
     // Scale input data
     if( ctrl.scale )
@@ -192,6 +194,10 @@ void Newton
 
         theta = beta*zeta;
     }
+
+    // Initialize the data
+    pdco::Initialize(x, y, z1, z2, bl, bu, 
+      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
     //==== End of Initialization stuff =====
 
@@ -509,6 +515,19 @@ void Newton
 
     Output("========== Beginning Sparse Newton's Method ==========");
 
+    if( ctrl.time )
+    {
+        totalTimer.Reset();
+        ldlTimer.Reset();
+        kktTimer.Reset();
+        kktrhsTimer.Reset();
+        hessTimer.Reset();
+        gradTimer.Reset();
+        solveAfterTimer.Reset();
+
+        totalTimer.Start();
+    }
+
     // ========= Declarations of oft re-used variables ==============
     Int m = A.Height();
     Int n = A.Width();
@@ -625,10 +644,6 @@ void Newton
         DiagonalScale( LEFT, NORMAL, dCol, bu );
     }
 
-    // Initialize the data
-    pdco::Initialize(x, y, z1, z2, bl, bu, 
-      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
-
     // Scale input data
     if( ctrl.scale )
     {
@@ -643,7 +658,7 @@ void Newton
         else
             phi.grad( x, grad ); // get gradient
 
-        zeta = Max(InfinityNorm(grad),Real(1));
+        zeta = Max(InfinityNorm(grad)*beta,Real(1));
 
         theta = beta*zeta;
 
@@ -662,6 +677,16 @@ void Newton
         theta = beta*zeta;
     }
 
+    if( ctrl.print )
+    {
+        Output("  beta = ", beta);
+        Output("  zeta = ", zeta);
+    }
+
+    // Initialize the data
+    pdco::Initialize(x, y, z1, z2, bl, bu, 
+      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+
     //==== End of Initialization stuff =====
 
     Copy(x, xin);
@@ -669,15 +694,33 @@ void Newton
     if( ctrl.outerEquil )
     {
         DiagonalSolve( LEFT, NORMAL, dCol, xin );
+        if( ctrl.time )
+            gradTimer.Start();
         phi.grad( xin, grad ); // get gradient
+        if( ctrl.time )
+        {
+            gradTimer.Stop();
+            hessTimer.Start();
+        }
         phi.sparseHess( xin, Hess ); // get Hessian
+        if( ctrl.time )
+            hessTimer.Stop();
         DiagonalSolve( LEFT, NORMAL, dCol, grad );
         SymmetricDiagonalSolve( dCol, Hess );
     }
     else
     {
-        phi.grad(xin, grad); // get gradient
-        phi.sparseHess(xin, Hess); // get Hessian
+        if( ctrl.time )
+            gradTimer.Start();
+        phi.grad( xin, grad ); // get gradient
+        if( ctrl.time )
+        {
+            gradTimer.Stop();
+            hessTimer.Start();
+        }
+        phi.sparseHess( xin, Hess ); // get Hessian
+        if( ctrl.time )
+            hessTimer.Stop();
     }
     grad *= beta/theta;
     Hess *= beta*beta/theta;
@@ -704,13 +747,16 @@ void Newton
     vector<Int> invMap;
     ldl::Separator rootSep;
     ldl::NodeInfo info;
-    SparseMatrix<Real> K;
+    SparseMatrix<Real> K, KOrig;
     ldl::Front<Real> KFront;
+    BisectCtrl bisectCtrl = BisectCtrl();
+    bisectCtrl.cutoff = 128; // TODO: Make tunable?
 
     // Temporary regularization
     Matrix<Real> regTmp;
     Zeros(regTmp, n+m, 1);
-    const Real twoNormEstA = TwoNormEstimate( A, 6 );
+    const Real twoNormEstA = MaxNorm(ACopy);
+    //const Real twoNormEstA = TwoNormEstimate( ACopy, 6 );
 
     // Main loop
     for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
@@ -745,28 +791,44 @@ void Newton
                 auto regTmp2 = regTmp(IR(n,n+m), IR(0));
                 regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
 
+                if( ctrl.time )
+                    kktTimer.Start();
                 // Form the KKT system
                 FormKKT( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
                     ixSetLow, ixSetUpp, ixSetFix, K );
+                if( ctrl.time )
+                    kktTimer.Stop();
 
+                if( ctrl.time )
+                    kktrhsTimer.Start();
                 // Form the right-hand side
                 FormKKTRHS( x, r1, r2, cL, cU, bl, bu, ixSetLow, ixSetUpp, w );
-                SparseMatrix<Real> KOrig(K);
+                if( ctrl.time )
+                    kktrhsTimer.Stop();
+                KOrig = K;
 
                 UpdateDiagonal(K, Real(1), regTmp);
 
                 if( numIts == 0 )
                 {
                     // Get static nested dissection data
-                    NestedDissection( K.LockedGraph(), map, rootSep, info );
+                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
                     InvertMap( map, invMap );
                 }
 
                 KFront.Pull( K, map, info );
+                if( ctrl.time )
+                    ldlTimer.Start();
                 LDL( info, KFront, LDL_2D );
+                if( ctrl.time )
+                    ldlTimer.Stop();
 
 //                ldl::SolveAfter( invMap, info, KFront, w );
+                if( ctrl.time )
+                    solveAfterTimer.Start();
                 reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+                if( ctrl.time )
+                    solveAfterTimer.Stop();
 
                 dx = w( IR(0,n), IR(0) );
                 dy = w( IR(n,END), IR(0) );
@@ -823,32 +885,48 @@ void Newton
                 auto regTmp2 = regTmp(IR(n,n+m), IR(0));
                 regTmp2 *= -(twoNormEstA + MaxNormH + 1)*deltaTmp*deltaTmp;
 
+                if( ctrl.time )
+                    kktTimer.Start();
                 // Form the KKT system
                 FormKKT25( Hess, ACopy, D1sq, D2sq, x, z1, z2, bl, bu, 
                     xmbl, bumx, ixSetLow, ixSetUpp, ixSetFix, K );
+                if( ctrl.time )
+                    kktTimer.Stop();
 
                 // NOTE: FormKKT25 takes square root of xmbl, bumx
                 // They are now to be treated as the square roots
                 // TODO: Deal with garbage entries due to infs?
 
+                if( ctrl.time )
+                    kktrhsTimer.Start();
                 FormKKTRHS25( x, r1, r2, cL, cU, bl, bu, 
                     xmbl, bumx, ixSetLow, ixSetUpp, w );
-                SparseMatrix<Real> KOrig(K);
+                if( ctrl.time )
+                    kktrhsTimer.Stop();
+                KOrig = K;
 
                 UpdateDiagonal(K, Real(1), regTmp);
 
                 if( numIts == 0 )
                 {
                     // Get static nested dissection data
-                    NestedDissection( K.LockedGraph(), map, rootSep, info );
+                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
                     InvertMap( map, invMap );
                 }
 
                 KFront.Pull( K, map, info );
+                if( ctrl.time )
+                    ldlTimer.Start();
                 LDL( info, KFront, LDL_2D );
+                if( ctrl.time )
+                    ldlTimer.Stop();
 
+                if( ctrl.time )
+                    solveAfterTimer.Start();
 //                ldl::SolveAfter( invMap, info, KFront, w );
                 reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+                if( ctrl.time )
+                    solveAfterTimer.Stop();
 
                 dy = w( IR(n,END), IR(0) );
                 dy *= -1;
@@ -954,15 +1032,33 @@ void Newton
         if( ctrl.outerEquil )
         {
             DiagonalSolve( LEFT, NORMAL, dCol, xin );
+            if( ctrl.time )
+                gradTimer.Start();
             phi.grad( xin, grad ); // get gradient
+            if( ctrl.time )
+            {
+                gradTimer.Stop();
+                hessTimer.Start();
+            }
             phi.sparseHess( xin, Hess ); // get Hessian
+            if( ctrl.time )
+                hessTimer.Stop();
             DiagonalSolve( LEFT, NORMAL, dCol, grad );
             SymmetricDiagonalSolve( dCol, Hess );
         }
         else
         {
-            phi.grad(xin, grad); // get gradient
-            phi.sparseHess(xin, Hess); // get Hessian
+            if( ctrl.time )
+                gradTimer.Start();
+            phi.grad( xin, grad ); // get gradient
+            if( ctrl.time )
+            {
+                gradTimer.Stop();
+                hessTimer.Start();
+            }
+            phi.sparseHess( xin, Hess ); // get Hessian
+            if( ctrl.time )
+                hessTimer.Stop();
         }
         grad *= beta/theta;
         Hess *= beta*beta/theta;
@@ -1033,9 +1129,29 @@ void Newton
     Output("  ||cU||oo = ", InfinityNorm(cU));
     Output("  center   = ", center);
 
+    Output();
+    Output("  Scaled:   max |x| = ", Max(x)/beta, "\tmax |y| = ", Max(y)/zeta, "\tmax |z| = ", Max(z)/zeta);
+    Output("  Unscaled: max |x| = ", Max(x), "\tmax |y| = ", Max(y), "\tmax |z| = ", Max(z));
+    Output();
+
     Output("  Number active constraints on");
     Output("    Lower bound: ", lowerActive);
     Output("    Upper bound: ", upperActive);
+
+    if( ctrl.time )
+    {
+        totalTimer.Stop();
+
+        Output("Timing results:");
+        Output("  Total time:          ", totalTimer.Total());
+        Output("    LDL time:          ", ldlTimer.Total());
+        Output("    SolveAfter time:   ", solveAfterTimer.Total()); 
+        Output("    Form KKT time:     ", kktTimer.Total());
+        Output("    Form KKT rhs time: ", kktrhsTimer.Total());
+        Output("    Hessian time:      ", hessTimer.Total());
+        Output("    Grad time:         ", gradTimer.Total());
+    }
+
 }
 
 #define PROTO(Real) \

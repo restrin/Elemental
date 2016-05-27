@@ -113,7 +113,9 @@ void FormKKT
 
     Matrix<Real> tmp1;
     Matrix<Real> tmp2;
-    
+
+    // TODO: Need to reserve space for Hess
+
     QueueUpdateSubdiagonal(Hess, ALL_n, Real(1), D1sq); // TODO: Use UpdateDiagonal?
 
     // Form (x-bl)^-1*z1
@@ -255,6 +257,8 @@ void FormKKT25
 
     Will be fixed later
     **********/
+
+    // TODO: Need to reserve space for Hess
 
     const Int m = A.Height();
     const Int n = A.Width();
