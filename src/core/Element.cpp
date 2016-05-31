@@ -78,6 +78,9 @@ string TypeName<BigInt>()
 template<>
 string TypeName<BigFloat>()
 { return string("BigFloat"); }
+template<>
+string TypeName<Complex<BigFloat>>()
+{ return string("Complex<BigFloat>"); }
 #endif
 
 // Basic element manipulation and I/O
@@ -105,6 +108,22 @@ istream& operator>>( istream& is, Quad& alpha )
 }
 #endif
 
+// Conjugate
+// ---------
+#ifdef EL_HAVE_MPC
+Complex<BigFloat> Conj( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> alphaConj;
+    Conj( alpha, alphaConj );
+    return alphaConj;
+}
+
+void Conj( const Complex<BigFloat>& alpha, Complex<BigFloat>& alphaConj )
+{
+    mpc_conj( alphaConj.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+}
+#endif
+
 // Return the complex argument
 // ---------------------------
 #ifdef EL_HAVE_QUAD
@@ -118,6 +137,16 @@ Quad Arg( const Complex<Quad>& alphaPre )
     return cargq(alpha);
 }
 #endif
+#ifdef EL_HAVE_MPC
+template<>
+BigFloat Arg( const Complex<BigFloat>& alpha )
+{
+    BigFloat arg;
+    arg.SetPrecision( alpha.Precision() );
+    mpc_arg( arg.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return arg;
+}
+#endif
 
 // Construct a complex number from its polar coordinates
 // -----------------------------------------------------
@@ -128,6 +157,21 @@ Complex<Quad> ComplexFromPolar( const Quad& r, const Quad& theta )
     const Quad realPart = r*cosq(theta);
     const Quad imagPart = r*sinq(theta);
     return Complex<Quad>(realPart,imagPart);
+}
+#endif
+#ifdef EL_HAVE_MPC
+template<>
+Complex<BigFloat> ComplexFromPolar( const BigFloat& r, const BigFloat& theta )
+{
+    BigFloat sinTheta, cosTheta;
+    sinTheta.SetPrecision( theta.Precision() );
+    cosTheta.SetPrecision( theta.Precision() );
+    mpfr_sin_cos
+    ( sinTheta.Pointer(),
+      cosTheta.Pointer(),
+      theta.LockedPointer(),
+      mpfr::RoundingMode() );
+    return Complex<BigFloat>(r*cosTheta,r*sinTheta);
 }
 #endif
 
@@ -172,19 +216,17 @@ BigFloat Abs( const BigFloat& alpha ) EL_NO_EXCEPT
 {
     BigFloat absAlpha;
     absAlpha.SetPrecision( alpha.Precision() );
-    mpfr_abs( absAlpha.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_abs( absAlpha.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
     return absAlpha;
 }
-#endif
 
-#ifdef EL_HAVE_QUAD
 template<>
-Quad SafeAbs( const Complex<Quad>& alpha ) EL_NO_EXCEPT
+BigFloat Abs( const Complex<BigFloat>& alpha ) EL_NO_EXCEPT
 {
-    // NOTE: We would need to implement our own version of the LAPACK routine.
-    //       Since quad-precision is likely to be plenty, we will call Abs 
-    //       for now.
-    return Abs(alpha); 
+    BigFloat absAlpha;
+    absAlpha.SetPrecision( alpha.Precision() );
+    mpc_abs( absAlpha.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return absAlpha;
 }
 #endif
 
@@ -250,7 +292,16 @@ BigFloat Exp( const BigFloat& alpha ) EL_NO_EXCEPT
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_exp( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_exp( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Exp( const Complex<BigFloat>& alpha ) EL_NO_EXCEPT
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_exp( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -359,7 +410,7 @@ void Pow( const BigFloat& alpha, const BigFloat& beta, BigFloat& gamma )
     mpfr_pow
     ( gamma.Pointer(),
       alpha.LockedPointer(),
-      beta.LockedPointer(), mpc::RoundingMode() );
+      beta.LockedPointer(), mpfr::RoundingMode() );
 }
 
 void Pow( const BigFloat& alpha, const unsigned& beta, BigFloat& gamma )
@@ -367,7 +418,7 @@ void Pow( const BigFloat& alpha, const unsigned& beta, BigFloat& gamma )
     mpfr_pow_ui
     ( gamma.Pointer(),
       alpha.LockedPointer(),
-      beta, mpc::RoundingMode() );
+      beta, mpfr::RoundingMode() );
 }
 
 void Pow( const BigFloat& alpha, const unsigned long& beta, BigFloat& gamma )
@@ -375,7 +426,7 @@ void Pow( const BigFloat& alpha, const unsigned long& beta, BigFloat& gamma )
     mpfr_pow_ui
     ( gamma.Pointer(),
       alpha.LockedPointer(),
-      beta, mpc::RoundingMode() );
+      beta, mpfr::RoundingMode() );
 }
 
 void Pow
@@ -388,7 +439,7 @@ void Pow
         ( gamma.Pointer(),
           alpha.LockedPointer(),
           betaLong,
-          mpc::RoundingMode() );
+          mpfr::RoundingMode() );
     }
     else
     {
@@ -396,7 +447,7 @@ void Pow
         mpfr_pow
         ( gamma.Pointer(),
           alpha.LockedPointer(),
-          betaBig.LockedPointer(), mpc::RoundingMode() );
+          betaBig.LockedPointer(), mpfr::RoundingMode() );
     }
 }
 
@@ -405,7 +456,7 @@ void Pow( const BigFloat& alpha, const int& beta, BigFloat& gamma )
     mpfr_pow_si
     ( gamma.Pointer(),
       alpha.LockedPointer(),
-      beta, mpc::RoundingMode() );
+      beta, mpfr::RoundingMode() );
 }
 
 void Pow( const BigFloat& alpha, const long int& beta, BigFloat& gamma )
@@ -413,7 +464,7 @@ void Pow( const BigFloat& alpha, const long int& beta, BigFloat& gamma )
     mpfr_pow_si
     ( gamma.Pointer(),
       alpha.LockedPointer(),
-      beta, mpc::RoundingMode() );
+      beta, mpfr::RoundingMode() );
 }
 
 void Pow( const BigFloat& alpha, const long long int& beta, BigFloat& gamma )
@@ -425,7 +476,7 @@ void Pow( const BigFloat& alpha, const long long int& beta, BigFloat& gamma )
         mpfr_pow_si
         ( gamma.Pointer(),
           alpha.LockedPointer(),
-          betaLong, mpc::RoundingMode() );
+          betaLong, mpfr::RoundingMode() );
     }
     else
     {
@@ -433,7 +484,7 @@ void Pow( const BigFloat& alpha, const long long int& beta, BigFloat& gamma )
         mpfr_pow
         ( gamma.Pointer(),
           alpha.LockedPointer(),
-          betaBig.LockedPointer(), mpc::RoundingMode() );
+          betaBig.LockedPointer(), mpfr::RoundingMode() );
     }
 }
 
@@ -442,7 +493,7 @@ void Pow( const BigFloat& alpha, const BigInt& beta, BigFloat& gamma )
     mpfr_pow_z
     ( gamma.Pointer(),
       alpha.LockedPointer(),
-      beta.LockedPointer(), mpc::RoundingMode() );
+      beta.LockedPointer(), mpfr::RoundingMode() );
 }
 
 template<>
@@ -450,6 +501,19 @@ BigFloat Pow( const BigFloat& alpha, const BigFloat& beta )
 {
     BigFloat gamma;
     Pow( alpha, beta, gamma );
+    return gamma;
+}
+
+template<>
+Complex<BigFloat>
+Pow( const Complex<BigFloat>& alpha, const Complex<BigFloat>& beta )
+{
+    Complex<BigFloat> gamma;
+    mpc_pow
+    ( gamma.Pointer(),
+      alpha.LockedPointer(),
+      beta.LockedPointer(),
+      mpc::RoundingMode() );
     return gamma;
 }
 
@@ -501,6 +565,18 @@ BigFloat Pow( const BigFloat& alpha, const BigInt& beta )
     Pow( alpha, beta, gamma );
     return gamma;
 }
+
+Complex<BigFloat>
+Pow( const Complex<BigFloat>& alpha, const BigFloat& beta )
+{
+    Complex<BigFloat> gamma;
+    mpc_pow_fr
+    ( gamma.Pointer(),
+      alpha.LockedPointer(),
+      beta.LockedPointer(),
+      mpc::RoundingMode() );
+    return gamma;
+}
 #endif
 
 // Inverse exponentiation
@@ -543,7 +619,16 @@ BigFloat Log( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_log( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_log( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Log( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_log( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -577,8 +662,15 @@ BigFloat Log2( const BigFloat& alpha )
     BigFloat log2Alpha;
     log2Alpha.SetPrecision( alpha.Precision() );
     mpfr_log2
-    ( log2Alpha.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    ( log2Alpha.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
     return log2Alpha;
+}
+
+template<>
+Complex<BigFloat> Log2( const Complex<BigFloat>& alpha )
+{
+    auto logAlpha = Log( alpha );
+    return logAlpha / Log(BigFloat(2));
 }
 #endif
 
@@ -611,6 +703,16 @@ BigFloat Log10( const BigFloat& alpha )
     BigFloat log10Alpha;
     log10Alpha.SetPrecision( alpha.Precision() );
     mpfr_log10
+    ( log10Alpha.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return log10Alpha;
+}
+
+template<>
+Complex<BigFloat> Log10( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> log10Alpha;
+    log10Alpha.SetPrecision( alpha.Precision() );
+    mpc_log10
     ( log10Alpha.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return log10Alpha;
 }
@@ -652,6 +754,13 @@ template<>
 void Sqrt( const BigFloat& alpha, BigFloat& alphaSqrt )
 {
     mpfr_sqrt
+    ( alphaSqrt.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+}
+
+template<>
+void Sqrt( const Complex<BigFloat>& alpha, Complex<BigFloat>& alphaSqrt )
+{
+    mpc_sqrt
     ( alphaSqrt.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
 }
 
@@ -667,6 +776,15 @@ template<>
 BigFloat Sqrt( const BigFloat& alpha )
 {
     BigFloat alphaSqrt;
+    alphaSqrt.SetPrecision( alpha.Precision() );
+    Sqrt( alpha, alphaSqrt );
+    return alphaSqrt;
+}
+
+template<>
+Complex<BigFloat> Sqrt( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> alphaSqrt;
     alphaSqrt.SetPrecision( alpha.Precision() );
     Sqrt( alpha, alphaSqrt );
     return alphaSqrt;
@@ -735,7 +853,16 @@ BigFloat Cos( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_cos( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_cos( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Cos( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_cos( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -772,7 +899,16 @@ BigFloat Sin( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_sin( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_sin( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Sin( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_sin( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -809,7 +945,16 @@ BigFloat Tan( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_tan( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_tan( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Tan( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_tan( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -848,7 +993,16 @@ BigFloat Acos( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_acos( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_acos( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Acos( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_acos( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -885,7 +1039,16 @@ BigFloat Asin( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_asin( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_asin( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Asin( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_asin( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -922,7 +1085,16 @@ BigFloat Atan( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_atan( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_atan( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Atan( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_atan( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -953,7 +1125,7 @@ BigFloat Atan2( const BigFloat& y, const BigFloat& x )
     mpfr_atan2
     ( alpha.Pointer(),
       y.LockedPointer(),
-      x.LockedPointer(), mpc::RoundingMode() );
+      x.LockedPointer(), mpfr::RoundingMode() );
     return alpha;
 }
 #endif
@@ -992,7 +1164,16 @@ BigFloat Cosh( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_cosh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_cosh( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Cosh( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_cosh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -1029,7 +1210,16 @@ BigFloat Sinh( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_sinh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_sinh( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Sinh( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_sinh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -1066,7 +1256,16 @@ BigFloat Tanh( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_tanh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_tanh( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Tanh( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_tanh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -1105,7 +1304,16 @@ BigFloat Acosh( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_acosh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_acosh( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Acosh( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_acosh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -1142,7 +1350,16 @@ BigFloat Asinh( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_asinh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_asinh( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Asinh( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_asinh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -1179,7 +1396,16 @@ BigFloat Atanh( const BigFloat& alpha )
 {
     BigFloat beta;
     beta.SetPrecision( alpha.Precision() );
-    mpfr_atanh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    mpfr_atanh( beta.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
+    return beta;
+}
+
+template<>
+Complex<BigFloat> Atanh( const Complex<BigFloat>& alpha )
+{
+    Complex<BigFloat> beta;
+    beta.SetPrecision( alpha.Precision() );
+    mpc_atanh( beta.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
     return beta;
 }
 #endif
@@ -1277,7 +1503,7 @@ template<>
 BigFloat Pi<BigFloat>()
 {
     BigFloat pi;
-    mpfr_const_pi( pi.Pointer(), mpc::RoundingMode() );
+    mpfr_const_pi( pi.Pointer(), mpfr::RoundingMode() );
     return pi;
 }
 
@@ -1285,7 +1511,7 @@ BigFloat Pi( mpfr_prec_t prec )
 {
     BigFloat pi;
     pi.SetPrecision( prec );
-    mpfr_const_pi( pi.Pointer(), mpc::RoundingMode() );
+    mpfr_const_pi( pi.Pointer(), mpfr::RoundingMode() );
     return pi;
 }
 #endif
@@ -1316,7 +1542,7 @@ template<> BigFloat Gamma( const BigFloat& alpha )
     BigFloat gammaAlpha;
     gammaAlpha.SetPrecision( alpha.Precision() );
     mpfr_gamma
-    ( gammaAlpha.Pointer(), alpha.LockedPointer(), mpc::RoundingMode() );
+    ( gammaAlpha.Pointer(), alpha.LockedPointer(), mpfr::RoundingMode() );
     return gammaAlpha;
 }
 #endif
@@ -1347,7 +1573,7 @@ template<> BigFloat LogGamma( const BigFloat& alpha )
     int signp;
     mpfr_lgamma
     ( logGammaAlpha.Pointer(), &signp,
-      alpha.LockedPointer(), mpc::RoundingMode() );
+      alpha.LockedPointer(), mpfr::RoundingMode() );
     return logGammaAlpha;
 }
 #endif

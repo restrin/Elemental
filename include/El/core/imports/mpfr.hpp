@@ -19,7 +19,7 @@
 
 namespace El {
 
-namespace mpc {
+namespace mpfr {
 
 void RandomState( gmp_randstate_t randState );
 
@@ -37,12 +37,20 @@ void FreeMPI();
 
 mpfr_rnd_t RoundingMode();
 
+} // namespace mpfr
+
+namespace mpc {
+
+mpc_rnd_t RoundingMode();
+
 } // namespace mpc
 
 class BigInt
 {
 private:
     mpz_t mpzInt_;
+
+    void Init( int numBits=mpfr::NumIntBits() );
 
 public:
     mpz_ptr Pointer();
@@ -53,16 +61,16 @@ public:
     int NumBits() const;
 
     BigInt();
-    BigInt( const BigInt& a, int numBits=mpc::NumIntBits() );
-    BigInt( const unsigned& a, int numBits=mpc::NumIntBits() );
-    BigInt( const unsigned long& a, int numBits=mpc::NumIntBits() );
-    BigInt( const unsigned long long& a, int numBits=mpc::NumIntBits() );
-    BigInt( const int& a, int numBits=mpc::NumIntBits() );
-    BigInt( const long int& a, int numBits=mpc::NumIntBits() );
-    BigInt( const long long int& a, int numBits=mpc::NumIntBits() );
-    BigInt( const double& a, int numBits=mpc::NumIntBits() );
-    BigInt( const char* str, int base, int numBits=mpc::NumIntBits() );
-    BigInt( const std::string& str, int base, int numBits=mpc::NumIntBits() );
+    BigInt( const BigInt& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const unsigned& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const unsigned long& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const unsigned long long& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const int& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const long int& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const long long int& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const double& a, int numBits=mpfr::NumIntBits() );
+    BigInt( const char* str, int base, int numBits=mpfr::NumIntBits() );
+    BigInt( const std::string& str, int base, int numBits=mpfr::NumIntBits() );
     BigInt( BigInt&& a );
     ~BigInt();
 
@@ -148,10 +156,10 @@ public:
     explicit operator QuadDouble() const;
 #endif
 
-    size_t SerializedSize( int numLimbs=mpc::NumIntLimbs() ) const;
-          byte* Serialize( byte* buf, int numLimbs=mpc::NumIntLimbs() ) const;
-          byte* Deserialize( byte* buf, int numLimbs=mpc::NumIntLimbs() );
-    const byte* Deserialize( const byte* buf, int numLimbs=mpc::NumIntLimbs() );
+    size_t SerializedSize( int numLimbs=mpfr::NumIntLimbs() ) const;
+          byte* Serialize( byte* buf, int numLimbs=mpfr::NumIntLimbs() ) const;
+          byte* Deserialize( byte* buf, int numLimbs=mpfr::NumIntLimbs() );
+    const byte* Deserialize( const byte* buf, int numLimbs=mpfr::NumIntLimbs() );
 
     size_t ThinSerializedSize() const;
           byte* ThinSerialize( byte* buf ) const;
@@ -163,6 +171,66 @@ BigInt operator+( const BigInt& a, const BigInt& b );
 BigInt operator-( const BigInt& a, const BigInt& b );
 BigInt operator*( const BigInt& a, const BigInt& b );
 BigInt operator/( const BigInt& a, const BigInt& b );
+
+BigInt operator+( const BigInt& a, const unsigned& b );
+BigInt operator-( const BigInt& a, const unsigned& b );
+BigInt operator*( const BigInt& a, const unsigned& b );
+BigInt operator/( const BigInt& a, const unsigned& b );
+
+BigInt operator+( const BigInt& a, const unsigned long& b );
+BigInt operator-( const BigInt& a, const unsigned long& b );
+BigInt operator*( const BigInt& a, const unsigned long& b );
+BigInt operator/( const BigInt& a, const unsigned long& b );
+
+BigInt operator+( const BigInt& a, const unsigned long long& b );
+BigInt operator-( const BigInt& a, const unsigned long long& b );
+BigInt operator*( const BigInt& a, const unsigned long long& b );
+BigInt operator/( const BigInt& a, const unsigned long long& b );
+
+BigInt operator+( const BigInt& a, const int& b );
+BigInt operator-( const BigInt& a, const int& b );
+BigInt operator*( const BigInt& a, const int& b );
+BigInt operator/( const BigInt& a, const int& b );
+
+BigInt operator+( const BigInt& a, const long int& b );
+BigInt operator-( const BigInt& a, const long int& b );
+BigInt operator*( const BigInt& a, const long int& b );
+BigInt operator/( const BigInt& a, const long int& b );
+
+BigInt operator+( const BigInt& a, const long long int& b );
+BigInt operator-( const BigInt& a, const long long int& b );
+BigInt operator*( const BigInt& a, const long long int& b );
+BigInt operator/( const BigInt& a, const long long int& b );
+
+BigInt operator+( const unsigned& a, const BigInt& b );
+BigInt operator-( const unsigned& a, const BigInt& b );
+BigInt operator*( const unsigned& a, const BigInt& b );
+BigInt operator/( const unsigned& a, const BigInt& b );
+
+BigInt operator+( const unsigned long& a, const BigInt& b );
+BigInt operator-( const unsigned long& a, const BigInt& b );
+BigInt operator*( const unsigned long& a, const BigInt& b );
+BigInt operator/( const unsigned long& a, const BigInt& b );
+
+BigInt operator+( const unsigned long long& a, const BigInt& b );
+BigInt operator-( const unsigned long long& a, const BigInt& b );
+BigInt operator*( const unsigned long long& a, const BigInt& b );
+BigInt operator/( const unsigned long long& a, const BigInt& b );
+
+BigInt operator+( const int& a, const BigInt& b );
+BigInt operator-( const int& a, const BigInt& b );
+BigInt operator*( const int& a, const BigInt& b );
+BigInt operator/( const int& a, const BigInt& b );
+
+BigInt operator+( const long int& a, const BigInt& b );
+BigInt operator-( const long int& a, const BigInt& b );
+BigInt operator*( const long int& a, const BigInt& b );
+BigInt operator/( const long int& a, const BigInt& b );
+
+BigInt operator+( const long long int& a, const BigInt& b );
+BigInt operator-( const long long int& a, const BigInt& b );
+BigInt operator*( const long long int& a, const BigInt& b );
+BigInt operator/( const long long int& a, const BigInt& b );
 
 BigInt operator%( const BigInt& a, const BigInt& b );
 unsigned operator%( const BigInt& a, const unsigned& b );
@@ -254,6 +322,9 @@ private:
     mpfr_t mpfrFloat_;
     size_t numLimbs_;
 
+    void SetNumLimbs( mpfr_prec_t prec );
+    void Init( mpfr_prec_t prec=mpfr::Precision() );
+
 public:
     mpfr_ptr    Pointer();
     mpfr_srcptr LockedPointer() const;
@@ -267,27 +338,27 @@ public:
     //       due to the ambiguity is would cause with respect to the
     //       constructors which accept an integer and an (optional) precision
     BigFloat();
-    BigFloat( const BigFloat& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const BigInt& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const unsigned& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const unsigned long& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const unsigned long long& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const int& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const long int& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const long long int& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const float& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const double& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const long double& a, mpfr_prec_t prec=mpc::Precision() );
+    BigFloat( const BigFloat& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const BigInt& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const unsigned& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const unsigned long& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const unsigned long long& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const int& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const long int& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const long long int& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const float& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const double& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const long double& a, mpfr_prec_t prec=mpfr::Precision() );
 #ifdef EL_HAVE_QD
-    BigFloat( const DoubleDouble& a, mpfr_prec_t prec=mpc::Precision() );
-    BigFloat( const QuadDouble& a, mpfr_prec_t prec=mpc::Precision() );
+    BigFloat( const DoubleDouble& a, mpfr_prec_t prec=mpfr::Precision() );
+    BigFloat( const QuadDouble& a, mpfr_prec_t prec=mpfr::Precision() );
 #endif
 #ifdef EL_HAVE_QUAD
-    BigFloat( const Quad& a, mpfr_prec_t prec=mpc::Precision() );
+    BigFloat( const Quad& a, mpfr_prec_t prec=mpfr::Precision() );
 #endif
-    BigFloat( const char* str, int base, mpfr_prec_t prec=mpc::Precision() );
+    BigFloat( const char* str, int base, mpfr_prec_t prec=mpfr::Precision() );
     BigFloat
-    ( const std::string& str, int base, mpfr_prec_t prec=mpc::Precision() );
+    ( const std::string& str, int base, mpfr_prec_t prec=mpfr::Precision() );
     BigFloat( BigFloat&& a );
     ~BigFloat();
 
@@ -321,6 +392,13 @@ public:
     BigFloat& operator+=( const long long int& a );
     BigFloat& operator+=( const float& a );
     BigFloat& operator+=( const double& a );
+#ifdef EL_HAVE_QUAD
+    BigFloat& operator+=( const Quad& a );
+#endif
+#ifdef EL_HAVE_QD
+    BigFloat& operator+=( const DoubleDouble& a );
+    BigFloat& operator+=( const QuadDouble& a );
+#endif
     BigFloat& operator+=( const BigInt& a );
     BigFloat& operator+=( const BigFloat& a );
 
@@ -332,6 +410,13 @@ public:
     BigFloat& operator-=( const long long int& a );
     BigFloat& operator-=( const float& a );
     BigFloat& operator-=( const double& a );
+#ifdef EL_HAVE_QUAD
+    BigFloat& operator-=( const Quad& a );
+#endif
+#ifdef EL_HAVE_QD
+    BigFloat& operator-=( const DoubleDouble& a );
+    BigFloat& operator-=( const QuadDouble& a );
+#endif
     BigFloat& operator-=( const BigInt& a );
     BigFloat& operator-=( const BigFloat& a );
 
@@ -348,6 +433,13 @@ public:
     BigFloat& operator*=( const long long int& a );
     BigFloat& operator*=( const float& a );
     BigFloat& operator*=( const double& a );
+#ifdef EL_HAVE_QUAD
+    BigFloat& operator*=( const Quad& a );
+#endif
+#ifdef EL_HAVE_QD
+    BigFloat& operator*=( const DoubleDouble& a );
+    BigFloat& operator*=( const QuadDouble& a );
+#endif
     BigFloat& operator*=( const BigInt& a );
     BigFloat& operator*=( const BigFloat& a );
 
@@ -359,6 +451,13 @@ public:
     BigFloat& operator/=( const long long int& a );
     BigFloat& operator/=( const float& a );
     BigFloat& operator/=( const double& a );
+#ifdef EL_HAVE_QUAD
+    BigFloat& operator/=( const Quad& a );
+#endif
+#ifdef EL_HAVE_QD
+    BigFloat& operator/=( const DoubleDouble& a );
+    BigFloat& operator/=( const QuadDouble& a );
+#endif
     BigFloat& operator/=( const BigInt& a );
     BigFloat& operator/=( const BigFloat& a );
 
@@ -411,6 +510,124 @@ BigFloat operator-( const BigFloat& a, const BigFloat& b );
 BigFloat operator*( const BigFloat& a, const BigFloat& b );
 BigFloat operator/( const BigFloat& a, const BigFloat& b );
 
+BigFloat operator+( const BigFloat& a, const unsigned& b );
+BigFloat operator-( const BigFloat& a, const unsigned& b );
+BigFloat operator*( const BigFloat& a, const unsigned& b );
+BigFloat operator/( const BigFloat& a, const unsigned& b );
+
+BigFloat operator+( const BigFloat& a, const unsigned long& b );
+BigFloat operator-( const BigFloat& a, const unsigned long& b );
+BigFloat operator*( const BigFloat& a, const unsigned long& b );
+BigFloat operator/( const BigFloat& a, const unsigned long& b );
+
+BigFloat operator+( const BigFloat& a, const unsigned long long& b );
+BigFloat operator-( const BigFloat& a, const unsigned long long& b );
+BigFloat operator*( const BigFloat& a, const unsigned long long& b );
+BigFloat operator/( const BigFloat& a, const unsigned long long& b );
+
+BigFloat operator+( const BigFloat& a, const int& b );
+BigFloat operator-( const BigFloat& a, const int& b );
+BigFloat operator*( const BigFloat& a, const int& b );
+BigFloat operator/( const BigFloat& a, const int& b );
+
+BigFloat operator+( const BigFloat& a, const long int& b );
+BigFloat operator-( const BigFloat& a, const long int& b );
+BigFloat operator*( const BigFloat& a, const long int& b );
+BigFloat operator/( const BigFloat& a, const long int& b );
+
+BigFloat operator+( const BigFloat& a, const long long int& b );
+BigFloat operator-( const BigFloat& a, const long long int& b );
+BigFloat operator*( const BigFloat& a, const long long int& b );
+BigFloat operator/( const BigFloat& a, const long long int& b );
+
+BigFloat operator+( const BigFloat& a, const float& b );
+BigFloat operator-( const BigFloat& a, const float& b );
+BigFloat operator*( const BigFloat& a, const float& b );
+BigFloat operator/( const BigFloat& a, const float& b );
+
+BigFloat operator+( const BigFloat& a, const double& b );
+BigFloat operator-( const BigFloat& a, const double& b );
+BigFloat operator*( const BigFloat& a, const double& b );
+BigFloat operator/( const BigFloat& a, const double& b );
+
+#ifdef EL_HAVE_QUAD
+BigFloat operator+( const BigFloat& a, const Quad& b );
+BigFloat operator-( const BigFloat& a, const Quad& b );
+BigFloat operator*( const BigFloat& a, const Quad& b );
+BigFloat operator/( const BigFloat& a, const Quad& b );
+#endif
+
+#ifdef EL_HAVE_QD
+BigFloat operator+( const BigFloat& a, const DoubleDouble& b );
+BigFloat operator-( const BigFloat& a, const DoubleDouble& b );
+BigFloat operator*( const BigFloat& a, const DoubleDouble& b );
+BigFloat operator/( const BigFloat& a, const DoubleDouble& b );
+
+BigFloat operator+( const BigFloat& a, const QuadDouble& b );
+BigFloat operator-( const BigFloat& a, const QuadDouble& b );
+BigFloat operator*( const BigFloat& a, const QuadDouble& b );
+BigFloat operator/( const BigFloat& a, const QuadDouble& b );
+#endif
+
+BigFloat operator+( const unsigned& a, const BigFloat& b );
+BigFloat operator-( const unsigned& a, const BigFloat& b );
+BigFloat operator*( const unsigned& a, const BigFloat& b );
+BigFloat operator/( const unsigned& a, const BigFloat& b );
+
+BigFloat operator+( const unsigned long& a, const BigFloat& b );
+BigFloat operator-( const unsigned long& a, const BigFloat& b );
+BigFloat operator*( const unsigned long& a, const BigFloat& b );
+BigFloat operator/( const unsigned long& a, const BigFloat& b );
+
+BigFloat operator+( const unsigned long long& a, const BigFloat& b );
+BigFloat operator-( const unsigned long long& a, const BigFloat& b );
+BigFloat operator*( const unsigned long long& a, const BigFloat& b );
+BigFloat operator/( const unsigned long long& a, const BigFloat& b );
+
+BigFloat operator+( const int& a, const BigFloat& b );
+BigFloat operator-( const int& a, const BigFloat& b );
+BigFloat operator*( const int& a, const BigFloat& b );
+BigFloat operator/( const int& a, const BigFloat& b );
+
+BigFloat operator+( const long int& a, const BigFloat& b );
+BigFloat operator-( const long int& a, const BigFloat& b );
+BigFloat operator*( const long int& a, const BigFloat& b );
+BigFloat operator/( const long int& a, const BigFloat& b );
+
+BigFloat operator+( const long long int& a, const BigFloat& b );
+BigFloat operator-( const long long int& a, const BigFloat& b );
+BigFloat operator*( const long long int& a, const BigFloat& b );
+BigFloat operator/( const long long int& a, const BigFloat& b );
+
+BigFloat operator+( const float& a, const BigFloat& b );
+BigFloat operator-( const float& a, const BigFloat& b );
+BigFloat operator*( const float& a, const BigFloat& b );
+BigFloat operator/( const float& a, const BigFloat& b );
+
+BigFloat operator+( const double& a, const BigFloat& b );
+BigFloat operator-( const double& a, const BigFloat& b );
+BigFloat operator*( const double& a, const BigFloat& b );
+BigFloat operator/( const double& a, const BigFloat& b );
+
+#ifdef EL_HAVE_QUAD
+BigFloat operator+( const Quad& a, const BigFloat& b );
+BigFloat operator-( const Quad& a, const BigFloat& b );
+BigFloat operator*( const Quad& a, const BigFloat& b );
+BigFloat operator/( const Quad& a, const BigFloat& b );
+#endif
+
+#ifdef EL_HAVE_QD
+BigFloat operator+( const DoubleDouble& a, const BigFloat& b );
+BigFloat operator-( const DoubleDouble& a, const BigFloat& b );
+BigFloat operator*( const DoubleDouble& a, const BigFloat& b );
+BigFloat operator/( const DoubleDouble& a, const BigFloat& b );
+
+BigFloat operator+( const QuadDouble& a, const BigFloat& b );
+BigFloat operator-( const QuadDouble& a, const BigFloat& b );
+BigFloat operator*( const QuadDouble& a, const BigFloat& b );
+BigFloat operator/( const QuadDouble& a, const BigFloat& b );
+#endif
+
 BigFloat operator<<( const BigFloat& a, const int& b );
 BigFloat operator<<( const BigFloat& a, const long int& b );
 BigFloat operator<<( const BigFloat& a, const unsigned& b );
@@ -420,6 +637,7 @@ BigFloat operator>>( const BigFloat& a, const int& b );
 BigFloat operator>>( const BigFloat& a, const long int& b );
 BigFloat operator>>( const BigFloat& a, const unsigned& b );
 BigFloat operator>>( const BigFloat& a, const unsigned long& b );
+
 
 bool operator<( const BigFloat& a, const BigFloat& b );
 bool operator>( const BigFloat& a, const BigFloat& b );

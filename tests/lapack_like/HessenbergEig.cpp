@@ -1838,7 +1838,7 @@ int main( int argc, char* argv[] )
 
     try
     {
-        const Int n = Input("--n","random matrix size",80);
+        const Int n = Input("--n","random matrix size",60);
         const bool print = Input("--print","print matrices?",false);
         ProcessInput();
         PrintInputReport();
@@ -1861,6 +1861,9 @@ int main( int argc, char* argv[] )
 #ifdef EL_HAVE_QUAD
         TestAhuesTisseur<Quad>( print );
 #endif
+#ifdef EL_HAVE_MPC
+        TestAhuesTisseur<BigFloat>( print );
+#endif
 
         TestRandomQuasi<float>( n, print );
         TestRandomQuasi<double>( n, print );
@@ -1879,6 +1882,9 @@ int main( int argc, char* argv[] )
         TestRandom<double>( n, print );
 #ifdef EL_HAVE_QUAD
         TestRandom<Quad>( n, print );
+#endif
+#ifdef EL_HAVE_MPC
+        TestRandom<BigFloat>( n, print );
 #endif
     }
     catch( std::exception& e ) { ReportException(e); }

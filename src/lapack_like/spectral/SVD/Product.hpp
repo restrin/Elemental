@@ -18,7 +18,7 @@ namespace svd {
 // =========================
 
 template<typename F>
-inline void TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const Matrix<F>& A,
         Matrix<F>& U, 
         Matrix<Base<F>>& s,
@@ -67,7 +67,7 @@ inline void TallAbsoluteProduct
     // Sigma := sqrt(Sigma^2)
     const Int k = s.Height();
     for( Int i=0; i<k; ++i )
-        s.Set( i, 0, Sqrt(s.Get(i,0)) );
+        s(i) = Sqrt(s(i));
 
     if( !avoidU )
     {
@@ -84,7 +84,7 @@ inline void TallAbsoluteProduct
 }
 
 template<typename F>
-inline void TallRelativeProduct
+void TallRelativeProduct
 ( const Matrix<F>& A,
         Matrix<F>& U,
         Matrix<Base<F>>& s,
@@ -119,7 +119,7 @@ inline void TallRelativeProduct
     // Sigma := sqrt(Sigma^2), where all sigmas > relTol*twoNorm
     for( Int i=0; i<n; ++i )
     {
-        const Real sigma = Sqrt(s.Get(i,0));
+        const Real sigma = Sqrt(s(i));
         if( sigma <= relTol*twoNorm )
         {
             s.Resize( i, 1 );
@@ -127,7 +127,7 @@ inline void TallRelativeProduct
             break;
         }
         else
-            s.Set( i, 0, sigma );
+            s(i) = sigma;
     }
 
     if( !avoidU )
@@ -145,7 +145,7 @@ inline void TallRelativeProduct
 }
 
 template<typename F>
-inline void TallProduct
+void TallProduct
 ( const Matrix<F>& A,
         Matrix<F>& U,
         Matrix<Base<F>>& s,
@@ -162,8 +162,7 @@ inline void TallProduct
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const DistMatrix<F>& A,
         DistMatrix<F>& U,
         ElementalMatrix<Base<F>>& s, 
@@ -212,11 +211,10 @@ TallAbsoluteProduct
     HermitianEig( LOWER, C, s, V, DESCENDING, subset );
     
     // Sigma := sqrt(Sigma^2)
-    {
-        const Int localHeight = s.LocalHeight();
-        for( Int iLoc=0; iLoc<localHeight; ++iLoc )
-            s.SetLocal( iLoc, 0, Sqrt(s.GetLocal(iLoc,0)) );
-    }
+    const Int localHeight = s.LocalHeight();
+    auto& sLoc = s.Matrix();
+    for( Int iLoc=0; iLoc<localHeight; ++iLoc )
+        sLoc(iLoc) = Sqrt(sLoc(iLoc));
 
     if( !avoidU )
     {
@@ -233,8 +231,7 @@ TallAbsoluteProduct
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<F>& UPre,
         ElementalMatrix<Base<F>>& s, 
@@ -253,8 +250,7 @@ TallAbsoluteProduct
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const DistMatrix<F>& A,
         DistMatrix<F>& U,
         ElementalMatrix<Base<F>>& s, 
@@ -291,9 +287,10 @@ TallRelativeProduct
 
     // Sigma := sqrt(Sigma^2), where all sigmas > relTol*twoNorm
     DistMatrix<Real,STAR,STAR> s_STAR_STAR( s );
+    auto& sLoc = s_STAR_STAR.Matrix();
     for( Int i=0; i<n; ++i )
     {
-        const Real lambda = s_STAR_STAR.GetLocal(i,0);
+        const Real lambda = sLoc(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s_STAR_STAR.Resize( i, 1 );
@@ -301,7 +298,7 @@ TallRelativeProduct
             break;
         }
         else
-            s_STAR_STAR.SetLocal( i, 0, Sqrt(lambda) );
+            sLoc(i) = Sqrt(lambda);
     }
     Copy( s_STAR_STAR, s );
 
@@ -320,8 +317,7 @@ TallRelativeProduct
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<F>& UPre,
         ElementalMatrix<Base<F>>& s, 
@@ -340,7 +336,7 @@ TallRelativeProduct
 }
 
 template<typename F>
-inline void TallProduct
+void TallProduct
 ( const ElementalMatrix<F>& A,
         ElementalMatrix<F>& U,
         ElementalMatrix<Base<F>>& s, 
@@ -357,8 +353,7 @@ inline void TallProduct
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const DistMatrix<F,VC,STAR>& A,
         DistMatrix<F,VC,STAR>& U,
         DistMatrix<Base<F>,STAR,STAR>& s, 
@@ -411,8 +406,9 @@ TallAbsoluteProduct
     const int k = s.Height();
     
     // Sigma := sqrt(Sigma^2)
+    auto& sLoc = s.Matrix();
     for( Int i=0; i<k; ++i )
-        s.SetLocal( i, 0, Sqrt(s.GetLocal(i,0)) );
+        sLoc(i) = Sqrt(sLoc(i));
 
     if( !avoidU )
     {
@@ -431,8 +427,7 @@ TallAbsoluteProduct
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const DistMatrix<F,VC,STAR>& A,
         ElementalMatrix<F>& UPre,
         ElementalMatrix<Base<F>>& sPre, 
@@ -451,8 +446,7 @@ TallAbsoluteProduct
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const DistMatrix<F,VC,STAR>& A,
         DistMatrix<F,VC,STAR>& U,
         DistMatrix<Base<F>,STAR,STAR>& s, 
@@ -490,9 +484,10 @@ TallRelativeProduct
     const Real twoNorm = Sqrt(MaxNorm(s));
     
     // Sigma := sqrt(Sigma^2), where each sigma > twoNorm*relTol
+    auto& sLoc = s.Matrix();
     for( Int i=0; i<n; ++i )
     {
-        const Real lambda = s.GetLocal(i,0);
+        const Real lambda = sLoc(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s.Resize( i, 1 );
@@ -500,7 +495,7 @@ TallRelativeProduct
             break;
         }
         else
-            s.SetLocal( i, 0, Sqrt(lambda) );
+            sLoc(i) = Sqrt(lambda);
     }
     const int k = s.Height();
 
@@ -521,8 +516,7 @@ TallRelativeProduct
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const DistMatrix<F,VC,STAR>& A,
         ElementalMatrix<F>& UPre,
         ElementalMatrix<Base<F>>& sPre, 
@@ -558,8 +552,7 @@ void TallProduct
 }
 
 template<typename F>
-inline void
-WideAbsoluteProduct
+void WideAbsoluteProduct
 ( const Matrix<F>& A,
         Matrix<F>& U,
         Matrix<Base<F>>& s,
@@ -608,7 +601,7 @@ WideAbsoluteProduct
     // Sigma := sqrt(Sigma^2)
     const Int k = s.Height();
     for( Int i=0; i<k; ++i )
-        s.Set( i, 0, Sqrt(s.Get(i,0)) );
+        s(i) = Sqrt(s(i));
 
     if( !avoidV )
     {
@@ -623,8 +616,7 @@ WideAbsoluteProduct
 }
 
 template<typename F>
-inline void
-WideRelativeProduct
+void WideRelativeProduct
 ( const Matrix<F>& A,
         Matrix<F>& U,
         Matrix<Base<F>>& s,
@@ -659,7 +651,7 @@ WideRelativeProduct
     // Sigma := sqrt(Sigma^2), where each sigma > relTol*twoNorm
     for( Int i=0; i<m; ++i )
     {
-        const Real lambda = s.Get(i,0);
+        const Real lambda = s(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s.Resize( i, 1 );
@@ -667,7 +659,7 @@ WideRelativeProduct
             break;
         }
         else
-            s.Set( i, 0, Sqrt(lambda) );
+            s(i) = Sqrt(lambda);
     }
 
     if( !avoidV )
@@ -683,7 +675,7 @@ WideRelativeProduct
 }
 
 template<typename F>
-inline void WideProduct
+void WideProduct
 ( const Matrix<F>& A,
         Matrix<F>& U,
         Matrix<Base<F>>& s,
@@ -700,8 +692,7 @@ inline void WideProduct
 }
 
 template<typename F>
-inline void
-WideAbsoluteProduct
+void WideAbsoluteProduct
 ( const DistMatrix<F>& A,
         DistMatrix<F>& U,
         ElementalMatrix<Base<F>>& s, 
@@ -750,11 +741,10 @@ WideAbsoluteProduct
     HermitianEig( LOWER, C, s, U, DESCENDING, subset );
     
     // Sigma := sqrt(Sigma^2)
-    {
-        const Int localHeight = s.LocalHeight();
-        for( Int iLoc=0; iLoc<localHeight; ++iLoc )
-            s.SetLocal( iLoc, 0, Sqrt(s.GetLocal(iLoc,0)) );
-    }
+    const Int localHeight = s.LocalHeight();
+    auto& sLoc = s.Matrix();
+    for( Int iLoc=0; iLoc<localHeight; ++iLoc )
+        sLoc(iLoc) = Sqrt(sLoc(iLoc));
 
     if( !avoidV )
     {
@@ -769,8 +759,7 @@ WideAbsoluteProduct
 }
 
 template<typename F>
-inline void
-WideAbsoluteProduct
+void WideAbsoluteProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<F>& UPre,
         ElementalMatrix<Base<F>>& s, 
@@ -789,8 +778,7 @@ WideAbsoluteProduct
 }
 
 template<typename F>
-inline void
-WideRelativeProduct
+void WideRelativeProduct
 ( const DistMatrix<F>& A,
         DistMatrix<F>& U,
         ElementalMatrix<Base<F>>& s, 
@@ -827,9 +815,10 @@ WideRelativeProduct
     
     // Sigma := sqrt(Sigma^2), where all sigmas > relTol*twoNorm
     DistMatrix<Real,STAR,STAR> s_STAR_STAR( s );
+    auto& sLoc = s_STAR_STAR.Matrix();
     for( Int i=0; i<m; ++i )
     {
-        const Real lambda = s_STAR_STAR.GetLocal(i,0);
+        const Real lambda = sLoc(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s_STAR_STAR.Resize( i, 1 );
@@ -837,7 +826,7 @@ WideRelativeProduct
             break;
         }
         else
-            s_STAR_STAR.SetLocal( i, 0, Sqrt(lambda) );
+            sLoc(i) = Sqrt(lambda);
     }
     Copy( s_STAR_STAR, s );
 
@@ -854,8 +843,7 @@ WideRelativeProduct
 }
 
 template<typename F>
-inline void
-WideRelativeProduct
+void WideRelativeProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<F>& UPre,
         ElementalMatrix<Base<F>>& s, 
@@ -874,7 +862,7 @@ WideRelativeProduct
 }
 
 template<typename F>
-inline void WideProduct
+void WideProduct
 ( const ElementalMatrix<F>& A,
         ElementalMatrix<F>& U,
         ElementalMatrix<Base<F>>& s, 
@@ -937,7 +925,7 @@ void Product
 // =======================
 
 template<typename F>
-inline void TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const Matrix<F>& A,
         Matrix<Base<F>>& s,
   Base<F> tol )
@@ -980,11 +968,11 @@ inline void TallAbsoluteProduct
     // Sigma := sqrt(Sigma^2)
     const Int k = s.Height();
     for( Int i=0; i<k; ++i )
-        s.Set( i, 0, Sqrt(s.Get(i,0)) );
+        s(i) = Sqrt(s(i));
 }
 
 template<typename F>
-inline void TallRelativeProduct
+void TallRelativeProduct
 ( const Matrix<F>& A,
         Matrix<Base<F>>& s,
   Base<F> relTol )
@@ -1010,19 +998,19 @@ inline void TallRelativeProduct
     // Sigma := sqrt(Sigma^2), where all sigmas > relTol*twoNorm
     for( Int i=0; i<n; ++i )
     {
-        const Real sigma = Sqrt(s.Get(i,0));
+        const Real sigma = Sqrt(s(i));
         if( sigma <= relTol*twoNorm )
         {
             s.Resize( i, 1 );
             break;
         }
         else
-            s.Set( i, 0, sigma );
+            s(i) = sigma;
     }
 }
 
 template<typename F>
-inline void TallProduct
+void TallProduct
 ( const Matrix<F>& A,
         Matrix<Base<F>>& s,
   Base<F> tol,
@@ -1036,8 +1024,7 @@ inline void TallProduct
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const DistMatrix<F>& A,
         ElementalMatrix<Base<F>>& s, 
   Base<F> tol )
@@ -1081,13 +1068,13 @@ TallAbsoluteProduct
     
     // Sigma := sqrt(Sigma^2)
     const Int localHeight = s.LocalHeight();
+    auto& sLoc = s.Matrix();
     for( Int iLoc=0; iLoc<localHeight; ++iLoc )
-        s.SetLocal( iLoc, 0, Sqrt(s.GetLocal(iLoc,0)) );
+        sLoc(iLoc) = Sqrt(sLoc(iLoc));
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<Base<F>>& s, 
   Base<F> tol )
@@ -1099,8 +1086,7 @@ TallAbsoluteProduct
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const DistMatrix<F>& A,
         ElementalMatrix<Base<F>>& s, 
   Base<F> relTol )
@@ -1127,23 +1113,23 @@ TallRelativeProduct
 
     // Sigma := sqrt(Sigma^2), where all sigmas > relTol*twoNorm
     DistMatrix<Real,STAR,STAR> s_STAR_STAR( s );
+    auto& sLoc = s_STAR_STAR.Matrix();
     for( Int i=0; i<n; ++i )
     {
-        const Real lambda = s_STAR_STAR.GetLocal(i,0);
+        const Real lambda = sLoc(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s_STAR_STAR.Resize( i, 1 );
             break;
         }
         else
-            s_STAR_STAR.SetLocal( i, 0, Sqrt(lambda) );
+            sLoc(i) = Sqrt(lambda);
     }
     Copy( s_STAR_STAR, s );
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<Base<F>>& s, 
   Base<F> relTol )
@@ -1155,7 +1141,7 @@ TallRelativeProduct
 }
 
 template<typename F>
-inline void TallProduct
+void TallProduct
 ( const ElementalMatrix<F>& A,
         ElementalMatrix<Base<F>>& s, 
   Base<F> tol,
@@ -1169,8 +1155,7 @@ inline void TallProduct
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const DistMatrix<F,VC,STAR>& A,
         DistMatrix<Base<F>,STAR,STAR>& s, 
   Base<F> tol )
@@ -1218,13 +1203,13 @@ TallAbsoluteProduct
     const int k = s.Height();
     
     // Sigma := sqrt(Sigma^2)
+    auto& sLoc = s.Matrix();
     for( Int i=0; i<k; ++i )
-        s.SetLocal( i, 0, Sqrt(s.GetLocal(i,0)) );
+        sLoc(i) = Sqrt(sLoc(i));
 }
 
 template<typename F>
-inline void
-TallAbsoluteProduct
+void TallAbsoluteProduct
 ( const DistMatrix<F,VC,STAR>& A,
         ElementalMatrix<Base<F>>& sPre, 
   Base<F> tol )
@@ -1237,8 +1222,7 @@ TallAbsoluteProduct
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const DistMatrix<F,VC,STAR>& A,
         DistMatrix<Base<F>,STAR,STAR>& s, 
   Base<F> relTol )
@@ -1267,23 +1251,23 @@ TallRelativeProduct
     const Real twoNorm = Sqrt(MaxNorm(s));
     
     // Sigma := sqrt(Sigma^2), where each sigma > twoNorm*relTol
+    auto& sLoc = s.Matrix();
     for( Int i=0; i<n; ++i )
     {
-        const Real lambda = s.GetLocal(i,0);
+        const Real lambda = sLoc(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s.Resize( i, 1 );
             break;
         }
         else
-            s.SetLocal( i, 0, Sqrt(lambda) );
+            sLoc(i) = Sqrt(lambda);
     }
     const int k = s.Height();
 }
 
 template<typename F>
-inline void
-TallRelativeProduct
+void TallRelativeProduct
 ( const DistMatrix<F,VC,STAR>& A,
         ElementalMatrix<Base<F>>& sPre, 
   Base<F> relTol )
@@ -1310,8 +1294,7 @@ void TallProduct
 }
 
 template<typename F>
-inline void
-WideAbsoluteProduct
+void WideAbsoluteProduct
 ( const Matrix<F>& A,
         Matrix<Base<F>>& s,
   Base<F> tol )
@@ -1354,12 +1337,11 @@ WideAbsoluteProduct
     // Sigma := sqrt(Sigma^2)
     const Int k = s.Height();
     for( Int i=0; i<k; ++i )
-        s.Set( i, 0, Sqrt(s.Get(i,0)) );
+        s(i) = Sqrt(s(i));
 }
 
 template<typename F>
-inline void
-WideRelativeProduct
+void WideRelativeProduct
 ( const Matrix<F>& A,
         Matrix<Base<F>>& s,
   Base<F> relTol )
@@ -1385,19 +1367,19 @@ WideRelativeProduct
     // Sigma := sqrt(Sigma^2), where each sigma > relTol*twoNorm
     for( Int i=0; i<m; ++i )
     {
-        const Real lambda = s.Get(i,0);
+        const Real lambda = s(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s.Resize( i, 1 );
             break;
         }
         else
-            s.Set( i, 0, Sqrt(lambda) );
+            s(i) = Sqrt(lambda);
     }
 }
 
 template<typename F>
-inline void WideProduct
+void WideProduct
 ( const Matrix<F>& A,
         Matrix<Base<F>>& s,
   Base<F> tol,
@@ -1411,8 +1393,7 @@ inline void WideProduct
 }
 
 template<typename F>
-inline void
-WideAbsoluteProduct
+void WideAbsoluteProduct
 ( const DistMatrix<F>& A,
         ElementalMatrix<Base<F>>& s, 
   Base<F> tol )
@@ -1456,13 +1437,13 @@ WideAbsoluteProduct
     
     // Sigma := sqrt(Sigma^2)
     const Int localHeight = s.LocalHeight();
+    auto& sLoc = s.Matrix();
     for( Int iLoc=0; iLoc<localHeight; ++iLoc )
-        s.SetLocal( iLoc, 0, Sqrt(s.GetLocal(iLoc,0)) );
+        sLoc(iLoc) = Sqrt(sLoc(iLoc));
 }
 
 template<typename F>
-inline void
-WideAbsoluteProduct
+void WideAbsoluteProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<Base<F>>& s, 
   Base<F> tol )
@@ -1474,8 +1455,7 @@ WideAbsoluteProduct
 }
 
 template<typename F>
-inline void
-WideRelativeProduct
+void WideRelativeProduct
 ( const DistMatrix<F>& A,
         ElementalMatrix<Base<F>>& s, 
   Base<F> relTol )
@@ -1502,23 +1482,23 @@ WideRelativeProduct
     
     // Sigma := sqrt(Sigma^2), where all sigmas > relTol*twoNorm
     DistMatrix<Real,STAR,STAR> s_STAR_STAR( s );
+    auto& sLoc = s_STAR_STAR.Matrix();
     for( Int i=0; i<m; ++i )
     {
-        const Real lambda = s_STAR_STAR.GetLocal(i,0);
+        const Real lambda = sLoc(i);
         if( lambda <= Real(0) || Sqrt(lambda) <= relTol*twoNorm )
         {
             s_STAR_STAR.Resize( i, 1 );
             break;
         }
         else
-            s_STAR_STAR.SetLocal( i, 0, Sqrt(lambda) );
+            sLoc(i) = Sqrt(lambda);
     }
     Copy( s_STAR_STAR, s );
 }
 
 template<typename F>
-inline void
-WideRelativeProduct
+void WideRelativeProduct
 ( const ElementalMatrix<F>& APre,
         ElementalMatrix<Base<F>>& s, 
   Base<F> relTol )
@@ -1530,7 +1510,7 @@ WideRelativeProduct
 }
 
 template<typename F>
-inline void WideProduct
+void WideProduct
 ( const ElementalMatrix<F>& A,
         ElementalMatrix<Base<F>>& s, 
   Base<F> tol,

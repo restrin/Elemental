@@ -96,11 +96,10 @@ enum FortranLogicalEnum
 #include <El/core/imports/valgrind.hpp>
 #include <El/core/imports/omp.hpp>
 #include <El/core/imports/qd.hpp>
-#include <El/core/imports/mpc.hpp>
+#include <El/core/imports/mpfr.hpp>
 #include <El/core/imports/qt5.hpp>
 
 #include <El/core/Element/decl.hpp>
-#include <El/core/types.hpp>
 #include <El/core/Serialize.hpp>
 #include <El/core/imports/mpi.hpp>
 #include <El/core/imports/choice.hpp>
