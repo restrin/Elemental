@@ -167,6 +167,10 @@ void Newton
     {
         beta = Max(InfinityNorm(b), Real(1));
 
+        // Initialize to get feasible point for gradient estimate
+        pdco::Initialize(x, y, z1, z2, bl, bu, 
+          ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+
         if( ctrl.outerEquil )
         {
             DiagonalSolve( LEFT, NORMAL, dCol, xin );
@@ -180,14 +184,9 @@ void Newton
 
         theta = beta*zeta;
 
-        x *= beta;
-        y *= zeta;
-        z1 *= zeta;
-        z2 *= zeta;
-
         bl *= Real(1)/beta;
         bu *= Real(1)/beta;
-        bCopy *= Real(1)/zeta;
+        bCopy *= Real(1)/beta;
 
         D1sq *= beta*beta/(theta);
         D2sq *= theta/(beta*beta);
@@ -234,7 +233,7 @@ void Newton
 
     if( ctrl.print )
     {
-        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter");
+        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter\tstepx\tstepz");
         Output("Init : \t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
 /*
@@ -365,16 +364,8 @@ void Newton
 
         if( ctrl.print )
         {
-	    Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
-	       Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
-/*
-            Output("  Pfeas    = ", Pfeas);
-            Output("  Dfeas    = ", Dfeas);
-            Output("  Cinf0    = ", Cinf0);
-            Output("  ||cL||oo = ", InfinityNorm(cL));
-            Output("  ||cU||oo = ", InfinityNorm(cU));
-            Output("  center   = ", center);
-*/
+            Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
+                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center,"\t",stepx,"\t",stepz);
         }
 
 
@@ -586,9 +577,9 @@ void Newton
     Matrix<Real> xin;      // Scaled x variable for input to phi
 
     // For scaling purposes
-    Real beta = 1;
-    Real zeta = 1;
-    Real theta = 1;
+    Real beta = Real(1);
+    Real zeta = Real(1);
+    Real theta = Real(1);
 
     // Variables to avoid recomputation
     Matrix<Real> xmbl;     // x-bl
@@ -647,7 +638,11 @@ void Newton
     // Scale input data
     if( ctrl.scale )
     {
-        beta = Max(InfinityNorm(b), Real(1));
+        beta = Max(InfinityNorm(bCopy), Real(1));
+
+        // Initialize to get feasible point for gradient estimate
+        pdco::Initialize(x, y, z1, z2, bl, bu, 
+          ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
 
         if( ctrl.outerEquil )
         {
@@ -658,18 +653,13 @@ void Newton
         else
             phi.grad( x, grad ); // get gradient
 
-        zeta = Max(InfinityNorm(grad)*beta,Real(1));
+        zeta = Max(InfinityNorm(grad),Real(1));
 
         theta = beta*zeta;
 
-        x *= beta;
-        y *= zeta;
-        z1 *= zeta;
-        z2 *= zeta;
-
         bl *= Real(1)/beta;
         bu *= Real(1)/beta;
-        bCopy *= Real(1)/zeta;
+        bCopy *= Real(1)/beta;
 
         D1sq *= beta*beta/(theta);
         D2sq *= theta/(beta*beta);
@@ -737,7 +727,7 @@ void Newton
 
     if( ctrl.print )
     {
-        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter");
+        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter\tstepx\tstepz");
         Output("Init : \t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
     }
@@ -995,7 +985,7 @@ void Newton
         if( ctrl.print )
         {
             Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
-	            Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
+	            Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center,"\t",stepx,"\t",stepz);
         }
 
         if( ctrl.adaptiveMu )
@@ -1093,18 +1083,24 @@ void Newton
     Axpy(Real(-1), tmp, zFix);
     UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
 
-    // Undo scaling due to equilibration
-    if( ctrl.outerEquil )
+    // Undo scaling by beta and zeta
+    if( ctrl.scale )
     {
         x *= beta;
         y *= zeta;
         z *= zeta;
+
+        bl *= beta;
+        bu *= beta;
+    }
+
+    // Undo scaling due to equilibration
+    if( ctrl.outerEquil )
+    {
         DiagonalSolve( LEFT, NORMAL, dCol, x );
         DiagonalSolve( LEFT, NORMAL, dRow, y );
         DiagonalScale( LEFT, NORMAL, dCol, z );
 
-        bl *= beta;
-        bu *= beta;
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
     }
