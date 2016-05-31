@@ -261,7 +261,7 @@ main( int argc, char* argv[] )
         PrintInputReport();
 
 #ifdef EL_HAVE_MPC
-        mpc::SetPrecision( prec );
+        mpfr::SetPrecision( prec );
 #endif
 
         if( gridHeight == 0 )
@@ -301,6 +301,8 @@ main( int argc, char* argv[] )
 #ifdef EL_HAVE_MPC
             TestHessenberg<BigFloat>
             ( uplo, n, correctness, print, display );
+            TestHessenberg<Complex<BigFloat>>
+            ( uplo, n, correctness, print, display );
 #endif
         }
 
@@ -330,6 +332,8 @@ main( int argc, char* argv[] )
 
 #ifdef EL_HAVE_MPC
         TestHessenberg<BigFloat>
+        ( g, uplo, n, correctness, print, display );
+        TestHessenberg<Complex<BigFloat>>
         ( g, uplo, n, correctness, print, display );
 #endif
     }

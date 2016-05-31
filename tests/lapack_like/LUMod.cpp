@@ -233,7 +233,7 @@ main( int argc, char* argv[] )
         PrintInputReport();
 
 #ifdef EL_HAVE_MPC
-        mpc::SetPrecision( prec );
+        mpfr::SetPrecision( prec );
 #endif
 
         if( gridHeight == 0 )
@@ -272,6 +272,8 @@ main( int argc, char* argv[] )
 #ifdef EL_HAVE_MPC
             TestLUMod<BigFloat>
             ( m, conjugate, tau, correctness, print );
+            TestLUMod<Complex<BigFloat>>
+            ( m, conjugate, tau, correctness, print );
 #endif
         }
 
@@ -301,6 +303,8 @@ main( int argc, char* argv[] )
 
 #ifdef EL_HAVE_MPC
         TestLUMod<BigFloat>
+        ( g, m, conjugate, tau, correctness, print );
+        TestLUMod<Complex<BigFloat>>
         ( g, m, conjugate, tau, correctness, print );
 #endif
     }

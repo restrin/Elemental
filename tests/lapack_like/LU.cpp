@@ -276,7 +276,7 @@ main( int argc, char* argv[] )
             LogicError("Invalid pivot value");
 
 #ifdef EL_HAVE_MPC
-        mpc::SetPrecision( prec );
+        mpfr::SetPrecision( prec );
 #endif
 
         if( gridHeight == 0 )
@@ -321,6 +321,8 @@ main( int argc, char* argv[] )
 #ifdef EL_HAVE_MPC
             TestLU<BigFloat>
             ( m, pivot, correctness, forceGrowth, print );
+            TestLU<Complex<BigFloat>>
+            ( m, pivot, correctness, forceGrowth, print );
 #endif
         }
 
@@ -350,6 +352,8 @@ main( int argc, char* argv[] )
 
 #ifdef EL_HAVE_MPC
         TestLU<BigFloat>
+        ( g, m, pivot, correctness, forceGrowth, print );
+        TestLU<Complex<BigFloat>>
         ( g, m, pivot, correctness, forceGrowth, print );
 #endif
     }

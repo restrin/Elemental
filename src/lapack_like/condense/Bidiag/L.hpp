@@ -18,7 +18,7 @@ namespace bidiag {
 // NOTE: Very little is changed versus the upper case. Perhaps they should be
 //       combined.
 template<typename F>
-inline void L( Matrix<F>& A, Matrix<F>& tP, Matrix<F>& tQ )
+void L( Matrix<F>& A, Matrix<F>& tP, Matrix<F>& tQ )
 {
     DEBUG_ONLY(CSE cse("bidiag::L"))
     const Int m = A.Height();
@@ -64,8 +64,8 @@ inline void L( Matrix<F>& A, Matrix<F>& tP, Matrix<F>& tQ )
             auto Y12 = Y( ALL,        IR(nb,END) );
 
             // Set top-right entry of A21 to 1
-            const F epsilon = A21.Get(0,nb-1);
-            A21.Set(0,nb-1,F(1));
+            const F epsilon = A21(0,nb-1);
+            A21(0,nb-1) = F(1);
 
             Gemm( NORMAL, NORMAL, F(-1), A21, Y12, F(1), A22 );
             Conjugate( A12 );
@@ -73,7 +73,7 @@ inline void L( Matrix<F>& A, Matrix<F>& tP, Matrix<F>& tQ )
             Conjugate( A12 );
 
             // Put back top-right entry of A21
-            A21.Set(0,nb-1,epsilon);
+            A21(0,nb-1) = epsilon;
         }
         else
         {
@@ -86,7 +86,7 @@ inline void L( Matrix<F>& A, Matrix<F>& tP, Matrix<F>& tQ )
 // NOTE: Very little is different from the upper case. Perhaps they should
 //       be combined.
 template<typename F> 
-inline void
+void
 L
 ( DistMatrix<F>& A, 
   DistMatrix<F,STAR,STAR>& tP,
@@ -176,7 +176,7 @@ L
 }
 
 template<typename F> 
-inline void
+void
 L
 ( ElementalMatrix<F>& APre, 
   ElementalMatrix<F>& tPPre,

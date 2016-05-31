@@ -98,7 +98,7 @@ void TestCorrectness
     Output("||A X - X W||_oo / (eps n ||A||_1) = ",relError);
 
     // TODO: More rigorous failure condition
-    if( relError > Real(10) )
+    if( relError > Real(10) || !limits::IsFinite(relError) )
         LogicError("Unacceptably large relative error");
 }
 
@@ -127,7 +127,7 @@ void TestCorrectness
     OutputFromRoot
     (g.Comm(),"||A X - X W||_oo / (eps n ||A||_1) = ",relError);
     // TODO: More rigorous failure condition
-    if( relError > Real(10) )
+    if( relError > Real(10) || !limits::IsFinite(relError) )
         LogicError("Unacceptably large relative error");
 }
 
@@ -138,8 +138,6 @@ void TestTriangEig
   bool print,
   Int whichMatrix )
 {
-    typedef Base<F> Real;
-
     Matrix<F> A, AOrig, X;
     Matrix<F> w;
 
@@ -264,8 +262,6 @@ void TestTriangEig
   bool print,
   Int whichMatrix )
 {
-    typedef Base<F> Real;
-
     DistMatrix<F,U,V> A(g), AOrig(g), X(g);
     DistMatrix<F,S,STAR> w(g);
 
@@ -507,6 +503,9 @@ main( int argc, char* argv[] )
 #ifdef EL_HAVE_MPC
         if( testReal && testNonstandard )
             TestTriangEig<BigFloat>
+            ( g, n, correctness, print, whichMatrix );
+        if( testCpx && testNonstandard )
+            TestTriangEig<Complex<BigFloat>>
             ( g, n, correctness, print, whichMatrix );
 #endif
     }

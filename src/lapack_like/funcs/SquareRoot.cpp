@@ -20,7 +20,7 @@ namespace El {
 namespace square_root {
 
 template<typename F>
-inline void
+void
 NewtonStep
 ( const Matrix<F>& A,
   const Matrix<F>& X,
@@ -41,7 +41,7 @@ NewtonStep
 }
 
 template<typename F>
-inline void
+void
 NewtonStep
 ( const DistMatrix<F>& A,
   const DistMatrix<F>& X, 
@@ -62,7 +62,7 @@ NewtonStep
 }
 
 template<typename F>
-inline int
+int
 Newton( Matrix<F>& A, const SquareRootCtrl<Base<F>>& ctrl )
 {
     DEBUG_ONLY(CSE cse("square_root::Newton"))
@@ -102,7 +102,7 @@ Newton( Matrix<F>& A, const SquareRootCtrl<Base<F>>& ctrl )
 }
 
 template<typename F>
-inline int
+int
 Newton( ElementalMatrix<F>& APre, const SquareRootCtrl<Base<F>>& ctrl )
 {
     DEBUG_ONLY(CSE cse("square_root::Newton"))
@@ -188,7 +188,7 @@ void HPSDSquareRoot
     const Int n = w.Height();
     for( Int i=0; i<n; ++i )
     {
-        const Real omega = w.Get(i,0);
+        const Real omega = w(i);
         minEig = Min(minEig,omega);
     }
 
@@ -203,11 +203,11 @@ void HPSDSquareRoot
     // Overwrite the eigenvalues with f(w)
     for( Int i=0; i<n; ++i )
     {
-        const Real omega = w.Get(i,0);
+        const Real omega = w(i);
         if( omega > Real(0) )
-            w.Set(i,0,Sqrt(omega));
+            w(i) = Sqrt(omega);
         else
-            w.Set(i,0,0);
+            w(i) = 0;
     }
 
     // Form the pseudoinverse
@@ -288,6 +288,7 @@ void HPSDSquareRoot
 #define PROTO_DOUBLEDOUBLE PROTO_BASE(DoubleDouble)
 #define PROTO_QUADDOUBLE PROTO_BASE(QuadDouble)
 #define PROTO_BIGFLOAT PROTO_BASE(BigFloat)
+#define PROTO_COMPLEX_BIGFLOAT PROTO_BASE(Complex<BigFloat>)
 
 #define EL_NO_INT_PROTO
 #define EL_ENABLE_DOUBLEDOUBLE

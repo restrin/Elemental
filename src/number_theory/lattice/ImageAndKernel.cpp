@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2009-2016, Jack Poulson
+   Copyright (c) 2009-2016, Jack Poulson, 2016, Ron Estrin
    All rights reserved.
 
    This file is part of Elemental and is under the BSD 2-Clause License, 
@@ -90,6 +90,7 @@ void LatticeKernel
     const LLLCtrl<Base<F>>& ctrl );
 
 #define EL_NO_INT_PROTO
+#define EL_NO_COMPLEX_PROTO
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE
 #define EL_ENABLE_QUAD
