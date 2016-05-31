@@ -133,6 +133,7 @@ ElError ElLLLCtrlDefault_d( ElLLLCtrl_d* ctrl )
 
 #define EL_NO_COMPLEX_PROTO
 #define EL_NO_INT_PROTO
+#define EL_NO_COMPLEX_PROTO
 #include <El/macros/CInstantiate.h>
 
 } // extern "C"

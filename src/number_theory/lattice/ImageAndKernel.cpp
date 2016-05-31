@@ -90,6 +90,7 @@ void LatticeKernel
     const LLLCtrl<Base<F>>& ctrl );
 
 #define EL_NO_INT_PROTO
+#define EL_NO_COMPLEX_PROTO
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE
 #define EL_ENABLE_QUAD
