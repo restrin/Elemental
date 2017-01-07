@@ -24,8 +24,8 @@ void LocalAccumulateLUT
   const DistMatrix<T,MC,STAR>& X,
         DistMatrix<T,MR,STAR>& Z )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LocalAccumulateLUT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( U, X, Z );
       if( U.Height() != U.Width() ||
           U.Height() != X.Height() ||
@@ -69,11 +69,11 @@ template<typename T>
 void LUTA
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& UPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& UPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LUTA");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( UPre, XPre );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
@@ -119,11 +119,11 @@ template<typename T>
 void LUTCOld
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& UPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& UPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LUTCOld");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( UPre, XPre );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
@@ -185,11 +185,11 @@ template<typename T>
 void LUTC
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& UPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& UPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LUTC");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( UPre, XPre );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
@@ -248,10 +248,10 @@ template<typename T>
 void LUT
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& U,
-        ElementalMatrix<T>& X )
+  const AbstractDistMatrix<T>& U,
+        AbstractDistMatrix<T>& X )
 {
-    DEBUG_ONLY(CSE cse("trmm::LUT"))
+    EL_DEBUG_CSE
     // TODO: Come up with a better routing mechanism
     if( U.Height() > 5*X.Width() )
         LUTA( orientation, diag, U, X );

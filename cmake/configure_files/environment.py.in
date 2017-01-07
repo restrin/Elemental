@@ -10,7 +10,7 @@ import sys, ctypes
 import numpy as np
 from ctypes import pythonapi
 
-lib = ctypes.cdll.LoadLibrary("@CMAKE_INSTALL_PREFIX@/lib/@CMAKE_SHARED_LIBRARY_PREFIX@El@CMAKE_SHARED_LIBRARY_SUFFIX@")
+lib = ctypes.cdll.LoadLibrary("@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LIBDIR@/@CMAKE_SHARED_LIBRARY_PREFIX@El@CMAKE_SHARED_LIBRARY_SUFFIX@")
 
 # Environment
 # ===========
@@ -233,10 +233,6 @@ def Initialize():
   argv = POINTER(c_char_p)()
   pythonapi.Py_GetArgcArgv(ctypes.byref(argc),ctypes.byref(argv))
   lib.ElInitialize(pointer(argc),pointer(argv))
-
-lib.ElFinalize.argtypes = []
-def Finalize():
-  lib.ElFinalize()
 
 lib.ElInitialized.argtypes = [POINTER(bType)]
 def Initialized():

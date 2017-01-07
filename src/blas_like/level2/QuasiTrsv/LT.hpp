@@ -15,8 +15,8 @@ void LTUnb
 ( Orientation orientation, const Matrix<F>& L, Matrix<F>& x, 
   bool checkIfSingular=false )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsv::LTUnb");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( L.Height() != L.Width() )
           LogicError("L must be square");
       if( x.Width() != 1 && x.Height() != 1 )
@@ -58,7 +58,7 @@ void LTUnb
             const F delta22 = LBuf[(k+1)+(k+1)*ldl];
             // Decompose D = L Q
             Real c; F s;
-            const F gamma11 = lapack::Givens( delta11, delta12, c, s );
+            const F gamma11 = Givens( delta11, delta12, c, s );
             const F gamma21 =        c*delta21 + s*delta22;
             const F gamma22 = -Conj(s)*delta21 + c*delta22;
             if( checkIfSingular )
@@ -103,8 +103,8 @@ void LT
 ( Orientation orientation, const Matrix<F>& L, Matrix<F>& x, 
   bool checkIfSingular=false )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsv::LT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( L.Height() != L.Width() )
           LogicError("L must be square");
       if( x.Width() != 1 && x.Height() != 1 )
@@ -161,12 +161,12 @@ void LT
 template<typename F>
 void LT
 ( Orientation orientation, 
-  const ElementalMatrix<F>& LPre,
-        ElementalMatrix<F>& xPre,
+  const AbstractDistMatrix<F>& LPre,
+        AbstractDistMatrix<F>& xPre,
   bool checkIfSingular=false )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsv::LT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( LPre, xPre );
       if( LPre.Height() != LPre.Width() )
           LogicError("L must be square");

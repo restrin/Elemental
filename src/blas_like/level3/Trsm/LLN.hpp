@@ -22,7 +22,7 @@ void LLNLarge
         AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("trsm::LLNLarge"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = LPre.Grid();
@@ -77,7 +77,7 @@ void LLNMedium
         AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("trsm::LLNMedium"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = LPre.Grid();
@@ -131,8 +131,8 @@ void LLNSmall
   const DistMatrix<F,colDist,STAR>& L, 
         DistMatrix<F,colDist,STAR>& X, bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("trsm::LLNSmall");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( L.ColAlign() != X.ColAlign() )
           LogicError("L and X are assumed to be aligned");
     )

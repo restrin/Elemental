@@ -119,7 +119,8 @@ bool Linesearch
   const Real& theta,
   const PDCOCtrl<Real>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("pdco::Linesearch"))
+    EL_DEBUG_CSE
+
     stepx  = MaxXStepSize(x, dx, bl, bu, ixSetLow, ixSetUpp);
     Real stepz1 = MaxZStepSize(z1, dz1); // No upper bound constraint
     Real stepz2 = MaxZStepSize(z2, dz2); // No upper bound constraint
@@ -252,7 +253,8 @@ bool Linesearch
   const Real& theta,
   const PDCOCtrl<Real>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("pdco::Linesearch"))
+    EL_DEBUG_CSE
+    
     stepx  = MaxXStepSize(x, dx, bl, bu, ixSetLow, ixSetUpp);
     Real stepz1 = MaxZStepSize(z1, dz1); // No upper bound constraint
     Real stepz2 = MaxZStepSize(z2, dz2); // No upper bound constraint

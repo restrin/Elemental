@@ -18,8 +18,8 @@ void LeftUnb
   const Matrix<F>& shifts,
         Matrix<F>& X ) 
 {
-    DEBUG_ONLY(
-      CSE cse("mstrsm::LeftUnb");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( shifts.Height() != X.Width() )
           LogicError("Incompatible number of shifts");
     )
@@ -48,7 +48,7 @@ void LeftUnb
 template<typename F>
 void LUN( Matrix<F>& U, const Matrix<F>& shifts, Matrix<F>& X ) 
 {
-    DEBUG_ONLY(CSE cse("mstrsm::LUN"))
+    EL_DEBUG_CSE
     const Int m = X.Height();
     const Int bsize = Blocksize();
     const Int kLast = LastOffset( m, bsize );
@@ -73,11 +73,11 @@ void LUN( Matrix<F>& U, const Matrix<F>& shifts, Matrix<F>& X )
 
 template<typename F>
 void LUN
-( const ElementalMatrix<F>& UPre, 
-  const ElementalMatrix<F>& shiftsPre,
-        ElementalMatrix<F>& XPre ) 
+( const AbstractDistMatrix<F>& UPre, 
+  const AbstractDistMatrix<F>& shiftsPre,
+        AbstractDistMatrix<F>& XPre ) 
 {
-    DEBUG_ONLY(CSE cse("mstrsm::LUN"))
+    EL_DEBUG_CSE
 
     DistMatrixReadProxy<F,F,MC,MR> UProx( UPre );
     DistMatrixReadProxy<F,F,VR,STAR> shiftsProx( shiftsPre );

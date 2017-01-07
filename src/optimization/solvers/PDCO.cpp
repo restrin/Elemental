@@ -26,7 +26,7 @@ void PDCO
         Matrix<Real>& z, 
   const pdco::Ctrl<Real>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("PDCO"))
+    EL_DEBUG_CSE
 
     pdco::Newton(phi, A, b, bl, bu, D1, D2, x, r, y, z, ctrl.pdcoCtrl);
 }
@@ -46,7 +46,7 @@ void PDCO
         Matrix<Real>& z, 
   const pdco::Ctrl<Real>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("PDCO"))
+    EL_DEBUG_CSE
 
     pdco::Newton(phi, A, b, bl, bu, D1, D2, x, r, y, z, ctrl.pdcoCtrl);
 }

@@ -23,8 +23,8 @@ void RLT
         AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("trsm::RLT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
     )

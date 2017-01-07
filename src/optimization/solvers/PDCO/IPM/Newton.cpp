@@ -46,7 +46,7 @@ void Newton
         Matrix<Real>& z,
   const PDCOCtrl<Real>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("pdco::Newton")) 
+    EL_DEBUG_CSE
 
     Output("========== Beginning Newton's Method ==========");
 
@@ -502,7 +502,7 @@ void Newton
         Matrix<Real>& z,
   const PDCOCtrl<Real>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("pdco::Newton")) 
+    EL_DEBUG_CSE
 
     Output("========== Beginning Sparse Newton's Method ==========");
 
@@ -530,9 +530,6 @@ void Newton
     vector<Int> ALL_m = IndexRange(m);
     vector<Int> ALL_n = IndexRange(n);
     vector<Int> ZERO (1,0);
-
-    function<Real(Real)> sqrtFunc
-    ( []( Real alpha ) { return Sqrt(alpha); } ); // Elementwise sqrt
 
     vector<Int> ixSetLow;  // Index set for lower bounded variables
     vector<Int> ixSetUpp;  // Index set for upper bounded variables
@@ -732,13 +729,14 @@ void Newton
                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
     }
 
-    // Initialize static ortion of the KKT system
+    // Initialize static portion of the KKT system
     vector<Int> map;
     vector<Int> invMap;
     ldl::Separator rootSep;
     ldl::NodeInfo info;
     SparseMatrix<Real> K, KOrig;
-    ldl::Front<Real> KFront;
+//    ldl::Front<Real> KFront;
+    SparseLDLFactorization<Real> sparseLDLFact;
     BisectCtrl bisectCtrl = BisectCtrl();
     bisectCtrl.cutoff = 128; // TODO: Make tunable?
 
@@ -751,13 +749,6 @@ void Newton
     // Main loop
     for( Int numIts=0; numIts<=ctrl.maxIts; ++numIts )
     {
-        if( ctrl.print )
-        {
-/*
-            Output("======== Iteration: ", numIts, " ========");
-            Output("  mu = ", mu);
-*/
-        }
         switch( ctrl.method )
         {
             case Method::LDLy:
@@ -802,21 +793,30 @@ void Newton
                 if( numIts == 0 )
                 {
                     // Get static nested dissection data
-                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
-                    InvertMap( map, invMap );
+//                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
+//                    InvertMap( map, invMap );
+                    const bool hermitian = true;
+                    sparseLDLFact.Initialize( K, hermitian, bisectCtrl );
+
+                }
+                else
+                {
+                    sparseLDLFact.ChangeNonzeroValues( K );
                 }
 
-                KFront.Pull( K, map, info );
+//                KFront.Pull( K, map, info );
                 if( ctrl.time )
                     ldlTimer.Start();
-                LDL( info, KFront, LDL_2D );
+                sparseLDLFact.Factor( LDL_2D );
+//                LDL( info, KFront, LDL_2D );
                 if( ctrl.time )
                     ldlTimer.Stop();
 
 //                ldl::SolveAfter( invMap, info, KFront, w );
                 if( ctrl.time )
                     solveAfterTimer.Start();
-                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+//                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+                reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact, w, ctrl.solveCtrl );
                 if( ctrl.time )
                     solveAfterTimer.Stop();
 
@@ -900,21 +900,25 @@ void Newton
                 if( numIts == 0 )
                 {
                     // Get static nested dissection data
-                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
-                    InvertMap( map, invMap );
+//                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
+//                    InvertMap( map, invMap );
+                    const bool hermitian = true;
+                    sparseLDLFact.Initialize( K, hermitian, bisectCtrl );
                 }
 
-                KFront.Pull( K, map, info );
+//                KFront.Pull( K, map, info );
                 if( ctrl.time )
                     ldlTimer.Start();
-                LDL( info, KFront, LDL_2D );
+//                LDL( info, KFront, LDL_2D );
+                sparseLDLFact.Factor( LDL_2D );
                 if( ctrl.time )
                     ldlTimer.Stop();
 
                 if( ctrl.time )
                     solveAfterTimer.Start();
 //                ldl::SolveAfter( invMap, info, KFront, w );
-                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+//                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
+                reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact, w, ctrl.solveCtrl );
                 if( ctrl.time )
                     solveAfterTimer.Stop();
 

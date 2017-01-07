@@ -12,22 +12,38 @@
 namespace El {
 
 Grid* Grid::defaultGrid = 0;
+Grid* Grid::trivialGrid = 0;
 
 void Grid::InitializeDefault()
 {
+    EL_DEBUG_CSE
     defaultGrid = new Grid( mpi::COMM_WORLD );    
+}
+
+void Grid::InitializeTrivial()
+{
+    EL_DEBUG_CSE
+    trivialGrid = new Grid( mpi::COMM_SELF );
 }
 
 void Grid::FinalizeDefault()
 {
+    EL_DEBUG_CSE
     delete defaultGrid;
     defaultGrid = 0;
 }
 
+void Grid::FinalizeTrivial()
+{
+    EL_DEBUG_CSE
+    delete trivialGrid;
+    trivialGrid = 0;
+}
+
 const Grid& Grid::Default() EL_NO_RELEASE_EXCEPT
 {
-    DEBUG_ONLY(
-      CSE cse("Grid::Default");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( defaultGrid == 0 )
           LogicError
           ("Attempted to return a non-existant default grid. Please ensure "
@@ -36,18 +52,30 @@ const Grid& Grid::Default() EL_NO_RELEASE_EXCEPT
     return *defaultGrid;
 }
 
-int Grid::FindFactor( int p ) EL_NO_EXCEPT
+const Grid& Grid::Trivial() EL_NO_RELEASE_EXCEPT
 {
-    int factor = int(sqrt(double(p)));
-    while( p % factor != 0 )
-        ++factor;
-    return factor;
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
+      if( trivialGrid == 0 )
+          LogicError
+          ("Attempted to return a non-existant trivial grid. Please ensure "
+           "that Elemental is initialized before creating a DistMatrix.");
+    )
+    return *trivialGrid;
+}
+
+int Grid::DefaultHeight( int gridSize ) EL_NO_EXCEPT
+{
+    int gridHeight = int(sqrt(double(gridSize)));
+    while( gridHeight % gridSize != 0 )
+        ++gridHeight;
+    return gridHeight;
 }
 
 Grid::Grid( mpi::Comm comm, GridOrder order )
 : haveViewers_(false), order_(order)
 {
-    DEBUG_ONLY(CSE cse("Grid::Grid"))
+    EL_DEBUG_CSE
 
     // Extract our rank, the underlying group, and the number of processes
     mpi::Dup( comm, viewingComm_ );
@@ -58,14 +86,14 @@ Grid::Grid( mpi::Comm comm, GridOrder order )
     owningGroup_ = viewingGroup_;
 
     // Factor p
-    height_ = FindFactor( size_ );
+    height_ = DefaultHeight( size_ );
     SetUpGrid();
 }
 
 Grid::Grid( mpi::Comm comm, int height, GridOrder order )
 : haveViewers_(false), order_(order)
 {
-    DEBUG_ONLY(CSE cse("Grid::Grid"))
+    EL_DEBUG_CSE
 
     // Extract our rank, the underlying group, and the number of processes
     mpi::Dup( comm, viewingComm_ );
@@ -84,7 +112,7 @@ Grid::Grid( mpi::Comm comm, int height, GridOrder order )
 
 void Grid::SetUpGrid()
 {
-    DEBUG_ONLY(CSE cse("Grid::SetUpGrid"))
+    EL_DEBUG_CSE
     if( size_ % height_ != 0 )
         LogicError
         ("Grid height, ",height_,", does not evenly divide grid size, ",size_);
@@ -174,7 +202,7 @@ void Grid::SetUpGrid()
         mpi::Split( cartComm_, mdPerpRank_, mdRank_,     mdComm_     );
         mpi::Split( cartComm_, mdRank_,     mdPerpRank_, mdPerpComm_ );
 
-        DEBUG_ONLY(
+        EL_DEBUG_ONLY(
           mpi::ErrorHandlerSet( mcComm_,     mpi::ERRORS_RETURN );
           mpi::ErrorHandlerSet( mrComm_,     mpi::ERRORS_RETURN );
           mpi::ErrorHandlerSet( vcComm_,     mpi::ERRORS_RETURN );
@@ -206,12 +234,25 @@ void Grid::SetUpGrid()
     int owningRoot = mpi::Translate( owningGroup_, 0, viewingGroup_ );
     mpi::Broadcast( vcToViewing_.data(), size_, owningRoot, viewingComm_ );
     mpi::Broadcast( diagsAndRanks_.data(), 2*size_, owningRoot, viewingComm_ );
+
+#ifdef EL_HAVE_SCALAPACK
+    blacsVCHandle_ = blacs::Handle( vcComm_.comm );
+    blacsVRHandle_ = blacs::Handle( vrComm_.comm );
+    blacsMCMRContext_ =
+      blacs::GridInit
+      ( blacsVCHandle_, true /* column major */, height_, width );
+#endif
 }
 
 Grid::~Grid()
 {
     if( !mpi::Finalized() )
     {
+#ifdef EL_HAVE_SCALAPACK
+        blacs::FreeGrid( blacsMCMRContext_ );
+        blacs::FreeHandle( blacsVRHandle_ );
+        blacs::FreeHandle( blacsVCHandle_ );
+#endif
         if( InGrid() )
         {
             mpi::Free( mdComm_ );
@@ -274,7 +315,7 @@ mpi::Comm Grid::Comm() const EL_NO_EXCEPT
 Grid::Grid( mpi::Comm viewers, mpi::Group owners, int height, GridOrder order )
 : haveViewers_(true), order_(order)
 {
-    DEBUG_ONLY(CSE cse("Grid::Grid"))
+    EL_DEBUG_CSE
 
     // Extract our rank and the underlying group from the viewing comm
     mpi::Dup( viewers, viewingComm_ );
@@ -365,7 +406,7 @@ int Grid::CoordsToVC
     {
         return VRToVC(distRank);
     }
-    DEBUG_ONLY(else LogicError("Invalid data distribution"))
+    EL_DEBUG_ONLY(else LogicError("Invalid data distribution"))
     return -1;
 }
 
@@ -409,6 +450,12 @@ int Grid::DiagRank( int vcRank ) const EL_NO_EXCEPT
     else
         return mpi::UNDEFINED;
 }
+
+#ifdef EL_HAVE_SCALAPACK
+int Grid::BlacsVCHandle() const { return blacsVCHandle_; }
+int Grid::BlacsVRHandle() const { return blacsVRHandle_; }
+int Grid::BlacsMCMRContext() const { return blacsMCMRContext_; }
+#endif
 
 // Comparison functions
 // ====================

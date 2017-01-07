@@ -2,19 +2,19 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El.hpp>
 
 namespace El {
 
-template<typename F>
-Base<F> OneNorm( const Matrix<F>& A )
+template<typename Ring>
+Base<Ring> OneNorm( const Matrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("OneNorm"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
     const Int height = A.Height();
     const Int width = A.Width();
 
@@ -29,11 +29,11 @@ Base<F> OneNorm( const Matrix<F>& A )
     return maxColSum;
 }
 
-template<typename F>
-Base<F> HermitianOneNorm( UpperOrLower uplo, const Matrix<F>& A )
+template<typename Ring>
+Base<Ring> HermitianOneNorm( UpperOrLower uplo, const Matrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("HermitianOneNorm"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
     const Int height = A.Height();
 
     if( height != A.Width() )
@@ -67,25 +67,25 @@ Base<F> HermitianOneNorm( UpperOrLower uplo, const Matrix<F>& A )
     return maxColSum;
 }
 
-template<typename F>
-Base<F> SymmetricOneNorm( UpperOrLower uplo, const Matrix<F>& A )
+template<typename Ring>
+Base<Ring> SymmetricOneNorm( UpperOrLower uplo, const Matrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("SymmetricOneNorm"))
+    EL_DEBUG_CSE
     return HermitianOneNorm( uplo, A );
 }
 
-template<typename F>
-Base<F> OneNorm( const AbstractDistMatrix<F>& A )
+template<typename Ring>
+Base<Ring> OneNorm( const AbstractDistMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("OneNorm"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
     Real norm;
     if( A.Participating() )
     {
         // Compute the partial column sums defined by our local matrix, A[U,V]
         const Int localHeight = A.LocalHeight();
         const Int localWidth = A.LocalWidth();
-        const Matrix<F>& ALoc = A.LockedMatrix();
+        const Matrix<Ring>& ALoc = A.LockedMatrix();
 
         vector<Real> myPartialColSums( localWidth );
         for( Int jLoc=0; jLoc<localWidth; ++jLoc )
@@ -112,17 +112,18 @@ Base<F> OneNorm( const AbstractDistMatrix<F>& A )
     return norm;
 }
 
-template<typename F>
-Base<F> HermitianOneNorm( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
+template<typename Ring>
+Base<Ring>
+HermitianOneNorm( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("HermitianOneNorm"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
     if( A.Height() != A.Width() )
         RuntimeError("Hermitian matrices must be square.");
     const Int height = A.Height();
 
     // For now, we take the 'easy' approach to exploiting the implicit symmetry
-    // by storing all of the column sums of the triangular matrix and the 
+    // by storing all of the column sums of the triangular matrix and the
     // row sums of the strictly triangular matrix. We can then add them.
 
     Real maxColSum = 0;
@@ -130,7 +131,7 @@ Base<F> HermitianOneNorm( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
     {
         const Int localHeight = A.LocalHeight();
         const Int localWidth = A.LocalWidth();
-        const Matrix<F>& ALoc = A.LockedMatrix();
+        const Matrix<Ring>& ALoc = A.LockedMatrix();
 
         if( uplo == UPPER )
         {
@@ -153,8 +154,8 @@ Base<F> HermitianOneNorm( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
                     myPartialStrictlyUpperRowSums[iLoc] += Abs(ALoc(iLoc,jLoc));
             }
 
-            // Just place the sums into their appropriate places in a vector an 
-            // AllReduce sum to get the results. This isn't optimal, but it 
+            // Just place the sums into their appropriate places in a vector an
+            // AllReduce sum to get the results. This isn't optimal, but it
             // should be good enough.
             vector<Real> partialColSums( height, 0 );
             for( Int jLoc=0; jLoc<localWidth; ++jLoc )
@@ -196,8 +197,8 @@ Base<F> HermitianOneNorm( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
                     myPartialStrictlyLowerRowSums[iLoc] += Abs(ALoc(iLoc,jLoc));
             }
 
-            // Just place the sums into their appropriate places in a vector an 
-            // AllReduce sum to get the results. This isn't optimal, but it 
+            // Just place the sums into their appropriate places in a vector an
+            // AllReduce sum to get the results. This isn't optimal, but it
             // should be good enough.
             vector<Real> partialColSums( height, 0 );
             for( Int jLoc=0; jLoc<localWidth; ++jLoc )
@@ -223,44 +224,74 @@ Base<F> HermitianOneNorm( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
     return maxColSum;
 }
 
-template<typename F>
-Base<F> SymmetricOneNorm( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
+template<typename Ring>
+Base<Ring>
+SymmetricOneNorm( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("SymmetricOneNorm"))
+    EL_DEBUG_CSE
     return HermitianOneNorm( uplo, A );
 }
 
-template<typename F>
-Base<F> OneNorm( const SparseMatrix<F>& A )
+template<typename Ring>
+Base<Ring> OneNorm( const SparseMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("OneNorm"))
-    SparseMatrix<F> ATrans;
+    EL_DEBUG_CSE
+    SparseMatrix<Ring> ATrans;
     Transpose( A, ATrans );
     return InfinityNorm( ATrans );
 }
 
-template<typename F>
-Base<F> OneNorm( const DistSparseMatrix<F>& A )
+template<typename Ring>
+Base<Ring> OneNorm( const DistSparseMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("OneNorm"))
-    DistSparseMatrix<F> ATrans(A.Comm());
+    EL_DEBUG_CSE
+    DistSparseMatrix<Ring> ATrans(A.Grid());
     Transpose( A, ATrans );
     return InfinityNorm( ATrans );
 }
 
-#define PROTO(T) \
-  template Base<T> OneNorm( const Matrix<T>& A ); \
-  template Base<T> OneNorm ( const AbstractDistMatrix<T>& A ); \
-  template Base<T> HermitianOneNorm \
-  ( UpperOrLower uplo, const Matrix<T>& A ); \
-  template Base<T> HermitianOneNorm \
-  ( UpperOrLower uplo, const AbstractDistMatrix<T>& A ); \
-  template Base<T> SymmetricOneNorm \
-  ( UpperOrLower uplo, const Matrix<T>& A ); \
-  template Base<T> SymmetricOneNorm \
-  ( UpperOrLower uplo, const AbstractDistMatrix<T>& A ); \
-  template Base<T> OneNorm( const SparseMatrix<T>& A ); \
-  template Base<T> OneNorm( const DistSparseMatrix<T>& A );
+template<typename Ring>
+Base<Ring> HermitianTridiagOneNorm
+( const Matrix<Base<Ring>>& d, const Matrix<Ring>& e )
+{
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
+    const Int n = d.Height();
+
+    // | d(0) conj(e(0))     0       ... |
+    // | e(0)    d(1)    conj(e(1))  ... |
+    // |   0     e(1)       d(2)     ... |
+    // |   0      0         e(2)     ... |
+    // |   .      .          .        .  |
+
+    Real maxColSum = 0;
+    for( Int j=0; j<n; ++j )
+    {
+        Real colSum = Abs(d(j));
+        if( j > 0 )
+            colSum += Abs(e(j-1));
+        if( j < n-1 )
+            colSum += Abs(e(j));
+        maxColSum = Max( maxColSum, colSum );
+    }
+    return maxColSum;
+}
+
+#define PROTO(Ring) \
+  template Base<Ring> OneNorm( const Matrix<Ring>& A ); \
+  template Base<Ring> OneNorm ( const AbstractDistMatrix<Ring>& A ); \
+  template Base<Ring> HermitianOneNorm \
+  ( UpperOrLower uplo, const Matrix<Ring>& A ); \
+  template Base<Ring> HermitianOneNorm \
+  ( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A ); \
+  template Base<Ring> SymmetricOneNorm \
+  ( UpperOrLower uplo, const Matrix<Ring>& A ); \
+  template Base<Ring> SymmetricOneNorm \
+  ( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A ); \
+  template Base<Ring> OneNorm( const SparseMatrix<Ring>& A ); \
+  template Base<Ring> OneNorm( const DistSparseMatrix<Ring>& A ); \
+  template Base<Ring> HermitianTridiagOneNorm \
+  ( const Matrix<Base<Ring>>& d, const Matrix<Ring>& e );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

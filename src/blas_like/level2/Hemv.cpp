@@ -16,19 +16,19 @@ void Hemv
 ( UpperOrLower uplo,
   T alpha, const Matrix<T>& A, const Matrix<T>& x, T beta, Matrix<T>& y )
 {
-    DEBUG_ONLY(CSE cse("Hemv"))
+    EL_DEBUG_CSE
     Symv( uplo, alpha, A, x, beta, y, true );
 }
 
 template<typename T>
 void Hemv
 ( UpperOrLower uplo,
-  T alpha, const ElementalMatrix<T>& A,
-           const ElementalMatrix<T>& x,
-  T beta,        ElementalMatrix<T>& y,
+  T alpha, const AbstractDistMatrix<T>& A,
+           const AbstractDistMatrix<T>& x,
+  T beta,        AbstractDistMatrix<T>& y,
   const SymvCtrl<T>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("Hemv"))
+    EL_DEBUG_CSE
     Symv( uplo, alpha, A, x, beta, y, true, ctrl );
 }
 
@@ -38,8 +38,8 @@ void Hemv
     const Matrix<T>& A, const Matrix<T>& x, T beta, Matrix<T>& y ); \
   template void Hemv \
   ( UpperOrLower uplo, T alpha, \
-    const ElementalMatrix<T>& A, const ElementalMatrix<T>& x, \
-    T beta, ElementalMatrix<T>& y, \
+    const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& x, \
+    T beta, AbstractDistMatrix<T>& y, \
     const SymvCtrl<T>& ctrl );
 
 #define EL_ENABLE_DOUBLEDOUBLE

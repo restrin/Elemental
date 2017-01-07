@@ -31,7 +31,8 @@ void ResidualPD
   Matrix<Real>& r1,
   Matrix<Real>& r2 )
 {
-    DEBUG_ONLY(CSE cse("pdco::ResidualPD"))
+    EL_DEBUG_CSE
+
     vector<Int> ZERO (1,0);
     Int n = A.Width();
 
@@ -75,7 +76,8 @@ void ResidualPD
   Matrix<Real>& r1,
   Matrix<Real>& r2 )
 {
-    DEBUG_ONLY(CSE cse("pdco::ResidualPD"))
+    EL_DEBUG_CSE
+
     const vector<Int> ZERO (1,0);
     const Int n = A.Width();
 
@@ -116,7 +118,8 @@ void ResidualC
   Matrix<Real>& cL,
   Matrix<Real>& cU )
 {
-    DEBUG_ONLY(CSE cse("pdco::ResidualC"))
+    EL_DEBUG_CSE
+    
     const Real eps = limits::Epsilon<Real>();
     const vector<Int> ZERO (1,0);
     Matrix<Real> tmp1;

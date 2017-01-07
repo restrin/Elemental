@@ -13,8 +13,8 @@ namespace trdtrmm {
 template<typename F>
 void LVar1( Matrix<F>& L, bool conjugate=false )
 {
-    DEBUG_ONLY(
-      CSE cse("trdtrmm::LVar1");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( L.Height() != L.Width() )
           LogicError("L must be square");
     )
@@ -46,8 +46,8 @@ void LVar1( Matrix<F>& L, bool conjugate=false )
 template<typename F>
 void LVar1( Matrix<F>& L, const Matrix<F>& dSub, bool conjugate=false )
 {
-    DEBUG_ONLY(
-      CSE cse("trdtrmm::LVar1");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( L.Height() != L.Width() )
           LogicError("L must be square");
     )
@@ -83,10 +83,10 @@ void LVar1( Matrix<F>& L, const Matrix<F>& dSub, bool conjugate=false )
 }
 
 template<typename F>
-void LVar1( ElementalMatrix<F>& LPre, bool conjugate=false )
+void LVar1( AbstractDistMatrix<F>& LPre, bool conjugate=false )
 {
-    DEBUG_ONLY(
-      CSE cse("trdtrmm::LVar1");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( LPre.Height() != LPre.Width() )
           LogicError("L must be square");
     )
@@ -141,12 +141,12 @@ void LVar1( ElementalMatrix<F>& LPre, bool conjugate=false )
 
 template<typename F>
 void LVar1
-(       ElementalMatrix<F>& LPre,
-  const ElementalMatrix<F>& dSubPre, 
+(       AbstractDistMatrix<F>& LPre,
+  const AbstractDistMatrix<F>& dSubPre, 
   bool conjugate=false )
 {
-    DEBUG_ONLY(
-      CSE cse("trdtrmm::LVar1");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( LPre.Height() != LPre.Width() )
           LogicError("L must be square");
     )

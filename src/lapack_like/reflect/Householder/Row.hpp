@@ -18,10 +18,10 @@ namespace El {
 namespace reflector {
 
 template<typename F>
-F Row( F& chi, ElementalMatrix<F>& x )
+F Row( F& chi, AbstractDistMatrix<F>& x )
 {
-    DEBUG_ONLY(
-      CSE cse("reflector::Row");    
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( x.Height() != 1 )
           LogicError("x must be a row vector");
       if( x.ColRank() != x.ColAlign() )
@@ -45,9 +45,9 @@ F Row( F& chi, ElementalMatrix<F>& x )
 
     Real beta;
     if( RealPart(alpha) <= 0 )
-        beta = lapack::SafeNorm( alpha, norm );
+        beta = SafeNorm( alpha, norm );
     else
-        beta = -lapack::SafeNorm( alpha, norm );
+        beta = -SafeNorm( alpha, norm );
 
     // Rescale if the vector is too small
     const Real safeMin = limits::SafeMin<Real>();
@@ -69,9 +69,9 @@ F Row( F& chi, ElementalMatrix<F>& x )
         mpi::AllGather( &localNorm, 1, localNorms.data(), 1, rowComm );
         norm = blas::Nrm2( rowStride, localNorms.data(), 1 );
         if( RealPart(alpha) <= 0 )
-            beta = lapack::SafeNorm( alpha, norm );
+            beta = SafeNorm( alpha, norm );
         else
-            beta = -lapack::SafeNorm( alpha, norm );
+            beta = -SafeNorm( alpha, norm );
     }
 
     F tau = (beta-Conj(alpha)) / beta;
@@ -91,10 +91,10 @@ F Row( F& chi, ElementalMatrix<F>& x )
 }
 
 template<typename F>
-F Row( ElementalMatrix<F>& chi, ElementalMatrix<F>& x )
+F Row( AbstractDistMatrix<F>& chi, AbstractDistMatrix<F>& x )
 {
-    DEBUG_ONLY(
-      CSE cse("reflector::Row");    
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( chi.ColRank() != chi.ColAlign() || x.ColRank() != x.ColAlign() )
           LogicError("Reflecting from incorrect process");
     )

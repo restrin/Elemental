@@ -2,8 +2,8 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El-lite.hpp>
@@ -18,11 +18,11 @@ template<typename T>
 void Gemv
 ( Orientation orientation,
   T alpha, const Matrix<T>& A,
-           const Matrix<T>& x, 
+           const Matrix<T>& x,
   T beta,        Matrix<T>& y )
 {
-    DEBUG_ONLY(
-      CSE cse("Gemv");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( ( x.Height() != 1 && x.Width() != 1 ) ||
           ( y.Height() != 1 && y.Width() != 1 ) )
           LogicError
@@ -71,10 +71,10 @@ template<typename T>
 void Gemv
 ( Orientation orientation,
   T alpha, const Matrix<T>& A,
-           const Matrix<T>& x, 
+           const Matrix<T>& x,
                  Matrix<T>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     if( orientation == NORMAL )
         y.Resize( A.Height(), 1 );
     else
@@ -86,11 +86,11 @@ void Gemv
 template<typename T>
 void Gemv
 ( Orientation orientation,
-  T alpha, const ElementalMatrix<T>& A,
-           const ElementalMatrix<T>& x,
-  T beta,        ElementalMatrix<T>& y )
+  T alpha, const AbstractDistMatrix<T>& A,
+           const AbstractDistMatrix<T>& x,
+  T beta,        AbstractDistMatrix<T>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     if( orientation == NORMAL )
         gemv::Normal( alpha, A, x, beta, y );
     else
@@ -100,11 +100,11 @@ void Gemv
 template<typename T>
 void Gemv
 ( Orientation orientation,
-  T alpha, const ElementalMatrix<T>& A,
-           const ElementalMatrix<T>& x,
-                 ElementalMatrix<T>& y )
+  T alpha, const AbstractDistMatrix<T>& A,
+           const AbstractDistMatrix<T>& x,
+                 AbstractDistMatrix<T>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     y.AlignWith( A );
     if( orientation == NORMAL )
         y.Resize( A.Height(), 1 );
@@ -117,12 +117,12 @@ void Gemv
 template<typename T>
 void LocalGemv
 ( Orientation orientation,
-  T alpha, const ElementalMatrix<T>& A,
-           const ElementalMatrix<T>& x,
-  T beta,        ElementalMatrix<T>& y )
+  T alpha, const AbstractDistMatrix<T>& A,
+           const AbstractDistMatrix<T>& x,
+  T beta,        AbstractDistMatrix<T>& y )
 {
-    DEBUG_ONLY(CSE cse("LocalGemv"))
-    // TODO: Add error checking here
+    EL_DEBUG_CSE
+    // TODO(poulson): Add error checking here
     Gemv
     ( orientation ,
       alpha, A.LockedMatrix(), x.LockedMatrix(),
@@ -142,21 +142,18 @@ void ScaLAPACKHelper
 #ifdef EL_HAVE_SCALAPACK
     const Int m = A.Height();
     const Int n = A.Width();
-    const int bHandle = blacs::Handle( A );
-    const int context = blacs::GridInit( bHandle, A );
-    auto descA = FillDesc( A, context );
-    auto descx = FillDesc( x, context );
-    auto descy = FillDesc( y, context );
     const char orientChar = OrientationToChar( orientation );
+
+    auto descA = FillDesc( A );
+    auto descx = FillDesc( x );
+    auto descy = FillDesc( y );
     pblas::Gemv
     ( orientChar, m, n,
       alpha,
       A.LockedBuffer(), descA.data(),
       x.LockedBuffer(), descx.data(), 1,
-      beta, 
+      beta,
       y.Buffer(),       descy.data(), 1 );
-    blacs::FreeGrid( context );
-    blacs::FreeHandle( bHandle );
 #endif
 }
 
@@ -179,7 +176,7 @@ void Gemv
            const DistMatrix<T,MC,MR,BLOCK>& x,
   T beta,        DistMatrix<T,MC,MR,BLOCK>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     gemv::ScaLAPACKHelper( orientation, alpha, A, x, beta, y );
 }
 
@@ -190,7 +187,7 @@ void Gemv
              const DistMatrix<Int,MC,MR,BLOCK>& x,
   Int beta,        DistMatrix<Int,MC,MR,BLOCK>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     LogicError("ScaLAPACK does not support integer data");
 }
 
@@ -202,7 +199,7 @@ void Gemv
               const DistMatrix<Quad,MC,MR,BLOCK>& x,
   Quad beta,        DistMatrix<Quad,MC,MR,BLOCK>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     LogicError("ScaLAPACK does not support quad-precision data");
 }
 
@@ -213,7 +210,7 @@ void Gemv
                        const DistMatrix<Complex<Quad>,MC,MR,BLOCK>& x,
   Complex<Quad> beta,        DistMatrix<Complex<Quad>,MC,MR,BLOCK>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     LogicError("ScaLAPACK does not support quad-precision data");
 }
 #endif // ifdef EL_HAVE_QUAD
@@ -225,7 +222,7 @@ void Gemv
            const DistMatrix<T,MC,MR,BLOCK>& x,
                  DistMatrix<T,MC,MR,BLOCK>& y )
 {
-    DEBUG_ONLY(CSE cse("Gemv"))
+    EL_DEBUG_CSE
     y.AlignWith( A );
     if( orientation == NORMAL )
         y.Resize( A.Height(), 1 );
@@ -248,14 +245,14 @@ void Gemv
                    Matrix<T>& y ); \
   template void Gemv \
   ( Orientation orientation, \
-    T alpha, const ElementalMatrix<T>& A, \
-             const ElementalMatrix<T>& x, \
-    T beta,        ElementalMatrix<T>& y ); \
+    T alpha, const AbstractDistMatrix<T>& A, \
+             const AbstractDistMatrix<T>& x, \
+    T beta,        AbstractDistMatrix<T>& y ); \
   template void Gemv \
   ( Orientation orientation, \
-    T alpha, const ElementalMatrix<T>& A, \
-             const ElementalMatrix<T>& x, \
-                   ElementalMatrix<T>& y ); \
+    T alpha, const AbstractDistMatrix<T>& A, \
+             const AbstractDistMatrix<T>& x, \
+                   AbstractDistMatrix<T>& y ); \
   template void Gemv \
   ( Orientation orientation, \
     T alpha, const DistMatrix<T,MC,MR,BLOCK>& A, \
@@ -268,9 +265,9 @@ void Gemv
                    DistMatrix<T,MC,MR,BLOCK>& y ); \
   template void LocalGemv \
   ( Orientation orientation, \
-    T alpha, const ElementalMatrix<T>& A, \
-             const ElementalMatrix<T>& x, \
-    T beta,        ElementalMatrix<T>& y );
+    T alpha, const AbstractDistMatrix<T>& A, \
+             const AbstractDistMatrix<T>& x, \
+    T beta,        AbstractDistMatrix<T>& y );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

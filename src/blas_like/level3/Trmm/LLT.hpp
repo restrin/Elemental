@@ -24,8 +24,8 @@ void LocalAccumulateLLT
   const DistMatrix<T,MC,STAR>& X,
         DistMatrix<T,MR,STAR>& Z )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LocalAccumulateLLT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( L, X, Z );
       if( L.Height() != L.Width() || L.Height() != X.Height() ||
           L.Height() != Z.Height() )
@@ -68,11 +68,11 @@ template<typename T>
 void LLTA
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& LPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& LPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LLTA");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( LPre, XPre );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
@@ -118,11 +118,11 @@ template<typename T>
 void LLTCOld
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& LPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& LPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LLTCOld");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( LPre, XPre );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
@@ -183,11 +183,11 @@ template<typename T>
 void LLTC
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& LPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& LPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LLTC");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( LPre, XPre );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
@@ -245,10 +245,10 @@ template<typename T>
 void LLT
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& L,
-        ElementalMatrix<T>& X )
+  const AbstractDistMatrix<T>& L,
+        AbstractDistMatrix<T>& X )
 {
-    DEBUG_ONLY(CSE cse("trmm::LLT"))
+    EL_DEBUG_CSE
     // TODO: Come up with a better routing mechanism
     if( L.Height() > 5*X.Width() )
         LLTA( orientation, diag, L, X );

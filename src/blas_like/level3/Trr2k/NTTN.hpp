@@ -19,15 +19,15 @@ void Trr2kNTTN
   Orientation orientB,
   Orientation orientC,
   T alpha,
-  const ElementalMatrix<T>& APre,
-  const ElementalMatrix<T>& BPre,
+  const AbstractDistMatrix<T>& APre,
+  const AbstractDistMatrix<T>& BPre,
   T beta,
-  const ElementalMatrix<T>& CPre,
-  const ElementalMatrix<T>& DPre,
-        ElementalMatrix<T>& EPre )
+  const AbstractDistMatrix<T>& CPre,
+  const AbstractDistMatrix<T>& DPre,
+        AbstractDistMatrix<T>& EPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trr2k::Trr2kNTTN");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( EPre.Height() != EPre.Width()  || APre.Width()  != CPre.Height() ||
           APre.Height() != EPre.Height() || CPre.Width()  != EPre.Height() ||
           BPre.Height() != EPre.Width()  || DPre.Width()  != EPre.Width()  ||

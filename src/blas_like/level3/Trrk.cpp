@@ -25,7 +25,7 @@ void TrrkInternal
   T alpha, const Matrix<T>& A, const Matrix<T>& B,
   T beta,        Matrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("TrrkInternal"))
+    EL_DEBUG_CSE
     ScaleTrapezoid( beta, uplo, C );
     if( orientA==NORMAL && orientB==NORMAL )
         trrk::TrrkNN( uplo, alpha, A, B, C );
@@ -37,7 +37,7 @@ void TrrkInternal
         trrk::TrrkTT( uplo, orientA, orientB, alpha, A, B, C );
 }
 
-#ifdef EL_HAVE_MKL
+#ifdef EL_HAVE_MKL_GEMMT
 template<typename T,typename=EnableIf<IsBlasScalar<T>>>
 void TrrkMKL
 ( UpperOrLower uplo, 
@@ -45,13 +45,15 @@ void TrrkMKL
   T alpha, const Matrix<T>& A, const Matrix<T>& B,
   T beta,        Matrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("TrrkMKL"))
+    EL_DEBUG_CSE
     const char uploChar = UpperOrLowerToChar( uplo );
     const char orientAChar = OrientationToChar( orientA );
     const char orientBChar = OrientationToChar( orientB );
-
+    const auto n = C.Height();
+    const auto k = orientA == NORMAL ? A.Width() : A.Height(); 
     mkl::Trrk 
     ( uploChar, orientAChar, orientBChar,
+      n, k, 
       alpha, A.LockedBuffer(), A.LDim(),
              B.LockedBuffer(), B.LDim(),
       beta,  C.Buffer(),       C.LDim() );
@@ -65,8 +67,8 @@ void TrrkHelper
   T alpha, const Matrix<T>& A, const Matrix<T>& B,
   T beta,        Matrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("TrrkHelper"))
-#ifdef EL_HAVE_MKL
+    EL_DEBUG_CSE
+#ifdef EL_HAVE_MKL_GEMMT
     TrrkMKL( uplo, orientA, orientB, alpha, A, B, beta, C );
 #else
     TrrkInternal( uplo, orientA, orientB, alpha, A, B, beta, C );
@@ -80,7 +82,7 @@ void TrrkHelper
   T alpha, const Matrix<T>& A, const Matrix<T>& B,
   T beta,        Matrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("TrrkHelper"))
+    EL_DEBUG_CSE
     TrrkInternal( uplo, orientA, orientB, alpha, A, B, beta, C );
 }
 
@@ -91,17 +93,17 @@ void Trrk
   T alpha, const Matrix<T>& A, const Matrix<T>& B,
   T beta,        Matrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("Trrk"))
+    EL_DEBUG_CSE
     TrrkHelper( uplo, orientA, orientB, alpha, A, B, beta, C );
 }
 
 template<typename T>
 void Trrk
 ( UpperOrLower uplo, Orientation orientA, Orientation orientB,
-  T alpha, const ElementalMatrix<T>& A, const ElementalMatrix<T>& B,
-  T beta,        ElementalMatrix<T>& C )
+  T alpha, const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& B,
+  T beta,        AbstractDistMatrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("Trrk"))
+    EL_DEBUG_CSE
     ScaleTrapezoid( beta, uplo, C );
     if( orientA==NORMAL && orientB==NORMAL )
         trrk::TrrkNN( uplo, alpha, A, B, C );
@@ -123,9 +125,9 @@ void Trrk
   template void Trrk \
   ( UpperOrLower uplo, \
     Orientation orientA, Orientation orientB, \
-    T alpha, const ElementalMatrix<T>& A, \
-             const ElementalMatrix<T>& B, \
-    T beta,        ElementalMatrix<T>& C ); \
+    T alpha, const AbstractDistMatrix<T>& A, \
+             const AbstractDistMatrix<T>& B, \
+    T beta,        AbstractDistMatrix<T>& C ); \
   template void LocalTrrk \
    ( UpperOrLower uplo, \
      T alpha, const DistMatrix<T,MC,  STAR>& A, \

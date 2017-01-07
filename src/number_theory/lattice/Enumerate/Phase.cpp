@@ -13,61 +13,61 @@ namespace El {
 namespace svp {
 
 // NOTE: This accepts the N from the Q(DN), not R from QR, where R=DN
-template<typename F>
+template<typename Field>
 void CoordinatesToSparse
-( const Matrix<F>& N,
-  const Matrix<F>& v,
-        Matrix<F>& y )
+( const Matrix<Field>& N,
+  const Matrix<Field>& v,
+        Matrix<Field>& y )
 {
-    DEBUG_ONLY(CSE cse("svp::CoordinatesToSparse"))
+    EL_DEBUG_CSE
     y = v;
     Trmv( UPPER, NORMAL, UNIT, N, y );
     Round( y );
 }
 
-template<typename F>
+template<typename Field>
 void TransposedCoordinatesToSparse
-( const Matrix<F>& NTrans,
-  const Matrix<F>& v,
-        Matrix<F>& y )
+( const Matrix<Field>& NTrans,
+  const Matrix<Field>& v,
+        Matrix<Field>& y )
 {
-    DEBUG_ONLY(CSE cse("svp::TransposedCoordinatesToSparse"))
+    EL_DEBUG_CSE
     y = v;
     Trmv( LOWER, TRANSPOSE, UNIT, NTrans, y );
     Round( y );
 }
 
-template<typename F>
+template<typename Field>
 void BatchCoordinatesToSparse
-( const Matrix<F>& N,
-  const Matrix<F>& V,
-        Matrix<F>& Y )
+( const Matrix<Field>& N,
+  const Matrix<Field>& V,
+        Matrix<Field>& Y )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchCoordinatesToSparse"))
+    EL_DEBUG_CSE
     Y = V;
-    Trmm( LEFT, UPPER, NORMAL, UNIT, F(1), N, Y );
+    Trmm( LEFT, UPPER, NORMAL, UNIT, Field(1), N, Y );
     Round( Y );
 }
 
-template<typename F>
+template<typename Field>
 void BatchTransposedCoordinatesToSparse
-( const Matrix<F>& NTrans,
-  const Matrix<F>& V,
-        Matrix<F>& Y )
+( const Matrix<Field>& NTrans,
+  const Matrix<Field>& V,
+        Matrix<Field>& Y )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchTransposedCoordinatesToSparse"))
+    EL_DEBUG_CSE
     Y = V;
-    Trmm( LEFT, LOWER, TRANSPOSE, UNIT, F(1), NTrans, Y );
+    Trmm( LEFT, LOWER, TRANSPOSE, UNIT, Field(1), NTrans, Y );
     Round( Y );
 }
 
-template<typename F>
+template<typename Field>
 void SparseToCoordinates
-( const Matrix<F>& N,
-  const Matrix<F>& y,
-        Matrix<F>& v )
+( const Matrix<Field>& N,
+  const Matrix<Field>& y,
+        Matrix<Field>& v )
 {
-    DEBUG_ONLY(CSE cse("svp::SparseToCoordinates"))
+    EL_DEBUG_CSE
     const Int n = N.Height();
 
     v = y;
@@ -75,20 +75,20 @@ void SparseToCoordinates
     // A custom rounded analogue of an upper-triangular solve
     for( Int j=n-1; j>=0; --j )
     {
-        F tau = 0;
+        Field tau = 0;
         for( Int k=j+1; k<n; ++k ) 
             tau += N(j,k)*v(k);
         v(j) -= Round(tau);
     }
 }
 
-template<typename F>
+template<typename Field>
 void TransposedSparseToCoordinates
-( const Matrix<F>& NTrans,
-  const Matrix<F>& y,
-        Matrix<F>& v )
+( const Matrix<Field>& NTrans,
+  const Matrix<Field>& y,
+        Matrix<Field>& v )
 {
-    DEBUG_ONLY(CSE cse("svp::TransposedSparseToCoordinates"))
+    EL_DEBUG_CSE
     const Int n = NTrans.Height();
 
     v = y;
@@ -96,34 +96,34 @@ void TransposedSparseToCoordinates
     // A custom rounded analogue of an upper-triangular solve
     for( Int j=n-1; j>=0; --j )
     {
-        const F* nBuf = &NTrans(0,j);
+        const Field* nBuf = &NTrans(0,j);
 
-        F tau = 0;
+        Field tau = 0;
         for( Int k=j+1; k<n; ++k ) 
             tau += nBuf[k]*v(k);
         v(j) -= Round(tau);
     }
 }
 
-// TODO: Optimize this routine by changing the loop order?
-template<typename F>
+// TODO(poulson): Optimize this routine by changing the loop order?
+template<typename Field>
 void BatchSparseToCoordinatesUnblocked
-( const Matrix<F>& N,
-  const Matrix<F>& Y,
-        Matrix<F>& V )
+( const Matrix<Field>& N,
+  const Matrix<Field>& Y,
+        Matrix<Field>& V )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchSparseToCoordinatesUnblocked"))
+    EL_DEBUG_CSE
     const Int n = N.Height();
     const Int numRHS = Y.Width();
 
     // A custom rounded analogue of an upper-triangular solve
     for( Int l=0; l<numRHS; ++l )
     {
-              F* vBuf = &V(0,l);
-        const F* yBuf = &Y(0,l);
+              Field* vBuf = &V(0,l);
+        const Field* yBuf = &Y(0,l);
         for( Int j=n-1; j>=0; --j )
         {
-            F tau = 0;
+            Field tau = 0;
             for( Int k=j+1; k<n; ++k ) 
                 tau += N(j,k)*vBuf[k];
             vBuf[j] = yBuf[j] + Round(vBuf[j]-tau); 
@@ -131,26 +131,26 @@ void BatchSparseToCoordinatesUnblocked
     }
 }
 
-template<typename F>
+template<typename Field>
 void BatchTransposedSparseToCoordinatesUnblocked
-( const Matrix<F>& NTrans,
-  const Matrix<F>& Y,
-        Matrix<F>& V )
+( const Matrix<Field>& NTrans,
+  const Matrix<Field>& Y,
+        Matrix<Field>& V )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchTransposedSparseToCoordinatesUnblocked"))
+    EL_DEBUG_CSE
     const Int n = NTrans.Height();
     const Int numRHS = Y.Width();
 
     // A custom rounded analogue of an upper-triangular solve
     for( Int l=0; l<numRHS; ++l )
     {
-              F* vBuf = &V(0,l);
-        const F* yBuf = &Y(0,l);
+              Field* vBuf = &V(0,l);
+        const Field* yBuf = &Y(0,l);
         for( Int j=n-1; j>=0; --j )
         {
-            const F* nBuf = &NTrans(0,j);
+            const Field* nBuf = &NTrans(0,j);
 
-            F tau = 0;
+            Field tau = 0;
             for( Int k=j+1; k<n; ++k ) 
                 tau += nBuf[k]*vBuf[k];
             vBuf[j] = yBuf[j] + Round(vBuf[j]-tau); 
@@ -158,19 +158,19 @@ void BatchTransposedSparseToCoordinatesUnblocked
     }
 }
 
-// TODO: Optimize this routine
-template<typename F>
+// TODO(poulson): Optimize this routine
+template<typename Field>
 void BatchSparseToCoordinates
-( const Matrix<F>& N,
-  const Matrix<F>& Y,
-        Matrix<F>& V,
+( const Matrix<Field>& N,
+  const Matrix<Field>& Y,
+        Matrix<Field>& V,
         Int blocksize )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchSparseToCoordinates"))
+    EL_DEBUG_CSE
     const Int n = N.Height();
     const Int numRHS = Y.Width();
 
-    // TODO: Test the relative performance of this branch
+    // TODO(poulson): Test the relative performance of this branch
     if( numRHS == 1 )
     {
         SparseToCoordinates( N, Y, V );
@@ -191,22 +191,22 @@ void BatchSparseToCoordinates
         auto V1 = V( ind1, ALL );
 
         BatchSparseToCoordinatesUnblocked( N11, Y1, V1 );
-        Gemm( NORMAL, NORMAL, F(-1), N01, V1, F(1), V0 );
+        Gemm( NORMAL, NORMAL, Field(-1), N01, V1, Field(1), V0 );
     }
 }
 
-template<typename F>
+template<typename Field>
 void BatchTransposedSparseToCoordinates
-( const Matrix<F>& NTrans,
-  const Matrix<F>& Y,
-        Matrix<F>& V,
+( const Matrix<Field>& NTrans,
+  const Matrix<Field>& Y,
+        Matrix<Field>& V,
         Int blocksize )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchTransposedSparseToCoordinates"))
+    EL_DEBUG_CSE
     const Int n = NTrans.Height();
     const Int numRHS = Y.Width();
 
-    // TODO: Test the relative performance of this branch
+    // TODO(poulson): Test the relative performance of this branch
     if( numRHS == 1 )
     {
         TransposedSparseToCoordinates( NTrans, Y, V );
@@ -227,41 +227,42 @@ void BatchTransposedSparseToCoordinates
         auto V1 = V( ind1, ALL );
 
         BatchTransposedSparseToCoordinatesUnblocked( NTrans11, Y1, V1 );
-        Gemm( TRANSPOSE, NORMAL, F(-1), NTrans10, V1, F(1), V0 );
+        Gemm( TRANSPOSE, NORMAL, Field(-1), NTrans10, V1, Field(1), V0 );
     }
 }
 
-template<typename F>
-Base<F> CoordinatesToNorm
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& N,
-  const Matrix<F>& v )
+template<typename Field>
+Base<Field> CoordinatesToNorm
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& N,
+  const Matrix<Field>& v )
 {
-    DEBUG_ONLY(CSE cse("svp::CoordinatesToNorm"))
-    Matrix<F> z( v );
+    EL_DEBUG_CSE
+    Matrix<Field> z( v );
     Trmv( UPPER, NORMAL, UNIT, N, z );
     DiagonalScale( LEFT, NORMAL, d, z );
     return FrobeniusNorm( z );
 }
 
-template<typename F>
-Base<F> TransposedCoordinatesToNorm
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& NTrans,
-  const Matrix<F>& v )
+template<typename Field>
+Base<Field> TransposedCoordinatesToNorm
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& NTrans,
+  const Matrix<Field>& v )
 {
-    DEBUG_ONLY(CSE cse("svp::TransposedCoordinatesToNorm"))
-    Matrix<F> z( v );
+    EL_DEBUG_CSE
+    Matrix<Field> z( v );
     Trmv( LOWER, TRANSPOSE, UNIT, NTrans, z );
     DiagonalScale( LEFT, NORMAL, d, z );
     return FrobeniusNorm( z );
 }
 
-template<typename F>
-Matrix<Base<F>> NestedColumnTwoNorms( const Matrix<F>& Z, Int numNested=1 )
+template<typename Field>
+Matrix<Base<Field>>
+NestedColumnTwoNorms( const Matrix<Field>& Z, Int numNested=1 )
 {
-    DEBUG_ONLY(CSE cse("svp::NestedColumnTwoNorms"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Field> Real;
     const Int n = Z.Height();
     const Int numRHS = Z.Width();
 
@@ -269,74 +270,74 @@ Matrix<Base<F>> NestedColumnTwoNorms( const Matrix<F>& Z, Int numNested=1 )
     // Compute nested norms in linear time
     for( Int j=0; j<numRHS; ++j )
     {
-        const F* zBuf = Z.LockedBuffer(0,j);
+        const Field* zBuf = Z.LockedBuffer(0,j);
         Real scale=0, scaledSquare=1;          
         for( Int i=n-1; i>=numNested; --i )
             UpdateScaledSquare( zBuf[i], scale, scaledSquare );
         for( Int i=numNested-1; i>=0; --i )
         {
             UpdateScaledSquare( zBuf[i], scale, scaledSquare );
-            colNorms.Set( j, i, scale*Sqrt(scaledSquare) );
+            colNorms(j,i) = scale*Sqrt(scaledSquare);
         }
     }
     return colNorms;
 }
 
-template<typename F>
-Matrix<Base<F>> BatchCoordinatesToNorms
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& N,
-  const Matrix<F>& V,
+template<typename Field>
+Matrix<Base<Field>> BatchCoordinatesToNorms
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& N,
+  const Matrix<Field>& V,
         Int numNested=1 )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchCoordinatesToNorms"))
-    Matrix<F> Z( V );
-    // TODO: Decide whether this branch is necessary or not...
+    EL_DEBUG_CSE
+    Matrix<Field> Z( V );
+    // TODO(poulson): Decide whether this branch is necessary or not...
     if( V.Width() == 1 )
         Trmv( UPPER, NORMAL, UNIT, N, Z );
     else
-        Trmm( LEFT, UPPER, NORMAL, UNIT, F(1), N, Z );
+        Trmm( LEFT, UPPER, NORMAL, UNIT, Field(1), N, Z );
     DiagonalScale( LEFT, NORMAL, d, Z );
 
     return NestedColumnTwoNorms( Z, numNested );
 }
 
-template<typename F>
-Matrix<Base<F>> BatchTransposedCoordinatesToNorms
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& NTrans,
-  const Matrix<F>& V,
+template<typename Field>
+Matrix<Base<Field>> BatchTransposedCoordinatesToNorms
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& NTrans,
+  const Matrix<Field>& V,
         Int numNested=1 )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchTransposedCoordinatesToNorms"))
-    Matrix<F> Z( V );
-    // TODO: Decide whether this branch is necessary or not...
+    EL_DEBUG_CSE
+    Matrix<Field> Z( V );
+    // TODO(poulson): Decide whether this branch is necessary or not...
     if( V.Width() == 1 )
         Trmv( LOWER, TRANSPOSE, UNIT, NTrans, Z );
     else
-        Trmm( LEFT, LOWER, TRANSPOSE, UNIT, F(1), NTrans, Z );
+        Trmm( LEFT, LOWER, TRANSPOSE, UNIT, Field(1), NTrans, Z );
     DiagonalScale( LEFT, NORMAL, d, Z );
 
     return NestedColumnTwoNorms( Z, numNested );
 }
 
-template<typename F>
-Base<F> SparseToNormLowerBound
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& y )
+template<typename Field>
+Base<Field> SparseToNormLowerBound
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& y )
 {
-    DEBUG_ONLY(CSE cse("svp::SparseToNormLowerBound"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Field> Real;
     const Int n = d.Height();
     const Real* dBuf = d.LockedBuffer();
-    const F* yBuf = y.LockedBuffer();
+    const Field* yBuf = y.LockedBuffer();
 
     const Real oneHalf = Real(1)/Real(2);
 
     Real lowerBoundSquared = 0;
     for( Int j=0; j<n; ++j )
     {
-        if( yBuf[j] != F(0) )
+        if( yBuf[j] != Field(0) )
         {
             const Real arg = (Abs(yBuf[j])-oneHalf)*dBuf[j];
             lowerBoundSquared += Pow(arg,Real(2));
@@ -345,100 +346,100 @@ Base<F> SparseToNormLowerBound
     return Sqrt(lowerBoundSquared);
 }
 
-template<typename F>
-Matrix<Base<F>> BatchSparseToNormLowerBound
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& Y )
+template<typename Field>
+Matrix<Base<Field>> BatchSparseToNormLowerBound
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& Y )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchSparseToNormLowerBound"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Field> Real;
     const Int numRHS = Y.Width();
     Matrix<Real> normBounds;
     Zeros( normBounds, numRHS, 1 );
     for( Int j=0; j<numRHS; ++j )
-        normBounds.Set( j, 0, SparseToNormLowerBound(d,Y(ALL,IR(j))) );
+        normBounds(j) = SparseToNormLowerBound(d,Y(ALL,IR(j)));
     return normBounds;
 }
 
-template<typename F>
-Base<F> SparseToNorm
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& N,
-  const Matrix<F>& y )
+template<typename Field>
+Base<Field> SparseToNorm
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& N,
+  const Matrix<Field>& y )
 {
-    DEBUG_ONLY(CSE cse("svp::SparseToNorm"))
-    Matrix<F> v;
+    EL_DEBUG_CSE
+    Matrix<Field> v;
     SparseToCoordinates( N, y, v );
     return CoordinatesToNorm( d, N, v );
 }
 
-template<typename F>
-Base<F> TransposedSparseToNorm
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& NTrans,
-  const Matrix<F>& y )
+template<typename Field>
+Base<Field> TransposedSparseToNorm
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& NTrans,
+  const Matrix<Field>& y )
 {
-    DEBUG_ONLY(CSE cse("svp::TransposedSparseToNorm"))
-    Matrix<F> v;
+    EL_DEBUG_CSE
+    Matrix<Field> v;
     TransposedSparseToCoordinates( NTrans, y, v );
     return TransposedCoordinatesToNorm( d, NTrans, v );
 }
 
-template<typename F>
-Matrix<Base<F>> BatchSparseToNorm
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& N,
-  const Matrix<F>& Y,
+template<typename Field>
+Matrix<Base<Field>> BatchSparseToNorm
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& N,
+  const Matrix<Field>& Y,
         Int blocksize,
         Int numNested=1 )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchSparseToNorm"))
-    Matrix<F> V;
+    EL_DEBUG_CSE
+    Matrix<Field> V;
     BatchSparseToCoordinates( N, Y, V, blocksize );
     return BatchCoordinatesToNorms( d, N, V, numNested );
 }
 
-template<typename F>
-Matrix<Base<F>> BatchTransposedSparseToNorm
-( const Matrix<Base<F>>& d,
-  const Matrix<F>& NTrans,
-  const Matrix<F>& Y,
+template<typename Field>
+Matrix<Base<Field>> BatchTransposedSparseToNorm
+( const Matrix<Base<Field>>& d,
+  const Matrix<Field>& NTrans,
+  const Matrix<Field>& Y,
         Int blocksize,
         Int numNested=1 )
 {
-    DEBUG_ONLY(CSE cse("svp::BatchTransposedSparseToNorm"))
-    Matrix<F> V;
+    EL_DEBUG_CSE
+    Matrix<Field> V;
     BatchTransposedSparseToCoordinates( NTrans, Y, V, blocksize );
     return BatchTransposedCoordinatesToNorms( d, NTrans, V, numNested );
 }
 
-template<typename Real>
+template<typename Field>
 class PhaseEnumerationCache
 {
 private:
-    const Matrix<Real>& B_;
-    const Matrix<Real>& d_;
-    const Matrix<Real>& N_;
-          Matrix<Real> NTrans_;
-          Matrix<Real> normUpperBounds_;
+    const Matrix<Field>& B_;
+    const Matrix<Base<Field>>& d_;
+    const Matrix<Field>& N_;
+          Matrix<Field> NTrans_;
+          Matrix<Base<Field>> normUpperBounds_;
     bool foundVector_=false;
 
     Int numQueued_=0;
-    Matrix<Real> Y_;
-    Matrix<Real> VCand_;
+    Matrix<Field> Y_;
+    Matrix<Field> VCand_;
 
     Int insertionBound_;
-    Matrix<Real> v_;
+    Matrix<Field> v_;
 
     Int blocksize_=32;
     bool useTranspose_=true;
 
 public:
     PhaseEnumerationCache
-    ( const Matrix<Real>& B,
-      const Matrix<Real>& d,
-      const Matrix<Real>& N,
-      const Matrix<Real>& normUpperBounds,
+    ( const Matrix<Field>& B,
+      const Matrix<Base<Field>>& d,
+      const Matrix<Field>& N,
+      const Matrix<Base<Field>>& normUpperBounds,
             Int batchSize=256,
             Int blocksize=32,
             bool useTranspose=true )
@@ -460,7 +461,7 @@ public:
     Int Height() const { return N_.Height(); }
 
     bool FoundVector() const { return foundVector_; }
-    const Matrix<Real>& BestVector() const { return v_; }
+    const Matrix<Field>& BestVector() const { return v_; }
 
     Int InsertionIndex() const
     {
@@ -475,10 +476,10 @@ public:
         }
     }
 
-    Real InsertionNorm() const
+    Base<Field> InsertionNorm() const
     {
         const Int insertionIndex = InsertionIndex();
-        return normUpperBounds_.Get(insertionIndex,0);
+        return normUpperBounds_(insertionIndex);
     }
 
     void Flush()
@@ -488,10 +489,10 @@ public:
 
         auto YActive = Y_( ALL, IR(0,numQueued_) );
 
-        Matrix<Real> colNorms;
+        Matrix<Base<Field>> colNorms;
         if( useTranspose_ )
         {
-            // TODO: Add this as an option
+            // TODO(poulson): Add this as an option
             /*
             Timer timer;
             timer.Start();
@@ -499,15 +500,20 @@ public:
             ( NTrans_, YActive, VCand_, blocksize_ );
             const double transformTime = timer.Stop();
             const double n = YActive.Height();
-            const double transformGflops = double(numQueued_)*n*n/(1.e9*transformTime);
-            Output(numQueued_," transforms: ",timer.Stop()," seconds (",transformGflops," GFlop/s");
+            const double transformGflops =
+              double(numQueued_)*n*n/(1.e9*transformTime);
+            Output
+            (numQueued_," transforms: ",timer.Stop()," seconds (",
+             transformGflops," GFlop/s");
             timer.Start();
             colNorms =
               BatchTransposedCoordinatesToNorms
               ( d_, NTrans_, VCand_, insertionBound_ );
             const double normTime = timer.Stop();
             const double normGflops = double(numQueued_)*n*n/(1.e9*normTime);
-            Output(numQueued_," norms: ",timer.Stop()," seconds (",normGflops," GFlop/s");
+            Output
+            (numQueued_," norms: ",timer.Stop()," seconds (",
+             normGflops," GFlop/s");
             */
 
             BatchTransposedSparseToCoordinates
@@ -527,8 +533,8 @@ public:
         {
             for( Int k=0; k<insertionBound_; ++k )
             {
-                const Real bNorm = colNorms.Get(j,k);
-                if( bNorm < normUpperBounds_.Get(k,0) && bNorm != Real(0) )
+                const Base<Field> bNorm = colNorms(j,k);
+                if( bNorm < normUpperBounds_(k) && bNorm != Base<Field>(0) )
                 {
                     const Range<Int> subInd(k,END);
 
@@ -536,15 +542,15 @@ public:
                     auto vCand = VCand_(subInd,IR(j));
 
                     Output
-                    ("normUpperBound=",normUpperBounds_.Get(k,0),
+                    ("normUpperBound=",normUpperBounds_(k),
                      ", bNorm=",bNorm,", k=",k);
                     Print( y, "y" );
 
                     // Check that the reverse transformation holds
-                    Matrix<Real> yCheck;
+                    Matrix<Field> yCheck;
                     CoordinatesToSparse( N_(subInd,subInd), vCand, yCheck );
                     yCheck -= y;
-                    if( FrobeniusNorm(yCheck) != Real(0) )
+                    if( FrobeniusNorm(yCheck) != Base<Field>(0) )
                     {
                         Print( B_(ALL,subInd), "B" );
                         Print( d_(subInd,ALL), "d" );
@@ -557,23 +563,23 @@ public:
                     Copy( vCand, v_ );
                     Print( v_, "v" );
 
-                    Matrix<Real> b;
+                    Matrix<Field> b;
                     Zeros( b, B_.Height(), 1 );
-                    Gemv( NORMAL, Real(1), B_(ALL,subInd), v_, Real(0), b );
+                    Gemv( NORMAL, Field(1), B_(ALL,subInd), v_, Field(0), b );
                     Print( b, "b" );
 
-                    normUpperBounds_.Set(k,0,bNorm);
+                    normUpperBounds_(k) = bNorm;
                     foundVector_ = true;
                     insertionBound_ = k+1;
                 }
-                // TODO: Keep track of 'stock' vectors?
+                // TODO(poulson): Keep track of 'stock' vectors?
             }
         }
         numQueued_ = 0;
         Zero( Y_ );
     }
 
-    void Enqueue( const Matrix<Real>& y )
+    void Enqueue( const Matrix<Field>& y )
     {
         MemCopy( Y_.Buffer(0,numQueued_), y.LockedBuffer(), y.Height() ); 
 
@@ -582,22 +588,9 @@ public:
             Flush();
     }
 
-    void Enqueue( const vector<pair<Int,Int>>& y )
+    void Enqueue( const vector<pair<Int,Field>>& y )
     {
-        Real* yBuf = Y_.Buffer(0,numQueued_);
-
-        const Int numEntries = y.size();
-        for( Int e=0; e<numEntries; ++e )
-            yBuf[y[e].first] = Real(y[e].second);
-
-        ++numQueued_;
-        if( numQueued_ == Y_.Width() )
-            Flush();
-    }
-
-    void Enqueue( const vector<pair<Int,Real>>& y )
-    {
-        Real* yBuf = Y_.Buffer(0,numQueued_);
+        Field* yBuf = Y_.Buffer(0,numQueued_);
 
         const Int numEntries = y.size();
         for( Int e=0; e<numEntries; ++e )
@@ -608,7 +601,7 @@ public:
             Flush();
     }
 
-    void MaybeEnqueue( const vector<pair<Int,Int>>& y, double enqueueProb=1. )
+    void MaybeEnqueue( const vector<pair<Int,Field>>& y, double enqueueProb=1. )
     {
         if( enqueueProb >= 1. || SampleUniform<double>(0,1) <= enqueueProb )
             Enqueue( y );
@@ -617,7 +610,6 @@ public:
     ~PhaseEnumerationCache() { }
 };
 
-template<typename Real>
 struct PhaseEnumerationCtrl
 {
   const vector<Int>& phaseOffsets;
@@ -647,82 +639,71 @@ struct PhaseEnumerationCtrl
   { }
 };
 
-// TODO: Reverse the enumeration order since nonzeros are more likely to happen
-//       at the bottom of the vector. This will require changing the arguments
-//       to this routine.
-template<typename Real>
+template<typename Field>
 void PhaseEnumerationLeafInner
-(       PhaseEnumerationCache<Real>& cache,
-  const PhaseEnumerationCtrl<Real>& ctrl,
-        vector<pair<Int,Int>>& y,
+(       PhaseEnumerationCache<Field>& cache,
+  const PhaseEnumerationCtrl& ctrl,
+        vector<pair<Int,Field>>& y,
   const Int beg,
-  const Int baseInfNorm,
-  const Int baseOneNorm,
-  const bool zeroSoFar )
+  const Int baseInf,
+  const Int baseOne )
 {
-    DEBUG_ONLY(CSE cse("svp::PhaseEnumerationLeafInner"))
+    EL_DEBUG_CSE
     const Int n = ctrl.phaseOffsets.back();
     const Int minInf = ctrl.minInfNorms.back();
     const Int maxInf = ctrl.maxInfNorms.back();
     const Int minOne = ctrl.minOneNorms.back();
     const Int maxOne = ctrl.maxOneNorms.back();
+    const bool constrained = (y.size() == 0);
 
-    const Int bound = Min(maxInf,maxOne-baseOneNorm);
-    for( Int absBeta=1; absBeta<=bound; ++absBeta )
+    SpiralState<Field> spiral;
+    spiral.Initialize( constrained );
+    while( true )
     {
-        const Int newOneNorm = baseOneNorm + absBeta;
-        const Int newInfNorm = Max(baseInfNorm,absBeta);
+        const Field beta = spiral.Step();
+        const Int betaInf = Int(MaxAbs(beta));
+        const Int betaOne = Int(OneAbs(beta));
+        const Int newInf = Max(betaInf,baseInf);
+        const Int newOne = betaOne + baseOne;
+        if( newInf > maxInf || newOne > maxOne )
+            break;
 
-        if( newOneNorm >= minOne && newInfNorm >= minInf )
+        if( newOne >= minOne && newInf >= minInf )
         {
-            // We can insert +-|beta| into any position and be admissible,
-            // so enqueue each possibility
             for( Int i=beg; i<n; ++i )
             {
-                y.emplace_back( i, absBeta );
-                cache.MaybeEnqueue( y, ctrl.enqueueProb );
-
-                if( !zeroSoFar )
+                if( ctrl.enqueueProb >= 1. ||
+                    SampleUniform<double>(0,1) <= ctrl.enqueueProb )
                 {
-                    y.back() = pair<Int,Int>(i,-absBeta);
-                    cache.MaybeEnqueue( y, ctrl.enqueueProb );
+                    y.emplace_back( i, beta );
+                    cache.Enqueue( y );
+                    y.pop_back();
                 }
-
-                y.pop_back();
             }
         }
 
-        if( newOneNorm < maxOne )
+        if( newOne < maxOne )
         {
-            // We can insert +-|beta| into any position and still have room
+            // We can insert beta into any position and still have room
             // left for the one norm bound, so do so and then recurse
             for( Int i=beg; i<n-1; ++i )
             {
-                y.emplace_back( i, absBeta );
+                y.emplace_back( i, beta );
                 PhaseEnumerationLeafInner
-                ( cache, ctrl, y, i+1, newInfNorm, newOneNorm, false );
-
-                if( !zeroSoFar )
-                {
-                    y.back().second = -absBeta;
-                    PhaseEnumerationLeafInner
-                    ( cache, ctrl, y, i+1, newInfNorm, newOneNorm, false );
-                }
-
+                ( cache, ctrl, y, i+1, newInf, newOne );
                 y.pop_back();
             }
         }
     }
 }
 
-template<typename Real>
+template<typename Field>
 void PhaseEnumerationLeaf
-(       PhaseEnumerationCache<Real>& cache,
-  const PhaseEnumerationCtrl<Real>& ctrl,
-        vector<pair<Int,Int>>& y,
-  const bool zeroSoFar )
+(       PhaseEnumerationCache<Field>& cache,
+  const PhaseEnumerationCtrl& ctrl,
+        vector<pair<Int,Field>>& y )
 {
-    DEBUG_ONLY(CSE cse("svp::PhaseEnumerationLeaf"))
+    EL_DEBUG_CSE
 
     // Enqueue the zero phase if it is admissible
     if( ctrl.minInfNorms.back() == Int(0) &&
@@ -730,27 +711,22 @@ void PhaseEnumerationLeaf
         cache.MaybeEnqueue( y, ctrl.enqueueProb );
 
     const Int beg = ctrl.phaseOffsets[ctrl.phaseOffsets.size()-2];
-    const Int baseInfNorm = 0;
-    const Int baseOneNorm = 0;
-    PhaseEnumerationLeafInner
-    ( cache, ctrl, y, beg, baseInfNorm, baseOneNorm, zeroSoFar );
+    const Int baseInf = 0;
+    const Int baseOne = 0;
+    PhaseEnumerationLeafInner( cache, ctrl, y, beg, baseInf, baseOne );
 }
 
-// TODO: Reverse the enumeration order since nonzeros are more likely to happen
-//       at the bottom of the vector. This will require changing the arguments
-//       to this routine.
-template<typename Real>
+template<typename Field>
 void PhaseEnumerationNodeInner
-(       PhaseEnumerationCache<Real>& cache,
-  const PhaseEnumerationCtrl<Real>& ctrl,
-        vector<pair<Int,Int>>& y,
+(       PhaseEnumerationCache<Field>& cache,
+  const PhaseEnumerationCtrl& ctrl,
+        vector<pair<Int,Field>>& y,
   const Int phase,
   const Int beg,
-  const Int baseInfNorm,
-  const Int baseOneNorm,
-  const bool zeroSoFar )
+  const Int baseInf,
+  const Int baseOne )
 {
-    DEBUG_ONLY(CSE cse("svp::PhaseEnumerationNodeInner"))
+    EL_DEBUG_CSE
     const Int n = cache.Height();
     if( ctrl.earlyExit && cache.FoundVector() )
         return;
@@ -761,106 +737,91 @@ void PhaseEnumerationNodeInner
     const Int maxInf = ctrl.maxInfNorms[phase];
     const Int minOne = ctrl.minOneNorms[phase];
     const Int maxOne = ctrl.maxOneNorms[phase];
+    const bool constrained = (y.size() == 0);
 
     if( nextPhaseBeg >= n )
     {
-        PhaseEnumerationLeaf( cache, ctrl, y, zeroSoFar );
+        PhaseEnumerationLeaf( cache, ctrl, y );
         return;
     }
 
     if( beg == phaseBeg && minInf == 0 && minOne == 0 )
     {
         // This phase can be all zeroes, so move to the next phase
-        PhaseEnumerationNode( cache, ctrl, y, phase+1, zeroSoFar );
+        PhaseEnumerationNode( cache, ctrl, y, phase+1 );
     }
 
-    const Int bound = Min(maxInf,maxOne-baseOneNorm);
-    for( Int absBeta=1; absBeta<=bound; ++absBeta ) 
+    SpiralState<Field> spiral;
+    spiral.Initialize( constrained );
+    while( true )
     {
-        const Int phaseOneNorm = baseOneNorm + absBeta;
-        const Int phaseInfNorm = Max( baseInfNorm, absBeta );
+        const Field beta = spiral.Step();
+        const Int betaInf = Int(MaxAbs(beta));
+        const Int betaOne = Int(OneAbs(beta));
+        const Int phaseInf = Max( betaInf, baseInf );
+        const Int phaseOne = betaOne + baseOne;
+        if( phaseOne > maxOne || phaseInf > maxInf )
+            break;
 
-        if( phaseOneNorm >= minOne && phaseInfNorm >= minInf )
+        if( phaseOne >= minOne && phaseInf >= minInf )
         {
-            // We could insert +-|beta| into any position and still have
+            // We could insert beta into any position and still have
             // an admissible choice for the current phase, so procede to
             // the next phase with each such choice
 
             for( Int i=beg; i<nextPhaseBeg; ++i )
             {
-                // Fix y[i] = +|beta| and move to the next phase
-                y.emplace_back( i, absBeta );
+                // Fix y[i] = beta and move to the next phase
+                y.emplace_back( i, beta );
                 if( phase < ctrl.progressLevel )
-                    Output("phase ",phase,": y[",i,"]=",absBeta);
-                PhaseEnumerationNode( cache, ctrl, y, phase+1, false );
-
-                if( !zeroSoFar )
-                {
-                    // Fix y[i] = -|beta| and move to the next phase
-                    y.back().second = -absBeta;
-                    if( phase < ctrl.progressLevel )
-                        Output("phase ",phase,": y[",i,"]=",-absBeta);
-                    PhaseEnumerationNode( cache, ctrl, y, phase+1, false );
-                }
-                
+                    Output("phase ",phase,": y[",i,"]=",beta);
+                PhaseEnumerationNode( cache, ctrl, y, phase+1 );
                 y.pop_back();
             }
         }
 
-        if( phaseOneNorm < maxOne )
+        if( phaseOne < maxOne )
         {
-            // Inserting +-|beta| into any position still leaves us with
+            // Inserting beta into any position still leaves us with
             // room in the current phase
 
             for( Int i=beg; i<nextPhaseBeg; ++i )
             {
-                // Fix y[i] = +|beta| and move to y[i+1]
-                y.emplace_back( i, absBeta ); 
+                // Fix y[i] = beta and move to y[i+1]
+                y.emplace_back( i, beta ); 
                 PhaseEnumerationNodeInner
                 ( cache, ctrl, y, 
                   phase, i+1,
-                  phaseInfNorm, phaseOneNorm, false );
-
-                if( !zeroSoFar )
-                {
-                    // Fix y[i] = -|beta| and move to y[i+1]
-                    y.back().second = -absBeta;
-                    PhaseEnumerationNodeInner
-                    ( cache, ctrl, y,
-                      phase, i+1,
-                      phaseInfNorm, phaseOneNorm, false );
-                }
-               
+                  phaseInf, phaseOne );
                 y.pop_back();
             }
         }
     }
 }
 
-template<typename Real>
+template<typename Field>
 void PhaseEnumerationNode
-(       PhaseEnumerationCache<Real>& cache,
-  const PhaseEnumerationCtrl<Real>& ctrl,
-        vector<pair<Int,Int>>& y,
-  const Int phase,
-  const bool zeroSoFar )
+(       PhaseEnumerationCache<Field>& cache,
+  const PhaseEnumerationCtrl& ctrl,
+        vector<pair<Int,Field>>& y,
+  const Int phase )
 {
-    DEBUG_ONLY(CSE cse("svp::PhaseEnumerationNode"))
+    EL_DEBUG_CSE
     const Int baseInfNorm = 0;
     const Int baseOneNorm = 0;
     PhaseEnumerationNodeInner
     ( cache, ctrl, y,
       phase, ctrl.phaseOffsets[phase],
-      baseInfNorm, baseOneNorm, zeroSoFar ); 
+      baseInfNorm, baseOneNorm ); 
 }
 
-template<typename Real>
-pair<Real,Int>
+template<typename Field>
+pair<Base<Field>,Int>
 PhaseEnumeration
-( const Matrix<Real>& B,
-  const Matrix<Real>& d,
-  const Matrix<Real>& N,
-  const Matrix<Real>& normUpperBounds,
+( const Matrix<Field>& B,
+  const Matrix<Base<Field>>& d,
+  const Matrix<Field>& N,
+  const Matrix<Base<Field>>& normUpperBounds,
         Int startIndex,
         Int phaseLength,
         double enqueueProb,
@@ -868,38 +829,38 @@ PhaseEnumeration
   const vector<Int>& maxInfNorms,
   const vector<Int>& minOneNorms,
   const vector<Int>& maxOneNorms,
-        Matrix<Real>& v,
+        Matrix<Field>& v,
         Int progressLevel )
 {
-    DEBUG_ONLY(CSE cse("svp::PhaseEnumeration"))
+    EL_DEBUG_CSE
     const Int n = N.Height();
     if( n <= 1 )
-        return pair<Real,Int>(2*normUpperBounds.Get(0,0)+1,0);
+        return pair<Base<Field>,Int>(2*normUpperBounds(0)+1,0);
 
-    // TODO: Make starting index modifiable
+    // TODO(poulson): Make starting index modifiable
     const Int numPhases = ((n-startIndex)+phaseLength-1)/phaseLength;
     if( numPhases != Int(maxInfNorms.size()) )
         LogicError("Invalid length of maxInfNorms");
     if( numPhases != Int(maxOneNorms.size()) )
         LogicError("Invalid length of maxOneNorms");
 
-    // TODO: Loop and increase bands for min and max one and inf norms?
+    // TODO(poulson): Loop and increase bands for min and max one and inf norms?
 
     // NOTE: The blocking doesn't seem to help the performance (yet)
     const Int batchSize = 512;
     const Int blocksize = 32;
     const bool useTranspose = true;
-    PhaseEnumerationCache<Real>
+    PhaseEnumerationCache<Field>
       cache( B, d, N, normUpperBounds, batchSize, blocksize, useTranspose );
 
     const bool earlyExit = false;
 
-    // TODO: Allow phaseOffsets to be an input
+    // TODO(poulson): Allow phaseOffsets to be an input
     vector<Int> phaseOffsets(numPhases+1);
     for( Int phase=0; phase<=numPhases; ++phase )
         phaseOffsets[phase] = Min(startIndex+phase*phaseLength,n);
 
-    PhaseEnumerationCtrl<Real>
+    PhaseEnumerationCtrl
       ctrl
       (phaseOffsets,
        minInfNorms,maxInfNorms,
@@ -907,32 +868,31 @@ PhaseEnumeration
        enqueueProb,
        earlyExit,progressLevel);
 
-    vector<pair<Int,Int>> y;
+    vector<pair<Int,Field>> y;
     Int phase=0;
-    bool zeroSoFar = true;
-    PhaseEnumerationNode( cache, ctrl, y, phase, zeroSoFar );
+    PhaseEnumerationNode( cache, ctrl, y, phase );
 
     cache.Flush();
 
     if( cache.FoundVector() )
     {
         v = cache.BestVector();
-        const Real insertionNorm = cache.InsertionNorm();
+        const Base<Field> insertionNorm = cache.InsertionNorm();
         const Int insertionIndex = cache.InsertionIndex();
-        return pair<Real,Int>(insertionNorm,insertionIndex);
+        return pair<Base<Field>,Int>(insertionNorm,insertionIndex);
     }
     else
     {
-        return pair<Real,Int>(2*normUpperBounds.Get(0,0)+1,0);
+        return pair<Base<Field>,Int>(2*normUpperBounds(0)+1,0);
     }
 }
 
-template<typename Real>
-Real PhaseEnumeration
-( const Matrix<Real>& B,
-  const Matrix<Real>& d,
-  const Matrix<Real>& N,
-        Real normUpperBound,
+template<typename Field>
+Base<Field> PhaseEnumeration
+( const Matrix<Field>& B,
+  const Matrix<Base<Field>>& d,
+  const Matrix<Field>& N,
+        Base<Field> normUpperBound,
         Int startIndex,
         Int phaseLength,
         double enqueueProb,
@@ -940,12 +900,12 @@ Real PhaseEnumeration
   const vector<Int>& maxInfNorms,
   const vector<Int>& minOneNorms,
   const vector<Int>& maxOneNorms,
-        Matrix<Real>& v,
+        Matrix<Field>& v,
         Int progressLevel )
 {
-    DEBUG_ONLY(CSE cse("svp::PhaseEnumeration"))
-    Matrix<Real> normUpperBounds(1,1);
-    normUpperBounds.Set(0,0,normUpperBound);
+    EL_DEBUG_CSE
+    Matrix<Base<Field>> normUpperBounds(1,1);
+    normUpperBounds(0) = normUpperBound;
     auto pair = 
       PhaseEnumeration
       ( B, d, N, normUpperBounds,
@@ -958,45 +918,45 @@ Real PhaseEnumeration
 
 } // namespace svp
 
-// TODO: Instantiate batched variants?
-#define PROTO(F) \
+// TODO(poulson): Instantiate batched variants?
+#define PROTO(Field) \
   template void svp::CoordinatesToSparse \
-  ( const Matrix<F>& N, \
-    const Matrix<F>& v, \
-          Matrix<F>& y ); \
+  ( const Matrix<Field>& N, \
+    const Matrix<Field>& v, \
+          Matrix<Field>& y ); \
   template void svp::TransposedCoordinatesToSparse \
-  ( const Matrix<F>& NTrans, \
-    const Matrix<F>& v, \
-          Matrix<F>& y ); \
+  ( const Matrix<Field>& NTrans, \
+    const Matrix<Field>& v, \
+          Matrix<Field>& y ); \
   template void svp::SparseToCoordinates \
-  ( const Matrix<F>& N, \
-    const Matrix<F>& y, \
-          Matrix<F>& v ); \
+  ( const Matrix<Field>& N, \
+    const Matrix<Field>& y, \
+          Matrix<Field>& v ); \
   template void svp::TransposedSparseToCoordinates \
-  ( const Matrix<F>& NTrans, \
-    const Matrix<F>& y, \
-          Matrix<F>& v ); \
-  template Base<F> svp::CoordinatesToNorm \
-  ( const Matrix<Base<F>>& d, \
-    const Matrix<F>& N, \
-    const Matrix<F>& v ); \
-  template Base<F> svp::TransposedCoordinatesToNorm \
-  ( const Matrix<Base<F>>& d, \
-    const Matrix<F>& NTrans, \
-    const Matrix<F>& v ); \
-  template Base<F> svp::SparseToNorm \
-  ( const Matrix<Base<F>>& d, \
-    const Matrix<F>& N, \
-    const Matrix<F>& y ); \
-  template Base<F> svp::TransposedSparseToNorm \
-  ( const Matrix<Base<F>>& d, \
-    const Matrix<F>& NTrans, \
-    const Matrix<F>& y ); \
-  template Base<F> svp::PhaseEnumeration \
-  ( const Matrix<F>& B, \
-    const Matrix<Base<F>>& d, \
-    const Matrix<F>& N, \
-          Base<F> normUpperBound, \
+  ( const Matrix<Field>& NTrans, \
+    const Matrix<Field>& y, \
+          Matrix<Field>& v ); \
+  template Base<Field> svp::CoordinatesToNorm \
+  ( const Matrix<Base<Field>>& d, \
+    const Matrix<Field>& N, \
+    const Matrix<Field>& v ); \
+  template Base<Field> svp::TransposedCoordinatesToNorm \
+  ( const Matrix<Base<Field>>& d, \
+    const Matrix<Field>& NTrans, \
+    const Matrix<Field>& v ); \
+  template Base<Field> svp::SparseToNorm \
+  ( const Matrix<Base<Field>>& d, \
+    const Matrix<Field>& N, \
+    const Matrix<Field>& y ); \
+  template Base<Field> svp::TransposedSparseToNorm \
+  ( const Matrix<Base<Field>>& d, \
+    const Matrix<Field>& NTrans, \
+    const Matrix<Field>& y ); \
+  template Base<Field> svp::PhaseEnumeration \
+  ( const Matrix<Field>& B, \
+    const Matrix<Base<Field>>& d, \
+    const Matrix<Field>& N, \
+          Base<Field> normUpperBound, \
           Int startIndex, \
           Int phaseLength, \
           double enqueueProb, \
@@ -1004,13 +964,13 @@ Real PhaseEnumeration
     const vector<Int>& maxInfNorms, \
     const vector<Int>& minOneNorms, \
     const vector<Int>& maxOneNorms, \
-          Matrix<F>& v, \
+          Matrix<Field>& v, \
           Int progressLevel ); \
-  template pair<Base<F>,Int> svp::PhaseEnumeration \
-  ( const Matrix<F>& B, \
-    const Matrix<Base<F>>& d, \
-    const Matrix<F>& N, \
-    const Matrix<Base<F>>& normUpperBounds, \
+  template pair<Base<Field>,Int> svp::PhaseEnumeration \
+  ( const Matrix<Field>& B, \
+    const Matrix<Base<Field>>& d, \
+    const Matrix<Field>& N, \
+    const Matrix<Base<Field>>& normUpperBounds, \
           Int startIndex, \
           Int phaseLength, \
           double enqueueProb, \
@@ -1018,7 +978,7 @@ Real PhaseEnumeration
     const vector<Int>& maxInfNorms, \
     const vector<Int>& minOneNorms, \
     const vector<Int>& maxOneNorms, \
-          Matrix<F>& v, \
+          Matrix<Field>& v, \
           Int progressLevel );
 
 #define EL_NO_INT_PROTO
@@ -1026,7 +986,6 @@ Real PhaseEnumeration
 #define EL_ENABLE_QUADDOUBLE
 #define EL_ENABLE_QUAD
 #define EL_ENABLE_BIGFLOAT
-#define EL_NO_COMPLEX_PROTO
 #include <El/macros/Instantiate.h>
 
 } // namespace El

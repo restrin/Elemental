@@ -93,6 +93,7 @@ void TestQR
     if( correctness )
         TestCorrectness( AFact, R, A );
     PopIndent();
+    OutputFromRoot(g.Comm(),"");
 }
 
 int 
@@ -140,6 +141,11 @@ main( int argc, char* argv[] )
         TestQR<DoubleDouble>
         ( g, m, n, correctness, print );
         TestQR<QuadDouble>
+        ( g, m, n, correctness, print );
+
+        TestQR<Complex<DoubleDouble>>
+        ( g, m, n, correctness, print );
+        TestQR<Complex<QuadDouble>>
         ( g, m, n, correctness, print );
 #endif
 

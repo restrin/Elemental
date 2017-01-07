@@ -36,7 +36,7 @@ void Initialize
   const Int& n,
   bool print )
 {
-    DEBUG_ONLY(CSE cse("pdco::Initialize"))
+    EL_DEBUG_CSE
 
     if( print )
         Output("  Using naive initialization");

@@ -13,13 +13,13 @@ namespace gemv {
 template<typename T>
 void Normal
 ( T alpha,
-  const ElementalMatrix<T>& APre,
-  const ElementalMatrix<T>& x,
+  const AbstractDistMatrix<T>& APre,
+  const AbstractDistMatrix<T>& x,
   T beta,
-        ElementalMatrix<T>& yPre )
+        AbstractDistMatrix<T>& yPre )
 {
-    DEBUG_ONLY(
-      CSE cse("gemv::Normal");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( APre, x, yPre );
       if( ( x.Width() != 1 && x.Height() != 1 ) ||
           ( yPre.Width() != 1 && yPre.Height() != 1 )   )
@@ -108,12 +108,12 @@ template<typename T>
 void Normal
 ( T alpha,
   const DistMatrix<T>& A,
-  const ElementalMatrix<T>& x,
+  const AbstractDistMatrix<T>& x,
   T beta,
         DistMatrix<T,VC,STAR>& y )
 {
-    DEBUG_ONLY(
-      CSE cse("gemv::Normal");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( A, x, y );
       if( x.Width() != 1 || y.Width() != 1 )
           LogicError("x and y are assumed to be column vectors");

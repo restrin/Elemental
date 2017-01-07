@@ -17,7 +17,7 @@ namespace quasitrsm {
 template<typename F>
 void LUNUnb( const Matrix<F>& U, Matrix<F>& X, bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LUNUnb"))
+    EL_DEBUG_CSE
     const Int m = X.Height();
     const Int n = X.Width();
     typedef Base<F> Real;
@@ -49,7 +49,7 @@ void LUNUnb( const Matrix<F>& U, Matrix<F>& X, bool checkIfSingular )
             const F delta22 = UBuf[(k+1)+(k+1)*ldu];
             // Decompose D = Q R
             Real c; F s;
-            const F gamma11 = lapack::Givens( delta11, delta21, c, s );
+            const F gamma11 = Givens( delta11, delta21, c, s );
             const F gamma12 =        c*delta12 + s*delta22;
             const F gamma22 = -Conj(s)*delta12 + c*delta22;
             if( checkIfSingular )
@@ -99,7 +99,7 @@ void LUNUnb( const Matrix<F>& U, Matrix<F>& X, bool checkIfSingular )
 template<typename F>
 void LUN( const Matrix<F>& U, Matrix<F>& X, bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LUN"))
+    EL_DEBUG_CSE
     const Int m = X.Height();
     const Int bsize = Blocksize();
 
@@ -133,11 +133,11 @@ void LUN( const Matrix<F>& U, Matrix<F>& X, bool checkIfSingular )
 
 template<typename F>
 void LUNLarge
-( const ElementalMatrix<F>& UPre,
-        ElementalMatrix<F>& XPre, 
+( const AbstractDistMatrix<F>& UPre,
+        AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LUNLarge"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = UPre.Grid();
@@ -196,10 +196,10 @@ void LUNLarge
 
 template<typename F>
 void LUNMedium
-( const ElementalMatrix<F>& UPre, ElementalMatrix<F>& XPre, 
+( const AbstractDistMatrix<F>& UPre, AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LUNMedium"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = UPre.Grid();
@@ -262,8 +262,8 @@ void LUNSmall
         DistMatrix<F,colDist,STAR>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LUNSmall");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( U, X );
       if( U.Height() != U.Width() || U.Width() != X.Height() )
           LogicError

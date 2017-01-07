@@ -15,7 +15,7 @@ namespace lll {
 // Put the k'th column of B into the k'th column of QR and then rotate
 // said column with the first k-1 (scaled) Householder reflectors.
 
-template<typename Z, typename F>
+template<typename Z,typename F>
 void ExpandQR
 ( Int k,
   const Matrix<Z>& B,
@@ -25,7 +25,7 @@ void ExpandQR
   Int numOrthog,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lll::ExpandQR"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int m = B.Height();
     const Int n = B.Width();
@@ -76,7 +76,7 @@ void HouseholderStep
   Matrix<Base<F>>& d,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lll::HouseholderStep"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int m = QR.Height();
     const Int n = QR.Width();
@@ -111,7 +111,7 @@ void HouseholderStep
         houseStepTimer.Stop();
 }
 
-template<typename Z, typename F>
+template<typename Z,typename F>
 Base<F> Norm2
 ( Matrix<Z>& B,
   Int k )
@@ -124,7 +124,7 @@ Base<F> Norm2
 
 
 // Return true if the new column is a zero vector
-template<typename Z, typename F>
+template<typename Z,typename F>
 bool Step
 ( Int k,
   Matrix<Z>& B,
@@ -135,7 +135,7 @@ bool Step
   bool formU,
   const LLLCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("lll::Step"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int m = B.Height();
     const Int n = B.Width();
@@ -323,7 +323,7 @@ bool Step
 }
 
 // Consider explicitly returning both Q and R rather than just R (in 'QR')
-template<typename Z, typename F>
+template<typename Z,typename F>
 LLLInfo<Base<F>> LeftAlg
 ( Matrix<Z>& B,
   Matrix<Z>& U,
@@ -333,7 +333,7 @@ LLLInfo<Base<F>> LeftAlg
   bool formU,
   const LLLCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("lll::LeftAlg"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     if( ctrl.time )
     {
@@ -421,7 +421,7 @@ LLLInfo<Base<F>> LeftAlg
         const Real rho_k_k = ( k >= m ? Real(0) : RealPart(QR(k,k)) ); 
         
         const Real leftTerm = Sqrt(ctrl.delta)*rho_km1_km1;
-        const Real rightTerm = lapack::SafeNorm(rho_k_k,rho_km1_k);
+        const Real rightTerm = SafeNorm(rho_k_k,rho_km1_k);
         // NOTE: It is possible that, if delta < 1/2, that rho_k_k could be
         //       zero and the usual Lovasz condition would be satisifed.
         //       For this reason, we explicitly force a pivot if R(k,k) is
@@ -510,7 +510,7 @@ LLLInfo<Base<F>> LeftAlg
     return info;
 }
 
-template<typename Z, typename F>
+template<typename Z,typename F>
 LLLInfo<Base<F>> LeftDeepAlg
 ( Matrix<Z>& B,
   Matrix<Z>& U,
@@ -520,7 +520,7 @@ LLLInfo<Base<F>> LeftDeepAlg
   bool formU,
   const LLLCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("lll::LeftDeepAlg"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     if( ctrl.delta <= Real(1)/Real(2) )
         LogicError
@@ -725,7 +725,7 @@ LLLInfo<Base<F>> LeftDeepAlg
     return info;
 }
 
-template<typename Z, typename F>
+template<typename Z,typename F>
 LLLInfo<Base<F>> LeftDeepReduceAlg
 ( Matrix<Z>& B,
   Matrix<Z>& U,
@@ -735,7 +735,7 @@ LLLInfo<Base<F>> LeftDeepReduceAlg
   bool formU,
   const LLLCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("lll::LeftDeepReduceAlg"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     if( ctrl.delta <= Real(1)/Real(2) )
         LogicError

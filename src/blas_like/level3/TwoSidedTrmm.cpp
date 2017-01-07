@@ -21,7 +21,7 @@ void TwoSidedTrmm
         Matrix<T>& A,
   const Matrix<T>& B )
 {
-    DEBUG_ONLY(CSE cse("TwoSidedTrmm"))
+    EL_DEBUG_CSE
     if( uplo == LOWER )
         twotrmm::LVar4( diag, A, B );
     else
@@ -31,10 +31,10 @@ void TwoSidedTrmm
 template<typename T> 
 void TwoSidedTrmm
 ( UpperOrLower uplo, UnitOrNonUnit diag, 
-        ElementalMatrix<T>& A,
-  const ElementalMatrix<T>& B )
+        AbstractDistMatrix<T>& A,
+  const AbstractDistMatrix<T>& B )
 {
-    DEBUG_ONLY(CSE cse("TwoSidedTrmm"))
+    EL_DEBUG_CSE
     if( uplo == LOWER )
         twotrmm::LVar4( diag, A, B );
     else
@@ -63,15 +63,12 @@ void ScaLAPACKHelper
     AssertScaLAPACKSupport();
 #ifdef EL_HAVE_SCALAPACK
     const Int n = A.Height();
-    const int bHandle = blacs::Handle( A );
-    const int context = blacs::GridInit( bHandle, A );
-    auto descA = FillDesc( A, context );
-    auto descB = FillDesc( B, context );
     const char uploChar = UpperOrLowerToChar( uplo );
+
+    auto descA = FillDesc( A );
+    auto descB = FillDesc( B );
     scalapack::TwoSidedTrmm
     ( uploChar, n, A.Buffer(), descA.data(), B.LockedBuffer(), descB.data() );
-    blacs::FreeGrid( context );
-    blacs::FreeHandle( bHandle );
 #endif
 }
 
@@ -92,7 +89,7 @@ void TwoSidedTrmm
         DistMatrix<T,MC,MR,BLOCK>& A,
   const DistMatrix<T,MC,MR,BLOCK>& B )
 {
-    DEBUG_ONLY(CSE cse("TwoSidedTrsm"))
+    EL_DEBUG_CSE
     twotrmm::ScaLAPACKHelper( uplo, diag, A, B );
 }
 
@@ -103,8 +100,8 @@ void TwoSidedTrmm
     const Matrix<T>& B ); \
   template void TwoSidedTrmm \
   ( UpperOrLower uplo, UnitOrNonUnit diag, \
-          ElementalMatrix<T>& A, \
-    const ElementalMatrix<T>& B ); \
+          AbstractDistMatrix<T>& A, \
+    const AbstractDistMatrix<T>& B ); \
   template void TwoSidedTrmm \
   ( UpperOrLower uplo, UnitOrNonUnit diag, \
           DistMatrix<T,STAR,STAR>& A, \

@@ -17,7 +17,7 @@ namespace El {
 template<typename T>
 void AjtaiTypeBasis( Matrix<T>& A, Int n, Base<T> alpha )
 {
-    DEBUG_ONLY(CSE cse("AjtaiTypeBasis"))
+    EL_DEBUG_CSE
     typedef Base<T> Real;
 
     Zeros( A, n, n );
@@ -32,14 +32,14 @@ void AjtaiTypeBasis( Matrix<T>& A, Int n, Base<T> alpha )
         A(j,j) = beta;
 
         for( Int i=0; i<j; ++i )
-            A(i,j) = SampleUniform<T>(T(0),d(j)/Real(2));
+            A(i,j) = SampleUniform(T(0),T(d(j)/Real(2)));
     }
 }
 
 template<typename T>
 void AjtaiTypeBasis( AbstractDistMatrix<T>& APre, Int n, Base<T> alpha )
 {
-    DEBUG_ONLY(CSE cse("AjtaiTypeBasis"))
+    EL_DEBUG_CSE
     typedef Base<T> Real;
     DistMatrixWriteProxy<T,T,MC,MR> AProx( APre );
     auto& A = AProx.Get();
@@ -64,12 +64,12 @@ void AjtaiTypeBasis( AbstractDistMatrix<T>& APre, Int n, Base<T> alpha )
     if( A.RedundantRank() == 0 )
     {
         auto& ALoc = A.Matrix();
+        auto& dLoc = d.Matrix();
         for( Int jLoc=0; jLoc<ALocWidth; ++jLoc )
         {
-            const Int j = A.GlobalCol( jLoc );
             for( Int iLoc=0; iLoc<ALocHeight; ++iLoc )
             {
-                ALoc(iLoc,jLoc) = SampleUniform<T>(T(0),d.Get(j,0)/Real(2));
+                ALoc(iLoc,jLoc) = SampleUniform(T(0),T(dLoc(jLoc,0)/Real(2)));
             }
         }
     }

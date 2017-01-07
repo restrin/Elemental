@@ -32,7 +32,7 @@ void FormHandW
         Matrix<Real>& w,
   const bool diagHess )
 {
-    DEBUG_ONLY(CSE cse("pdco::FormHandW"))
+    EL_DEBUG_CSE
 
     const vector<Int> ZERO (1,0);
     Matrix<Real> tmp1;
@@ -104,7 +104,7 @@ void FormKKT
   const vector<Int>& ixSetFix,
         SparseMatrix<Real>& K )
 {
-    DEBUG_ONLY(CSE cse("pdco::FormKKT"))
+    EL_DEBUG_CSE
 
     const Int m = A.Height();
     const Int n = A.Width();
@@ -189,7 +189,7 @@ void FormKKTRHS
   const vector<Int>& ixSetUpp,
         Matrix<Real>& w )
 {
-    DEBUG_ONLY(CSE cse("pdco::FormKKTRHS"))
+    EL_DEBUG_CSE
 
     const vector<Int> ZERO (1,0);
     const Int m = r1.Height();
@@ -247,7 +247,7 @@ void FormKKT25
   const vector<Int>& ixSetFix,
         SparseMatrix<Real>& K )
 {
-    DEBUG_ONLY(CSE cse("pdco::FormKKT25"))
+    EL_DEBUG_CSE
 
     /*********
     NOTE: Due to GetSubmatrix not being implemented for SparseMatrix for
@@ -285,10 +285,11 @@ void FormKKT25
     // (bu-x)*z1 + (x-bl)*z2
     z1Copy += z2Copy;
 
-    function<Real(Real)> func
-    ( []( Real alpha ) { return Sqrt(alpha); } );
-    EntrywiseMap(xmbl, func);
-    EntrywiseMap(bumx, func);
+    auto sqrtFunc = []( const Real& alpha ) 
+    { return Sqrt(alpha); };
+
+    EntrywiseMap( xmbl, MakeFunction(sqrtFunc) );
+    EntrywiseMap( bumx, MakeFunction(sqrtFunc) );
 
     // Form (H+D1^2)
     QueueUpdateSubdiagonal(Hess, ALL_n, Real(1), D1sq); // TODO: Use UpdateDiagonal?
@@ -366,7 +367,7 @@ void FormKKTRHS25
   const vector<Int>& ixSetUpp,
         Matrix<Real>& w )
 {
-    DEBUG_ONLY(CSE cse("pdco::FormKKTRHS25"))
+    EL_DEBUG_CSE
 
     /*********
     NOTE: Due to GetSubmatrix not being implemented for SparseMatrix for

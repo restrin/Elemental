@@ -17,7 +17,7 @@ namespace quasitrsm {
 template<typename F>
 void LLNUnb( const Matrix<F>& L, Matrix<F>& X, bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LLNUnb"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int m = X.Height();
     const Int n = X.Width();
@@ -47,7 +47,7 @@ void LLNUnb( const Matrix<F>& L, Matrix<F>& X, bool checkIfSingular )
             const F delta22 = LBuf[(k+1)+(k+1)*ldl];
             // Decompose D = L Q
             Real c; F s;
-            const F gamma11 = lapack::Givens( delta11, delta12, c, s );
+            const F gamma11 = Givens( delta11, delta12, c, s );
             const F gamma21 =        c*delta21 + s*delta22;
             const F gamma22 = -Conj(s)*delta21 + c*delta22;
             if( checkIfSingular )
@@ -105,7 +105,7 @@ void LLNUnb( const Matrix<F>& L, Matrix<F>& X, bool checkIfSingular )
 template<typename F>
 void LLN( const Matrix<F>& L, Matrix<F>& X, bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LLN"))
+    EL_DEBUG_CSE
     const Int m = X.Height();
     const Int bsize = Blocksize();
 
@@ -132,11 +132,11 @@ void LLN( const Matrix<F>& L, Matrix<F>& X, bool checkIfSingular )
 // For large numbers of RHS's, e.g., width(X) >> p
 template<typename F>
 void LLNLarge
-( const ElementalMatrix<F>& LPre,
-        ElementalMatrix<F>& XPre, 
+( const AbstractDistMatrix<F>& LPre,
+        AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LLNLarge"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = LPre.Grid();
@@ -187,11 +187,11 @@ void LLNLarge
 // For medium numbers of RHS's, e.g., width(X) ~= p
 template<typename F>
 void LLNMedium
-( const ElementalMatrix<F>& LPre,
-        ElementalMatrix<F>& XPre, 
+( const AbstractDistMatrix<F>& LPre,
+        AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LLNMedium"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = LPre.Grid();
@@ -247,8 +247,8 @@ void LLNSmall
         DistMatrix<F,colDist,STAR>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LLNSmall");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( L.ColAlign() != X.ColAlign() )
           LogicError("L and X are assumed to be aligned");
     )

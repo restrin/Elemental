@@ -2,8 +2,8 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El.hpp>
@@ -19,7 +19,7 @@ namespace El {
 template<typename T>
 void Read( Matrix<T>& A, const string filename, FileFormat format )
 {
-    DEBUG_ONLY(CSE cse("Read"))
+    EL_DEBUG_CSE
     if( format == AUTO )
         format = DetectFormat( filename );
 
@@ -41,7 +41,7 @@ void Read( Matrix<T>& A, const string filename, FileFormat format )
         read::MatrixMarket( A, filename );
         break;
     default:
-        LogicError("Format unsupported for reading");
+        LogicError("Format unsupported for reading a Matrix");
     }
 }
 
@@ -50,9 +50,9 @@ void Read
 ( AbstractDistMatrix<T>& A, const string filename, FileFormat format,
   bool sequential )
 {
-    DEBUG_ONLY(CSE cse("Read"))
+    EL_DEBUG_CSE
     if( format == AUTO )
-        format = DetectFormat( filename ); 
+        format = DetectFormat( filename );
 
     if( A.ColStride() == 1 && A.RowStride() == 1 )
     {
@@ -97,8 +97,42 @@ void Read
             read::MatrixMarket( A, filename );
             break;
         default:
-            LogicError("Unsupported distributed read format"); 
+            LogicError("Format unsupported for reading a DistMatrix");
         }
+    }
+}
+
+template<typename T>
+void Read( SparseMatrix<T>& A, const string filename, FileFormat format )
+{
+    EL_DEBUG_CSE
+    if( format == AUTO )
+        format = DetectFormat( filename );
+
+    switch( format )
+    {
+    case MATRIX_MARKET:
+        read::MatrixMarket( A, filename );
+        break;
+    default:
+        LogicError("Format unsupported for reading a SparseMatrix");
+    }
+}
+
+template<typename T>
+void Read( DistSparseMatrix<T>& A, const string filename, FileFormat format )
+{
+    EL_DEBUG_CSE
+    if( format == AUTO )
+        format = DetectFormat( filename );
+
+    switch( format )
+    {
+    case MATRIX_MARKET:
+        read::MatrixMarket( A, filename );
+        break;
+    default:
+        LogicError("Format unsupported for reading a DistSparseMatrix");
     }
 }
 
@@ -107,7 +141,11 @@ void Read
   ( Matrix<T>& A, const string filename, FileFormat format ); \
   template void Read \
   ( AbstractDistMatrix<T>& A, const string filename, \
-    FileFormat format, bool sequential );
+    FileFormat format, bool sequential ); \
+  template void Read \
+  ( SparseMatrix<T>& A, const string filename, FileFormat format ); \
+  template void Read \
+  ( DistSparseMatrix<T>& A, const string filename, FileFormat format );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

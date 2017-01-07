@@ -19,12 +19,12 @@ void TrrkTT
   Orientation orientationOfA,
   Orientation orientationOfB,
   T alpha,
-  const ElementalMatrix<T>& APre,
-  const ElementalMatrix<T>& BPre,
-        ElementalMatrix<T>& CPre )
+  const AbstractDistMatrix<T>& APre,
+  const AbstractDistMatrix<T>& BPre,
+        AbstractDistMatrix<T>& CPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trrk::TrrkTN");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( CPre.Height() != CPre.Width() || APre.Width() != CPre.Height() || 
           BPre.Height() != CPre.Width() || APre.Height() != BPre.Width() )
           LogicError("Nonconformal TrrkTN");

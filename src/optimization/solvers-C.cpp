@@ -16,6 +16,8 @@ extern "C" {
    ================================ */
 ElError ElMehrotraCtrlDefault_s( ElMehrotraCtrl_s* ctrl )
 {
+    const float eps = limits::Epsilon<float>();
+
     ctrl->primalInit = false;
     ctrl->dualInit = false;
     ctrl->minTol = 1e-2;
@@ -24,6 +26,9 @@ ElError ElMehrotraCtrlDefault_s( ElMehrotraCtrl_s* ctrl )
     ctrl->maxStepRatio = 0.99;
     ctrl->system = EL_FULL_KKT;
     ctrl->mehrotra = true;
+    ctrl->centralityRule = &StepLengthCentrality<float>;
+    ctrl->standardInitShift = true;
+    ctrl->balanceTol = Pow(eps,float(-0.19));
     ctrl->forceSameStep = true;
     ElRegSolveCtrlDefault_s( &ctrl->solveCtrl );
     ctrl->resolveReg = true;
@@ -32,7 +37,6 @@ ElError ElMehrotraCtrlDefault_s( ElMehrotraCtrl_s* ctrl )
     ctrl->print = false;
     ctrl->time = false;
 
-    const float eps = limits::Epsilon<float>();
     ctrl->wSafeMaxNorm = Pow(eps,float(-0.15));
     ctrl->wMaxLimit = Pow(eps,float(-0.4));
     ctrl->ruizEquilTol = Pow(eps,float(-0.25));
@@ -44,11 +48,16 @@ ElError ElMehrotraCtrlDefault_s( ElMehrotraCtrl_s* ctrl )
     ctrl->checkResiduals = true;
 #endif
 
+    ctrl->reg0Tmp = ctrl->reg1Tmp = ctrl->reg2Tmp = Pow(eps,float(0.25));
+    ctrl->reg0Perm = ctrl->reg1Perm = ctrl->reg2Perm = Pow(eps,float(0.35));
+
     return EL_SUCCESS;
 }
 
 ElError ElMehrotraCtrlDefault_d( ElMehrotraCtrl_d* ctrl )
 {
+    const double eps = limits::Epsilon<double>();
+
     ctrl->primalInit = false;
     ctrl->dualInit = false;
     ctrl->minTol = 1e-5;
@@ -57,6 +66,9 @@ ElError ElMehrotraCtrlDefault_d( ElMehrotraCtrl_d* ctrl )
     ctrl->maxStepRatio = 0.99;
     ctrl->system = EL_FULL_KKT;
     ctrl->mehrotra = true;
+    ctrl->centralityRule = &StepLengthCentrality<double>;
+    ctrl->standardInitShift = true;
+    ctrl->balanceTol = Pow(eps,double(-0.19));
     ctrl->forceSameStep = true;
     ElRegSolveCtrlDefault_d( &ctrl->solveCtrl );
     ctrl->resolveReg = true;
@@ -65,7 +77,6 @@ ElError ElMehrotraCtrlDefault_d( ElMehrotraCtrl_d* ctrl )
     ctrl->print = false;
     ctrl->time = false;
 
-    const double eps = limits::Epsilon<double>();
     ctrl->wSafeMaxNorm = Pow(eps,double(-0.15));
     ctrl->wMaxLimit = Pow(eps,double(-0.4));
     ctrl->ruizEquilTol = Pow(eps,double(-0.25));
@@ -76,6 +87,9 @@ ElError ElMehrotraCtrlDefault_d( ElMehrotraCtrl_d* ctrl )
 #else
     ctrl->checkResiduals = true;
 #endif
+
+    ctrl->reg0Tmp = ctrl->reg1Tmp = ctrl->reg2Tmp = Pow(eps,double(0.25));
+    ctrl->reg0Perm = ctrl->reg1Perm = ctrl->reg2Perm = Pow(eps,double(0.35));
 
     return EL_SUCCESS;
 }

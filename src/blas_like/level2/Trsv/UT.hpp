@@ -17,8 +17,8 @@ void UT
   const AbstractDistMatrix<F>& UPre,
         AbstractDistMatrix<F>& xPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trsv::UT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("Expected a (conjugate-)transpose option");
       AssertSameGrids( UPre, xPre );

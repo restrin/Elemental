@@ -17,7 +17,7 @@ void LUT
   const Matrix<F>& shifts,
         Matrix<F>& X ) 
 {
-    DEBUG_ONLY(CSE cse("mstrsm::LUT"))
+    EL_DEBUG_CSE
 
     const Int m = X.Height();
     const Int bsize = Blocksize();
@@ -43,11 +43,11 @@ void LUT
 template<typename F>
 void LUT
 ( Orientation orientation,
-  const ElementalMatrix<F>& UPre,
-  const ElementalMatrix<F>& shiftsPre,
-        ElementalMatrix<F>& XPre ) 
+  const AbstractDistMatrix<F>& UPre,
+  const AbstractDistMatrix<F>& shiftsPre,
+        AbstractDistMatrix<F>& XPre ) 
 {
-    DEBUG_ONLY(CSE cse("mstrsm::LUT"))
+    EL_DEBUG_CSE
 
     DistMatrixReadProxy<F,F,MC,MR> UProx( UPre );
     DistMatrixReadProxy<F,F,VR,STAR> shiftsProx( shiftsPre );

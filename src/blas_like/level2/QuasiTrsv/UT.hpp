@@ -15,8 +15,8 @@ void UTUnb
 ( Orientation orientation, const Matrix<F>& U, Matrix<F>& x, 
   bool checkIfSingular=false )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsv::UTUnb");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( U.Height() != U.Width() )
           LogicError("L must be square");
       if( x.Width() != 1 && x.Height() != 1 )
@@ -57,7 +57,7 @@ void UTUnb
             const F delta22 = UBuf[(k+1)+(k+1)*ldu];
             // Decompose D = Q R
             Real c; F s;
-            const F gamma11 = lapack::Givens( delta11, delta21, c, s );
+            const F gamma11 = Givens( delta11, delta21, c, s );
             const F gamma12 =        c*delta12 + s*delta22;
             const F gamma22 = -Conj(s)*delta12 + c*delta22;
             if( checkIfSingular )
@@ -112,8 +112,8 @@ void UT
 ( Orientation orientation, const Matrix<F>& U, Matrix<F>& x,
   bool checkIfSingular=false )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsv::UT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( U.Height() != U.Width() )
           LogicError("U must be square");
       if( x.Width() != 1 && x.Height() != 1 )
@@ -166,12 +166,12 @@ void UT
 template<typename F>
 void UT
 ( Orientation orientation, 
-  const ElementalMatrix<F>& UPre,
-        ElementalMatrix<F>& xPre,
+  const AbstractDistMatrix<F>& UPre,
+        AbstractDistMatrix<F>& xPre,
   bool checkIfSingular=false )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsv::UT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( UPre, xPre );
       if( UPre.Height() != UPre.Width() )
           LogicError("U must be square");

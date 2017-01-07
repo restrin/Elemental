@@ -23,7 +23,7 @@ void LUTUnb
         Matrix<F>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LUTUnb"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int m = X.Height();
     const Int n = X.Width();
@@ -56,7 +56,7 @@ void LUTUnb
             const F delta22 = UBuf[(k+1)+(k+1)*ldu];
             // Decompose D = Q R
             Real c; F s;
-            const F gamma11 = lapack::Givens( delta11, delta21, c, s );
+            const F gamma11 = Givens( delta11, delta21, c, s );
             const F gamma12 =        c*delta12 + s*delta22;
             const F gamma22 = -Conj(s)*delta12 + c*delta22;
             if( checkIfSingular )
@@ -119,8 +119,8 @@ void LUT
         Matrix<F>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LUT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("QuasiTrsmLUT expects a (Conjugate)Transpose option");
     )
@@ -153,12 +153,12 @@ void LUT
 template<typename F>
 void LUTLarge
 ( Orientation orientation, 
-  const ElementalMatrix<F>& UPre,
-        ElementalMatrix<F>& XPre,
+  const AbstractDistMatrix<F>& UPre,
+        AbstractDistMatrix<F>& XPre,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LUTLarge");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("TrsmLUT expects a (Conjugate)Transpose option");
     )
@@ -216,12 +216,12 @@ void LUTLarge
 template<typename F>
 void LUTMedium
 ( Orientation orientation, 
-  const ElementalMatrix<F>& UPre,
-        ElementalMatrix<F>& XPre, 
+  const AbstractDistMatrix<F>& UPre,
+        AbstractDistMatrix<F>& XPre, 
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LUTMedium");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("TrsmLUT expects a (Conjugate)Transpose option");
     )
@@ -284,8 +284,8 @@ void LUTSmall
         DistMatrix<F,rowDist,STAR>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LUTSmall");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( U, X );
       if( orientation == NORMAL )
           LogicError("TrsmLUT expects a (Conjugate)Transpose option");

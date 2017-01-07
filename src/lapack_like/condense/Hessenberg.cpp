@@ -8,31 +8,37 @@
 */
 #include <El.hpp>
 
-#include "./Hessenberg/L.hpp"
-#include "./Hessenberg/U.hpp"
+#include "./Hessenberg/LowerBlocked.hpp"
+#include "./Hessenberg/UpperBlocked.hpp"
 #include "./Hessenberg/ApplyQ.hpp"
+#include "./Hessenberg/FormQ.hpp"
 
 namespace El {
 
 template<typename F>
-void Hessenberg( UpperOrLower uplo, Matrix<F>& A, Matrix<F>& t )
+void Hessenberg
+( UpperOrLower uplo,
+  Matrix<F>& A,
+  Matrix<F>& householderScalars )
 {
-    DEBUG_ONLY(CSE cse("Hessenberg"))
+    EL_DEBUG_CSE
     if( uplo == UPPER )
-        hessenberg::U( A, t );
+        hessenberg::UpperBlocked( A, householderScalars );
     else
-        hessenberg::L( A, t );
+        hessenberg::LowerBlocked( A, householderScalars );
 }
 
 template<typename F> 
 void Hessenberg
-( UpperOrLower uplo, ElementalMatrix<F>& A, ElementalMatrix<F>& t )
+( UpperOrLower uplo,
+  AbstractDistMatrix<F>& A,
+  AbstractDistMatrix<F>& householderScalars )
 {
-    DEBUG_ONLY(CSE cse("Hessenberg"))
+    EL_DEBUG_CSE
     if( uplo == UPPER )
-        hessenberg::U( A, t );
+        hessenberg::UpperBlocked( A, householderScalars );
     else
-        hessenberg::L( A, t );
+        hessenberg::LowerBlocked( A, householderScalars );
 }
 
 namespace hessenberg {
@@ -40,9 +46,9 @@ namespace hessenberg {
 template<typename F>
 void ExplicitCondensed( UpperOrLower uplo, Matrix<F>& A )
 {
-    DEBUG_ONLY(CSE cse("hessenberg::ExplicitCondensed"))
-    Matrix<F> t;
-    Hessenberg( uplo, A, t );
+    EL_DEBUG_CSE
+    Matrix<F> householderScalars;
+    Hessenberg( uplo, A, householderScalars );
     if( uplo == LOWER )
         MakeTrapezoidal( LOWER, A, 1 );
     else
@@ -50,11 +56,11 @@ void ExplicitCondensed( UpperOrLower uplo, Matrix<F>& A )
 }
 
 template<typename F> 
-void ExplicitCondensed( UpperOrLower uplo, ElementalMatrix<F>& A )
+void ExplicitCondensed( UpperOrLower uplo, AbstractDistMatrix<F>& A )
 {
-    DEBUG_ONLY(CSE cse("hessenberg::ExplicitCondensed"))
-    DistMatrix<F,STAR,STAR> t(A.Grid());
-    Hessenberg( uplo, A, t );
+    EL_DEBUG_CSE
+    DistMatrix<F,STAR,STAR> householderScalars(A.Grid());
+    Hessenberg( uplo, A, householderScalars );
     if( uplo == LOWER )
         MakeTrapezoidal( LOWER, A, 1 );
     else
@@ -64,20 +70,38 @@ void ExplicitCondensed( UpperOrLower uplo, ElementalMatrix<F>& A )
 } // namespace hessenberg
 
 #define PROTO(F) \
-  template void Hessenberg( UpperOrLower uplo, Matrix<F>& A, Matrix<F>& t ); \
   template void Hessenberg \
-  ( UpperOrLower uplo, ElementalMatrix<F>& A, ElementalMatrix<F>& t ); \
+  ( UpperOrLower uplo, \
+    Matrix<F>& A, \
+    Matrix<F>& householderScalars ); \
+  template void Hessenberg \
+  ( UpperOrLower uplo, \
+    AbstractDistMatrix<F>& A, \
+    AbstractDistMatrix<F>& householderScalars ); \
   template void hessenberg::ExplicitCondensed \
   ( UpperOrLower uplo, Matrix<F>& A ); \
   template void hessenberg::ExplicitCondensed \
-  ( UpperOrLower uplo, ElementalMatrix<F>& A ); \
+  ( UpperOrLower uplo, AbstractDistMatrix<F>& A ); \
   template void hessenberg::ApplyQ \
   ( LeftOrRight side, UpperOrLower uplo, Orientation orientation, \
-    const Matrix<F>& A, const Matrix<F>& t, Matrix<F>& H ); \
+    const Matrix<F>& A, \
+    const Matrix<F>& householderScalars, \
+          Matrix<F>& H ); \
   template void hessenberg::ApplyQ \
   ( LeftOrRight side, UpperOrLower uplo, Orientation orientation, \
-    const ElementalMatrix<F>& A, const ElementalMatrix<F>& t, \
-          ElementalMatrix<F>& B );
+    const AbstractDistMatrix<F>& A, \
+    const AbstractDistMatrix<F>& householderScalars, \
+          AbstractDistMatrix<F>& B ); \
+  template void hessenberg::FormQ \
+  ( UpperOrLower uplo, \
+    const Matrix<F>& A, \
+    const Matrix<F>& householderScalars, \
+          Matrix<F>& Q ); \
+  template void hessenberg::FormQ \
+  ( UpperOrLower uplo, \
+    const AbstractDistMatrix<F>& A, \
+    const AbstractDistMatrix<F>& householderScalars, \
+          AbstractDistMatrix<F>& Q );
 
 #define EL_NO_INT_PROTO
 #define EL_ENABLE_DOUBLEDOUBLE

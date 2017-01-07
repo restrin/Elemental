@@ -2,8 +2,8 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El.hpp>
@@ -12,98 +12,98 @@ namespace El {
 
 namespace ls {
 
-template<typename F> 
+template<typename F>
 void Overwrite
-( Orientation orientation, 
+( Orientation orientation,
         Matrix<F>& A,
-  const Matrix<F>& B, 
+  const Matrix<F>& B,
         Matrix<F>& X )
 {
-    DEBUG_ONLY(CSE cse("ls::Overwrite"))
+    EL_DEBUG_CSE
 
-    Matrix<F> t;
-    Matrix<Base<F>> d;
+    Matrix<F> phase;
+    Matrix<Base<F>> signature;
 
     const Int m = A.Height();
     const Int n = A.Width();
     if( m >= n )
     {
-        QR( A, t, d );
-        qr::SolveAfter( orientation, A, t, d, B, X );
+        QR( A, phase, signature );
+        qr::SolveAfter( orientation, A, phase, signature, B, X );
     }
     else
     {
-        LQ( A, t, d );
-        lq::SolveAfter( orientation, A, t, d, B, X );
+        LQ( A, phase, signature );
+        lq::SolveAfter( orientation, A, phase, signature, B, X );
     }
 }
 
-template<typename F> 
+template<typename F>
 void Overwrite
-( Orientation orientation, 
-        ElementalMatrix<F>& APre,
-  const ElementalMatrix<F>& B, 
-        ElementalMatrix<F>& X )
+( Orientation orientation,
+        AbstractDistMatrix<F>& APre,
+  const AbstractDistMatrix<F>& B,
+        AbstractDistMatrix<F>& X )
 {
-    DEBUG_ONLY(CSE cse("ls::Overwrite"))
+    EL_DEBUG_CSE
 
     DistMatrixReadProxy<F,F,MC,MR> AProx( APre );
     auto& A = AProx.Get();
 
-    DistMatrix<F,MD,STAR> t(A.Grid());
-    DistMatrix<Base<F>,MD,STAR> d(A.Grid());
+    DistMatrix<F,MD,STAR> phase(A.Grid());
+    DistMatrix<Base<F>,MD,STAR> signature(A.Grid());
 
     const Int m = A.Height();
     const Int n = A.Width();
     if( m >= n )
     {
-        QR( A, t, d );
-        qr::SolveAfter( orientation, A, t, d, B, X );
+        QR( A, phase, signature );
+        qr::SolveAfter( orientation, A, phase, signature, B, X );
     }
     else
     {
-        LQ( A, t, d );
-        lq::SolveAfter( orientation, A, t, d, B, X );
+        LQ( A, phase, signature );
+        lq::SolveAfter( orientation, A, phase, signature, B, X );
     }
 }
 
 } // namespace ls
 
-template<typename F> 
+template<typename F>
 void LeastSquares
-( Orientation orientation, 
+( Orientation orientation,
   const Matrix<F>& A,
-  const Matrix<F>& B, 
+  const Matrix<F>& B,
         Matrix<F>& X )
 {
-    DEBUG_ONLY(CSE cse("LeastSquares"))
+    EL_DEBUG_CSE
     Matrix<F> ACopy( A );
     ls::Overwrite( orientation, ACopy, B, X );
 }
 
-template<typename F> 
+template<typename F>
 void LeastSquares
-( Orientation orientation, 
-  const ElementalMatrix<F>& A,
-  const ElementalMatrix<F>& B, 
-        ElementalMatrix<F>& X )
+( Orientation orientation,
+  const AbstractDistMatrix<F>& A,
+  const AbstractDistMatrix<F>& B,
+        AbstractDistMatrix<F>& X )
 {
-    DEBUG_ONLY(CSE cse("LeastSquares"))
+    EL_DEBUG_CSE
     DistMatrix<F> ACopy( A );
-    ls::Overwrite( orientation, ACopy, B, X ); 
+    ls::Overwrite( orientation, ACopy, B, X );
 }
 
 // The following routines solve either
 //
-//   Minimum length: 
-//     min_X || X ||_F 
+//   Minimum length:
+//     min_X || X ||_F
 //     s.t. W X = B, or
 //
-//   Least squares:  
+//   Least squares:
 //     min_X || W X - B ||_F,
 //
-// where W=op(A) is either A, A^T, or A^H, via forming a Hermitian 
-// quasi-semidefinite system 
+// where W=op(A) is either A, A^T, or A^H, via forming a Hermitian
+// quasi-semidefinite system
 //
 //    | alpha*I  W | | R/alpha | = | B |,
 //    |   W^H    0 | | X       |   | 0 |
@@ -114,35 +114,35 @@ void LeastSquares
 //    |   W       0  | | alpha*Y |   | B |
 //
 // when height(W) < width(W).
-//  
-// The latter guarantees that W X = B and X in range(W^H), which shows that 
-// X solves the minimum length problem. The former defines R = B - W X and 
-// ensures that R is in the null-space of W^H (therefore solving the least 
+//
+// The latter guarantees that W X = B and X in range(W^H), which shows that
+// X solves the minimum length problem. The former defines R = B - W X and
+// ensures that R is in the null-space of W^H (therefore solving the least
 // squares problem).
-// 
+//
 // Note that, ideally, alpha is roughly the minimum (nonzero) singular value
-// of W, which implies that the condition number of the quasi-semidefinite 
-// system is roughly equal to the condition number of W (see the analysis of 
-// Bjorck). If it is too expensive to estimate the minimum singular value, and 
-// W is equilibrated to have a unit two-norm, a typical choice for alpha is 
+// of W, which implies that the condition number of the quasi-semidefinite
+// system is roughly equal to the condition number of W (see the analysis of
+// Bjorck). If it is too expensive to estimate the minimum singular value, and
+// W is equilibrated to have a unit two-norm, a typical choice for alpha is
 // epsilon^0.25.
 //
 // The Hermitian quasi-semidefinite systems are solved by converting them into
-// Hermitian quasi-definite form via a priori regularization, applying an 
+// Hermitian quasi-definite form via a priori regularization, applying an
 // LDL^H factorization with static pivoting to the regularized system, and
 // using the iteratively-refined solution of with the regularized factorization
 // as a preconditioner for the original problem (defaulting to Flexible GMRES
 // for now).
 //
-// This approach originated within 
+// This approach originated within
 //
-//    Michael Saunders, 
+//    Michael Saunders,
 //   "Chapter 8, Cholesky-based Methods for Sparse Least Squares:
 //    The Benefits of Regularization",
 //    in L. Adams and J.L. Nazareth (eds.), Linear and Nonlinear Conjugate
 //    Gradient-Related Methods, SIAM, Philadelphia, 92--100 (1996).
 //
-// But note that SymmLQ and LSQR were used rather than flexible GMRES, and 
+// But note that SymmLQ and LSQR were used rather than flexible GMRES, and
 // iteratively refining *within* the preconditioner was not discussed.
 //
 
@@ -154,22 +154,15 @@ namespace ls {
 template<typename F>
 void Equilibrated
 ( const SparseMatrix<F>& A,
-  const Matrix<F>& B, 
+  const Matrix<F>& B,
         Matrix<F>& X,
-        Base<F> alpha,
-  const RegSolveCtrl<Base<F>>& ctrl )
+  const LeastSquaresCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(
-      CSE cse("ls::Equilibrated");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( A.Height() != B.Height() )
           LogicError("Heights of A and B must match");
     )
-    typedef Base<F> Real;
-
-    // TODO: Expose as control parameters
-    const Real eps = limits::Epsilon<Real>();
-    const Real gammaTmp = Pow(eps,Real(0.25));
-    const Real deltaTmp = Pow(eps,Real(0.25));
 
     const Int m = A.Height();
     const Int n = A.Width();
@@ -189,19 +182,19 @@ void Equilibrated
             J.QueueUpdate( A.Col(e)+m, A.Row(e),   Conj(A.Value(e)) );
         }
         for( Int e=0; e<m; ++e )
-            J.QueueUpdate( e, e, alpha );
+            J.QueueUpdate( e, e, ctrl.alpha );
     }
     else
     {
-        // Form J = [alpha, A^H; A, 0]
-        // ===========================
+        // Form J = [alpha*I, A^H; A, 0]
+        // =============================
         for( Int e=0; e<numEntriesA; ++e )
         {
             J.QueueUpdate( A.Col(e),   A.Row(e)+n, Conj(A.Value(e)) );
             J.QueueUpdate( A.Row(e)+n, A.Col(e),        A.Value(e)  );
         }
         for( Int e=0; e<n; ++e )
-            J.QueueUpdate( e, e, alpha );
+            J.QueueUpdate( e, e, ctrl.alpha );
     }
     J.ProcessQueues();
 
@@ -222,29 +215,9 @@ void Equilibrated
         DB = B;
     }
 
-    // Compute the regularized quasi-semidefinite fact of J
-    // ====================================================
-    Matrix<Real> reg;
-    reg.Resize( m+n, 1 );
-    for( Int i=0; i<Max(m,n); ++i )
-        reg(i) = gammaTmp*gammaTmp;
-    for( Int i=Max(m,n); i<m+n; ++i )
-        reg(i) = -deltaTmp*deltaTmp;
-    SparseMatrix<F> JOrig;
-    JOrig = J;
-    UpdateRealPartOfDiagonal( J, Real(1), reg );
-
-    vector<Int> map, invMap;
-    ldl::NodeInfo info;
-    ldl::Separator rootSep;
-    ldl::NestedDissection( J.LockedGraph(), map, rootSep, info );
-    InvertMap( map, invMap );
-    ldl::Front<F> JFront( J, map, info );
-    LDL( info, JFront );
-
-    // Successively solve each of the linear systems
+    // Solve the Symmetric Quasi-SemiDefinite system
     // =============================================
-    reg_ldl::SolveAfter( JOrig, reg, invMap, info, JFront, D, ctrl );
+    SQSDSolve( Max(m,n), J, D, ctrl.sqsdCtrl );
 
     Zeros( X, n, numRHS );
     if( m >= n )
@@ -269,11 +242,11 @@ template<typename F>
 void LeastSquares
 ( Orientation orientation,
   const SparseMatrix<F>& A,
-  const Matrix<F>& B, 
+  const Matrix<F>& B,
         Matrix<F>& X,
   const LeastSquaresCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("LeastSquares"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
 
     SparseMatrix<F> ABar;
@@ -292,19 +265,19 @@ void LeastSquares
     Matrix<Real> dR, dC;
     if( ctrl.equilibrate )
     {
-        auto normMap = []( Real beta ) 
-          { return ( beta < Sqrt(limits::Epsilon<Real>()) ? Real(1) : beta ); };
+        auto normMap = []( const Real& beta )
+          { return beta < Sqrt(limits::Epsilon<Real>()) ? Real(1) : beta; };
         if( m >= n )
         {
             ColumnTwoNorms( ABar, dC );
-            EntrywiseMap( dC, function<Real(Real)>(normMap) );
+            EntrywiseMap( dC, MakeFunction(normMap) );
             DiagonalSolve( RIGHT, NORMAL, dC, ABar );
             Ones( dR, m, 1 );
         }
         else
         {
             RowTwoNorms( ABar, dR );
-            EntrywiseMap( dR, function<Real(Real)>(normMap) );
+            EntrywiseMap( dR, MakeFunction(normMap) );
             DiagonalSolve( LEFT, NORMAL, dR, ABar );
             Ones( dC, n, 1 );
         }
@@ -314,13 +287,12 @@ void LeastSquares
         Ones( dR, m, 1 );
         Ones( dC, n, 1 );
     }
-    Real normScale = 1;
     if( ctrl.scaleTwoNorm )
     {
         // Scale ABar down to roughly unit two-norm
-        normScale = TwoNormEstimate( ABar, ctrl.basisSize ); 
+        const Real normScale = TwoNormEstimate( ABar, ctrl.basisSize );
         if( ctrl.progress )
-            cout << "Estimated || A ||_2 ~= " << normScale << endl;
+            Output("Estimated || A ||_2 ~= ",normScale);
         ABar *= F(1)/normScale;
         dR *= normScale;
     }
@@ -331,7 +303,7 @@ void LeastSquares
 
     // Solve the equilibrated least squares problem
     // ============================================
-    ls::Equilibrated( ABar, BBar, X, ctrl.alpha, ctrl.solveCtrl );
+    ls::Equilibrated( ABar, BBar, X, ctrl );
 
     // Unequilibrate the solution
     // ==========================
@@ -343,27 +315,16 @@ namespace ls {
 template<typename F>
 void Equilibrated
 ( const DistSparseMatrix<F>& A,
-  const DistMultiVec<F>& B, 
+  const DistMultiVec<F>& B,
         DistMultiVec<F>& X,
-        Base<F> alpha,
-  const RegSolveCtrl<Base<F>>& ctrl,
-  bool time )
+  const LeastSquaresCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(
-      CSE cse("ls::Equilibrated");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( A.Height() != B.Height() )
           LogicError("Heights of A and B must match");
     )
-    typedef Base<F> Real;
-
-    // TODO: Expose as control parameters
-    const Real eps = limits::Epsilon<Real>();
-    const Real gammaTmp = Pow(eps,Real(0.25));
-    const Real deltaTmp = Pow(eps,Real(0.25));
-
-    mpi::Comm comm = A.Comm();
-    const int commRank = mpi::Rank(comm);
-    Timer timer;
+    const Grid& grid = A.Grid();
 
     const Int m = A.Height();
     const Int n = A.Width();
@@ -371,7 +332,7 @@ void Equilibrated
 
     // J := [alpha*I,A;A^H,0] or [alpha*I,A^H;A,0]
     // ===========================================
-    DistSparseMatrix<F> J(comm);
+    DistSparseMatrix<F> J(grid);
     Zeros( J, m+n, m+n );
     {
         const Int JLocalHeight = J.LocalHeight();
@@ -394,7 +355,7 @@ void Equilibrated
             const F value = A.Value(e);
             if( m >= n )
             {
-                J.QueueUpdate( i, j+m, value ); 
+                J.QueueUpdate( i, j+m, value );
                 J.QueueUpdate( j+m, i, Conj(value) );
             }
             else
@@ -407,7 +368,7 @@ void Equilibrated
         {
             const Int i = J.GlobalRow(iLoc);
             if( i < Max(m,n) )
-                J.QueueLocalUpdate( iLoc, i, alpha );
+                J.QueueLocalUpdate( iLoc, i, ctrl.alpha );
             else
                 break;
         }
@@ -416,7 +377,7 @@ void Equilibrated
 
     // Set D to [B; 0] or [0; B]
     // =========================
-    DistMultiVec<F> D(comm);
+    DistMultiVec<F> D(grid);
     Zeros( D, m+n, numRHS );
     {
         const Int BLocalHeight = B.LocalHeight();
@@ -439,46 +400,9 @@ void Equilibrated
         D.ProcessQueues();
     }
 
-    // Compute the regularized quasi-semidefinite fact of J
-    // ====================================================
-    DistMultiVec<Real> reg(comm);
-    reg.Resize( m+n, 1 );
-    for( Int iLoc=0; iLoc<reg.LocalHeight(); ++iLoc )
-    {
-        const Int i = reg.GlobalRow(iLoc);
-        if( i < Max(m,n) )
-            reg.Set( i, 0, gammaTmp*gammaTmp );
-        else
-            reg.Set( i, 0, -deltaTmp*deltaTmp );
-    }
-    DistSparseMatrix<F> JOrig(comm);
-    JOrig = J;
-    UpdateRealPartOfDiagonal( J, Real(1), reg );
-
-    DistMap map, invMap;
-    ldl::DistNodeInfo info;
-    ldl::DistSeparator rootSep;
-    if( commRank == 0 && time )
-        timer.Start();
-    ldl::NestedDissection( J.LockedDistGraph(), map, rootSep, info );
-    if( commRank == 0 && time )
-        cout << "  ND: " << timer.Stop() << " secs" << endl;
-    InvertMap( map, invMap );
-    ldl::DistFront<F> JFront( J, map, rootSep, info );
-
-    if( commRank == 0 && time )
-        timer.Start();
-    LDL( info, JFront, LDL_2D );
-    if( commRank == 0 && time )
-        cout << "  LDL: " << timer.Stop() << " secs" << endl;
-
-    // Solve the k linear systems
-    // ==========================
-    if( commRank == 0 && time )
-        timer.Start();
-    reg_ldl::SolveAfter( JOrig, reg, invMap, info, JFront, D, ctrl );
-    if( commRank == 0 && time )
-        cout << "  Solve: " << timer.Stop() << " secs" << endl;
+    // Solve the Symmetric Quasi-SemiDefinite system
+    // =============================================
+    SQSDSolve( Max(m,n), J, D, ctrl.sqsdCtrl );
 
     // Extract X from [R/alpha; X] or [X; alpha*Y] and then rescale
     // ============================================================
@@ -494,16 +418,16 @@ template<typename F>
 void LeastSquares
 ( Orientation orientation,
   const DistSparseMatrix<F>& A,
-  const DistMultiVec<F>& B, 
+  const DistMultiVec<F>& B,
         DistMultiVec<F>& X,
   const LeastSquaresCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("LeastSquares"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
-    mpi::Comm comm = A.Comm();
-    const int commRank = mpi::Rank(comm);
+    const Grid& grid = A.Grid();
+    const int commRank = grid.Rank();
 
-    DistSparseMatrix<F> ABar(comm);
+    DistSparseMatrix<F> ABar(grid);
     if( orientation == NORMAL )
         ABar = A;
     else if( orientation == TRANSPOSE )
@@ -516,22 +440,22 @@ void LeastSquares
 
     // Equilibrate the matrix
     // ======================
-    DistMultiVec<Real> dR(comm), dC(comm);
+    DistMultiVec<Real> dR(grid), dC(grid);
     if( ctrl.equilibrate )
     {
-        auto normMap = []( Real beta ) 
-          { return ( beta < Sqrt(limits::Epsilon<Real>()) ? Real(1) : beta ); };
+        auto normMap = []( const Real& beta )
+          { return beta < Sqrt(limits::Epsilon<Real>()) ? Real(1) : beta; };
         if( m >= n )
         {
             ColumnTwoNorms( ABar, dC );
-            EntrywiseMap( dC, function<Real(Real)>(normMap) );
+            EntrywiseMap( dC, MakeFunction(normMap) );
             DiagonalSolve( RIGHT, NORMAL, dC, ABar );
             Ones( dR, m, 1 );
         }
         else
         {
             RowTwoNorms( ABar, dR );
-            EntrywiseMap( dR, function<Real(Real)>(normMap) );
+            EntrywiseMap( dR, MakeFunction(normMap) );
             DiagonalSolve( LEFT, NORMAL, dR, ABar );
             Ones( dC, n, 1 );
         }
@@ -540,14 +464,13 @@ void LeastSquares
     {
         Ones( dR, m, 1 );
         Ones( dC, n, 1 );
-    } 
-    Real normScale = 1;
+    }
     if( ctrl.scaleTwoNorm )
     {
         // Scale ABar down to roughly unit two-norm
-        normScale = TwoNormEstimate( ABar, ctrl.basisSize );
+        const Real normScale = TwoNormEstimate( ABar, ctrl.basisSize );
         if( ctrl.progress && commRank == 0 )
-            cout << "Estimated || A ||_2 ~= " << normScale << endl;
+            Output("Estimated || A ||_2 ~= ",normScale);
         ABar *= F(1)/normScale;
         dR *= normScale;
     }
@@ -558,7 +481,7 @@ void LeastSquares
 
     // Solve the equilibrated least squares problem
     // ============================================
-    ls::Equilibrated( ABar, BBar, X, ctrl.alpha, ctrl.solveCtrl, ctrl.time );
+    ls::Equilibrated( ABar, BBar, X, ctrl );
 
     // Unequilibrate the solution
     // ==========================
@@ -573,9 +496,9 @@ void LeastSquares
           Matrix<F>& X ); \
   template void ls::Overwrite \
   ( Orientation orientation, \
-          ElementalMatrix<F>& A, \
-    const ElementalMatrix<F>& B, \
-          ElementalMatrix<F>& X ); \
+          AbstractDistMatrix<F>& A, \
+    const AbstractDistMatrix<F>& B, \
+          AbstractDistMatrix<F>& X ); \
   template void LeastSquares \
   ( Orientation orientation, \
     const Matrix<F>& A, \
@@ -583,9 +506,9 @@ void LeastSquares
           Matrix<F>& X ); \
   template void LeastSquares \
   ( Orientation orientation, \
-    const ElementalMatrix<F>& A, \
-    const ElementalMatrix<F>& B, \
-          ElementalMatrix<F>& X ); \
+    const AbstractDistMatrix<F>& A, \
+    const AbstractDistMatrix<F>& B, \
+          AbstractDistMatrix<F>& X ); \
   template void LeastSquares \
   ( Orientation orientation, \
     const SparseMatrix<F>& A, \

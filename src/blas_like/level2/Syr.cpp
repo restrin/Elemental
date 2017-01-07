@@ -19,8 +19,8 @@ void Syr
         Matrix<T>& A, 
   bool conjugate )
 {
-    DEBUG_ONLY(
-      CSE cse("Syr");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( A.Height() != A.Width() )
           LogicError("A must be square");
       if( x.Width() != 1 && x.Height() != 1 )
@@ -49,12 +49,12 @@ template<typename T>
 void Syr
 ( UpperOrLower uplo,
   T alpha,
-  const ElementalMatrix<T>& x,
-        ElementalMatrix<T>& APre,
+  const AbstractDistMatrix<T>& x,
+        AbstractDistMatrix<T>& APre,
   bool conjugate )
 {
-    DEBUG_ONLY(
-      CSE cse("Syr");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( APre, x );
       if( APre.Height() != APre.Width() )
           LogicError("A must be square");
@@ -161,7 +161,7 @@ void Syr
     const Matrix<T>& x, Matrix<T>& A, bool conjugate ); \
   template void Syr \
   ( UpperOrLower uplo, T alpha, \
-    const ElementalMatrix<T>& x, ElementalMatrix<T>& A, bool conjugate );
+    const AbstractDistMatrix<T>& x, AbstractDistMatrix<T>& A, bool conjugate );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

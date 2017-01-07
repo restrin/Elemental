@@ -25,7 +25,8 @@ void ClassifyBounds
         vector<Int>& ixSetFix,
   bool print )
 {
-    DEBUG_ONLY(CSE cse("pdco::ClassifyBounds"))
+    EL_DEBUG_CSE
+    
     Int n = bl.Height();
     Int ctrLow = 0;
     Int ctrUpp = 0;

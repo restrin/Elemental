@@ -11,6 +11,195 @@
 
 namespace El {
 
+// Block Korkin-Zolotarev (BKZ) reduction
+// ======================================
+// TODO: Tailor BKZInfo; it is currently a copy of LLLInfo
+template<typename Real>
+struct BKZInfo
+{
+    Real delta;
+    Real eta; 
+    Int rank;
+    Int nullity; 
+    Int numSwaps;
+    Int numEnums;
+    Int numEnumFailures;
+    Real logVol;
+
+    template<typename OtherReal>
+    BKZInfo<Real>& operator=( const BKZInfo<OtherReal>& info )
+    {
+        delta = Real(info.delta);
+        eta = Real(info.eta);
+        rank = info.rank;
+        nullity = info.nullity;
+        numSwaps = info.numSwaps;
+        numEnums = info.numEnums;
+        numEnumFailures = info.numEnumFailures;
+        logVol = Real(info.logVol);
+        return *this;
+    }
+
+    BKZInfo() { }
+    BKZInfo( const BKZInfo<Real>& ctrl ) { *this = ctrl; }
+    template<typename OtherReal>
+    BKZInfo( const BKZInfo<OtherReal>& ctrl ) { *this = ctrl; }
+};
+
+template<typename Real>
+struct BKZCtrl
+{
+    Int blocksize=20;
+    bool time=false;
+    bool progress=false;
+
+    bool earlyAbort=false;
+    Int numEnumsBeforeAbort=1000; // only used if earlyAbort=true
+
+    bool variableBlocksize=false;
+    function<Int(Int)> blocksizeFunc;
+
+    bool variableEnumType=false;
+    function<EnumType(Int)> enumTypeFunc;
+
+    // Y-sparse enumeration supports simultaneous searches for improving a
+    // contiguous window of vectors
+    Int multiEnumWindow=15;
+
+    bool skipInitialLLL=false;
+    bool jumpstart=false;
+    Int startCol=0;
+
+    EnumCtrl<Real> enumCtrl;
+
+    // Rather than running LLL after a productive enumeration, one could run
+    // BKZ with a smaller blocksize (perhaps with early abort)
+    bool subBKZ=true;
+    function<Int(Int)> subBlocksizeFunc =
+      function<Int(Int)>( []( Int bsize )
+      { return Max(Min(bsize/2,Int(20)),Int(2)); } );
+    bool subEarlyAbort = true;
+    Int subNumEnumsBeforeAbort = 100;
+
+    // This seems to be *more* expensive but lead to higher quality (perhaps).
+    // Note that this is different from GNR recursion and uses a tree method
+    // with shuffling at each merge.
+    bool recursive=false;
+
+    bool logFailedEnums=false;
+    std::string failedEnumFile="BKZFailedEnums.txt";
+
+    bool logStreakSizes=false;
+    std::string streakSizesFile="BKZStreakSizes.txt";
+
+    bool logNontrivialCoords=false;
+    std::string nontrivialCoordsFile="BKZNontrivialCoords.txt";
+
+    bool logNorms=false;
+    std::string normsFile="BKZNorms.txt";
+
+    bool logProjNorms=false;
+    std::string projNormsFile="BKZProjNorms.txt";
+
+    bool checkpoint=false;
+    FileFormat checkpointFormat=ASCII;
+    std::string checkpointFileBase="BKZCheckpoint";
+    std::string tourFileBase="BKZTour";
+
+    LLLCtrl<Real> lllCtrl;
+
+    // We frequently need to convert datatypes, so make this easy
+    template<typename OtherReal>
+    BKZCtrl<Real>& operator=( const BKZCtrl<OtherReal>& ctrl )
+    {
+        blocksize = ctrl.blocksize;
+        time = ctrl.time;
+        progress = ctrl.progress;
+
+        earlyAbort = ctrl.earlyAbort;
+        numEnumsBeforeAbort = ctrl.numEnumsBeforeAbort;
+
+        variableBlocksize = ctrl.variableBlocksize;
+        blocksizeFunc = ctrl.blocksizeFunc;
+
+        variableEnumType = ctrl.variableEnumType;
+        enumTypeFunc = ctrl.enumTypeFunc;
+
+        multiEnumWindow = ctrl.multiEnumWindow;
+
+        skipInitialLLL = ctrl.skipInitialLLL;
+        jumpstart = ctrl.jumpstart;
+        startCol = ctrl.startCol;
+
+        enumCtrl = ctrl.enumCtrl;
+
+        subBKZ = ctrl.subBKZ;
+        subBlocksizeFunc = ctrl.subBlocksizeFunc;
+        subEarlyAbort = ctrl.subEarlyAbort;
+        subNumEnumsBeforeAbort = ctrl.subNumEnumsBeforeAbort;
+
+        recursive = ctrl.recursive;
+
+        logFailedEnums = ctrl.logFailedEnums;
+        logStreakSizes = ctrl.logStreakSizes;
+        logNontrivialCoords = ctrl.logNontrivialCoords;
+        logNorms = ctrl.logNorms;
+        logProjNorms = ctrl.logProjNorms;
+        checkpoint = ctrl.checkpoint;
+        failedEnumFile = ctrl.failedEnumFile;
+        streakSizesFile = ctrl.streakSizesFile;
+        nontrivialCoordsFile = ctrl.nontrivialCoordsFile;
+        normsFile = ctrl.normsFile;
+        projNormsFile = ctrl.projNormsFile;
+        checkpointFileBase = ctrl.checkpointFileBase;
+        tourFileBase = ctrl.tourFileBase;
+        checkpointFormat = ctrl.checkpointFormat;
+
+        lllCtrl = ctrl.lllCtrl;
+        return *this;
+    }
+
+    BKZCtrl() { }
+    BKZCtrl( const BKZCtrl<Real>& ctrl ) { *this = ctrl; }
+    template<typename OtherReal>
+    BKZCtrl( const BKZCtrl<OtherReal>& ctrl ) { *this = ctrl; }
+};
+
+template<typename F>
+BKZInfo<Base<F>> BKZ
+( Matrix<F>& B,
+  const BKZCtrl<Base<F>>& ctrl=BKZCtrl<Base<F>>() );
+
+template<typename F>
+BKZInfo<Base<F>> BKZ
+( Matrix<F>& B,
+  Matrix<F>& R,
+  const BKZCtrl<Base<F>>& ctrl=BKZCtrl<Base<F>>() );
+
+template<typename F>
+BKZInfo<Base<F>> BKZ
+( Matrix<F>& B,
+  Matrix<F>& U,
+  Matrix<F>& R,
+  const BKZCtrl<Base<F>>& ctrl=BKZCtrl<Base<F>>() );
+
+template<typename F>
+BKZInfo<Base<F>> BKZWithQ
+( Matrix<F>& B,
+  Matrix<F>& QR,
+  Matrix<F>& t,
+  Matrix<Base<F>>& d,
+  const BKZCtrl<Base<F>>& ctrl=BKZCtrl<Base<F>>() );
+
+template<typename F>
+BKZInfo<Base<F>> BKZWithQ
+( Matrix<F>& B,
+  Matrix<F>& U,
+  Matrix<F>& QR,
+  Matrix<F>& t,
+  Matrix<Base<F>>& d,
+  const BKZCtrl<Base<F>>& ctrl=BKZCtrl<Base<F>>() );
+
 namespace bkz {
 
 static Timer enumTimer, bkzTimer;
@@ -18,7 +207,7 @@ static Timer enumTimer, bkzTimer;
 template<typename F>
 bool TrivialCoordinates( const Matrix<F>& v )
 {
-    DEBUG_ONLY(CSE cse("bkz::TrivialCoordinates"))
+    EL_DEBUG_CSE
     const Int n = v.Height();    
     if( n == 0 )
         LogicError("Invalid coordinate length");
@@ -237,7 +426,7 @@ BKZInfo<Base<F>> BKZWithQ
   Matrix<Base<F>>& d,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("BKZWithQ"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int n = B.Width();
 
@@ -395,7 +584,7 @@ BKZInfo<Base<F>> BKZWithQ
             if( ctrl.logProjNorms )
             {
                 for( Int j=0; j<n; ++j )
-                    projNormsFile << QR(j,j) << " ";    
+                    projNormsFile << RealPart(QR(j,j)) << " ";    
                 projNormsFile << endl;
             }
         }
@@ -409,7 +598,7 @@ BKZInfo<Base<F>> BKZWithQ
         if( ctrl.variableEnumType )
             enumCtrl.enumType = ctrl.enumTypeFunc(j);
         const Range<Int> windowInd = IR(j,Min(j+ctrl.multiEnumWindow,k+1));
-        auto normUpperBounds = GetDiagonal(QR(windowInd,windowInd));
+        auto normUpperBounds = GetRealPartOfDiagonal(QR(windowInd,windowInd));
         Scale( Min(Sqrt(ctrl.lllCtrl.delta),Real(1)), normUpperBounds );
         const auto minPair = 
           MultiShortestVectorEnrichment
@@ -421,7 +610,7 @@ BKZInfo<Base<F>> BKZWithQ
         const Real minProjNorm = minPair.first;
         const Int insertionInd = minPair.second;
 
-        const Real oldProjNorm = QREnum(insertionInd,insertionInd);
+        const Real oldProjNorm = RealPart(QREnum(insertionInd,insertionInd));
         const bool keptMin = ( minProjNorm < oldProjNorm );
         if( keptMin )
         {
@@ -586,7 +775,7 @@ BKZInfo<Base<F>> BKZ
   Matrix<F>& R,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("BKZ"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     Matrix<F> t;
     Matrix<Real> d;
@@ -603,7 +792,7 @@ BKZInfo<Base<F>> BKZWithQ
   Matrix<Base<F>>& d,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("BKZWithQ"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int n = B.Width();
 
@@ -757,7 +946,7 @@ BKZInfo<Base<F>> BKZWithQ
             if( ctrl.logProjNorms )
             {
                 for( Int j=0; j<n; ++j )
-                    projNormsFile << QR(j,j) << " ";             
+                    projNormsFile << RealPart(QR(j,j)) << " ";             
                 projNormsFile << endl;
             }
         }
@@ -770,7 +959,7 @@ BKZInfo<Base<F>> BKZWithQ
         if( ctrl.variableEnumType )
             enumCtrl.enumType = ctrl.enumTypeFunc(j);
         const Range<Int> windowInd = IR(j,Min(j+ctrl.multiEnumWindow,k+1));
-        auto normUpperBounds = GetDiagonal(QR(windowInd,windowInd));
+        auto normUpperBounds = GetRealPartOfDiagonal(QR(windowInd,windowInd));
         Scale( Min(Sqrt(ctrl.lllCtrl.delta),Real(1)), normUpperBounds );
         const auto minPair =
           MultiShortestVectorEnrichment
@@ -782,7 +971,7 @@ BKZInfo<Base<F>> BKZWithQ
         const Real minProjNorm = minPair.first;
         const Int insertionInd = minPair.second;
 
-        const Real oldProjNorm = QREnum(insertionInd,insertionInd);
+        const Real oldProjNorm = RealPart(QREnum(insertionInd,insertionInd));
         const bool keptMin = ( minProjNorm < oldProjNorm );
         if( keptMin )
         {
@@ -942,7 +1131,7 @@ BKZ
   Matrix<F>& R,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("BKZ"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     Matrix<F> t;
     Matrix<Real> d;
@@ -961,8 +1150,6 @@ BKZ
 // C.f. The analogue of Lehmer's version of Euclid's algorithm that Schnorr
 // mentions at the end of "Progress on BKZ and Lattice Reduction".
 //
-// NOTE: Until Complex<BigFloat> exists, we must have different implementations
-//       for real and complex F
 
 // TODO: Provide a way to display when changing precision without showing
 //       all of the backtracks and deep insertions.
@@ -980,7 +1167,7 @@ LowerPrecisionMerge
         Matrix<Base<F>>& d,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("bkz::LowerPrecisionMerge"))
+    EL_DEBUG_CSE
     typedef ConvertBase<F,RealLower> FLower;
     const string typeString = TypeName<RealLower>();
 
@@ -1100,19 +1287,20 @@ bool TryLowerPrecisionBigFloatMerge
 }
 #endif
 
-template<typename Real>
-BKZInfo<Real>
+template<typename F>
+BKZInfo<Base<F>>
 RecursiveHelper
-( Matrix<Real>& B,
-  Matrix<Real>& U,
-  Matrix<Real>& QR,
-  Matrix<Real>& t,
-  Matrix<Real>& d,
+( Matrix<F>& B,
+  Matrix<F>& U,
+  Matrix<F>& QR,
+  Matrix<F>& t,
+  Matrix<Base<F>>& d,
   Int numShuffles,
   bool maintainU,
-  const BKZCtrl<Real>& ctrl )
+  const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("bkz::RecursiveHelper"))
+    EL_DEBUG_CSE
+    typedef Base<F> Real;
     if( maintainU )
         LogicError("Recursive BKZ does not yet support computing U");
 
@@ -1154,7 +1342,7 @@ RecursiveHelper
             timer.Start();
         BKZInfo<Real> leftInfo;
         {
-            Matrix<Real> QRL, tL;
+            Matrix<F> QRL, tL;
             Matrix<Real> dL;
             leftInfo = RecursiveBKZWithQ( CL, QRL, tL, dL, ctrl ); 
         }
@@ -1166,7 +1354,7 @@ RecursiveHelper
             timer.Start();
         BKZInfo<Real> rightInfo;
         {
-            Matrix<Real> QRR, tR;
+            Matrix<F> QRR, tR;
             Matrix<Real> dR;
             rightInfo = RecursiveBKZWithQ( CR, QRR, tR, dR, ctrl );
         }
@@ -1268,163 +1456,6 @@ RecursiveHelper
     return info;
 }
 
-// Same as the above, but with the Complex<BigFloat> datatype avoided
-template<typename Real>
-BKZInfo<Real>
-RecursiveHelper
-( Matrix<Complex<Real>>& B,
-  Matrix<Complex<Real>>& U,
-  Matrix<Complex<Real>>& QR,
-  Matrix<Complex<Real>>& t,
-  Matrix<Real>& d,
-  Int numShuffles,
-  bool maintainU,
-  const BKZCtrl<Real>& ctrl )
-{
-    DEBUG_ONLY(CSE cse("bkz::RecursiveHelper"))
-    if( maintainU )
-        LogicError("Recursive BKZ does not yet support computing U");
-
-    const Int n = B.Width();
-    if( n <= Max(ctrl.lllCtrl.cutoff,ctrl.blocksize) )
-    {
-        auto ctrlMod( ctrl );
-        ctrlMod.recursive = false;
-        ctrlMod.lllCtrl.recursive = false;
-        if( maintainU )
-            return BKZWithQ( B, U, QR, t, d, ctrlMod );
-        else
-            return BKZWithQ( B, QR, t, d, ctrlMod );
-    }
-    Timer timer;
-
-    // Reduce the entire matrix with LLL before attempting BKZ.
-    // Deep reductions should probably not be used due to the expense.
-    BKZInfo<Real> info;
-    info.numSwaps = 0;
-    auto lllCtrlMod( ctrl.lllCtrl );
-    lllCtrlMod.recursive = true;
-    auto lllInfo = LLL( B, QR, lllCtrlMod );
-    info.numSwaps += lllInfo.numSwaps;
-
-    for( Int shuffle=0; shuffle<=numShuffles; ++shuffle )
-    {
-        if( ctrl.lllCtrl.progress || ctrl.lllCtrl.time )
-            Output("Shuffle=",shuffle);
-        auto C( B ); 
-
-        const Int firstHalf = n-(n/2);
-        auto CL = C( ALL, IR(0,firstHalf) );
-        auto CR = C( ALL, IR(firstHalf,n) );
-
-        double leftTime;
-        if( ctrl.lllCtrl.time )
-            timer.Start();
-        LLLInfo<Real> leftInfo;
-        {
-            Matrix<Complex<Real>> QRL, tL;
-            Matrix<Real> dL;
-            leftInfo = RecursiveBKZWithQ( CL, QRL, tL, dL, ctrl ); 
-        }
-        if( ctrl.lllCtrl.time )
-            leftTime = timer.Stop(); 
-
-        double rightTime;
-        if( ctrl.lllCtrl.time )
-            timer.Start();
-        LLLInfo<Real> rightInfo;
-        {
-            Matrix<Complex<Real>> QRR, tR;
-            Matrix<Real> dR;
-            rightInfo = RecursiveBKZWithQ( CR, QRR, tR, dR, ctrl );
-        }
-        if( ctrl.lllCtrl.time )
-            rightTime = timer.Stop();
-
-        info.numSwaps += leftInfo.numSwaps + rightInfo.numSwaps;
-        if( ctrl.lllCtrl.progress || ctrl.lllCtrl.time )
-        {
-            Output("n=",n);
-            Output("  left swaps=",leftInfo.numSwaps);
-            Output("  right swaps=",rightInfo.numSwaps);
-        }
-        if( ctrl.lllCtrl.time )
-        {
-            Output("  left time:  ",leftTime," seconds");
-            Output("  right time: ",rightTime," seconds");
-        }
-
-        bool succeeded = false;
-        Int numPrevSwaps = info.numSwaps;
-        const bool isInteger = IsInteger( B );
-        if( isInteger )
-        {
-            const Real CLOneNorm = OneNorm( CL );
-            const Real CROneNorm = OneNorm( CR );
-            const Real CLMaxNorm = MaxNorm( CL );
-            const Real CRMaxNorm = MaxNorm( CR );
-            if( ctrl.lllCtrl.progress )
-            {
-                Output("  || C_L ||_1 = ",CLOneNorm);
-                Output("  || C_R ||_1 = ",CROneNorm);
-                Output("  || C_L ||_max = ",CLMaxNorm);
-                Output("  || C_R ||_max = ",CRMaxNorm);
-            }
-
-            const Real COneNorm = Max(CLOneNorm,CROneNorm);
-            const Real fudge = 2; // TODO: Make tunable
-            const unsigned neededPrec = unsigned(Ceil(Log2(COneNorm)*fudge));
-            if( ctrl.lllCtrl.progress || ctrl.lllCtrl.time )
-            {
-                Output("  || C ||_1 = ",COneNorm);
-                Output("  Needed precision: ",neededPrec);
-            }
-
-            succeeded = TryLowerPrecisionMerge<float>
-              ( CL, CR, B, QR, t, d, ctrl, neededPrec, info );
-            if( !succeeded )
-                succeeded = TryLowerPrecisionMerge<double>
-                  ( CL, CR, B, QR, t, d, ctrl, neededPrec, info );
-        // There is not yet support for Complex<{Quad,Double}Double>
-#ifdef EL_HAVE_QUAD
-            if( !succeeded )
-                succeeded = TryLowerPrecisionMerge<Quad>
-                  ( CL, CR, B, QR, t, d, ctrl, neededPrec, info );
-#endif
-            if( succeeded )
-                info.numSwaps += numPrevSwaps;
-        }
-        // TODO: Allow for dropping with non-integer vectors?
-
-        if( !succeeded )
-        {
-            // Interleave CL and CR to reform B before running BKZ again
-            for( Int jSub=0; jSub<n/2; ++jSub )
-            {
-                auto cl = CL( ALL, IR(jSub) );
-                auto cr = CR( ALL, IR(jSub) ); 
-                auto bl = B( ALL, IR(2*jSub) );
-                auto br = B( ALL, IR(2*jSub+1) );
-                bl = cl;
-                br = cr;
-            }
-            if( firstHalf > n/2 )
-            {
-                auto cl = CL( ALL, IR(firstHalf-1) );
-                auto bl = B( ALL, IR(n-1) ); 
-                bl = cl;
-            }
-            
-            auto ctrlMod( ctrl );
-            ctrlMod.recursive = false;
-            ctrlMod.lllCtrl.recursive = false;
-            info = BKZWithQ( B, QR, t, d, ctrlMod );
-            info.numSwaps += numPrevSwaps;
-        }
-    }
-    return info;
-}
-
 } // namespace bkz
 
 template<typename F>
@@ -1436,7 +1467,7 @@ RecursiveBKZWithQ
   Matrix<Base<F>>& d,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("RecursiveBKZWithQ"))
+    EL_DEBUG_CSE
     // TODO: Make this runtime-tunable
     Int numShuffles = 1;
     Matrix<F> U;
@@ -1454,7 +1485,7 @@ RecursiveBKZWithQ
   Matrix<Base<F>>& d,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("RecursiveBKZWithQ"))
+    EL_DEBUG_CSE
     // TODO: Make this runtime-tunable
     Int numShuffles = 1;
     bool maintainU=true;
@@ -1467,7 +1498,7 @@ BKZ
 ( Matrix<F>& B,
   const BKZCtrl<Base<F>>& ctrl )
 {
-    DEBUG_ONLY(CSE cse("BKZ"))
+    EL_DEBUG_CSE
     Matrix<F> R;
     return BKZ( B, R, ctrl );
 }

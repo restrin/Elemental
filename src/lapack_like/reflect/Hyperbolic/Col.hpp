@@ -15,16 +15,16 @@ namespace hyp_reflector {
 // Please see the comments in the sequential implementation for details.
 
 template<typename F> 
-F Col( F& chi, ElementalMatrix<F>& x )
+F Col( F& chi, AbstractDistMatrix<F>& x )
 {
-    DEBUG_ONLY(
-        CSE cse("hyp_reflector::Col");
-        if( x.Width() != 1 )
-            LogicError("x must be a column vector");
-        if( x.RowRank() != x.RowAlign() )
-            LogicError("Reflecting from incorrect process");
-        if( ImagPart(chi) !=Base<F>(0) )
-            LogicError("chi is assumed to be real");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
+      if( x.Width() != 1 )
+          LogicError("x must be a column vector");
+      if( x.RowRank() != x.RowAlign() )
+          LogicError("Reflecting from incorrect process");
+      if( ImagPart(chi) !=Base<F>(0) )
+          LogicError("chi is assumed to be real");
     )
     typedef Base<F> Real;
     mpi::Comm colComm = x.ColComm();
@@ -56,12 +56,12 @@ F Col( F& chi, ElementalMatrix<F>& x )
 }
 
 template<typename F> 
-F Col( ElementalMatrix<F>& chi, ElementalMatrix<F>& x )
+F Col( AbstractDistMatrix<F>& chi, AbstractDistMatrix<F>& x )
 {
-    DEBUG_ONLY(
-        CSE cse("hyp_reflector::Col");
-        if( chi.RowRank() != chi.RowAlign() || x.RowRank() != x.RowAlign() )
-            LogicError("Reflecting from incorrect process");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
+      if( chi.RowRank() != chi.RowAlign() || x.RowRank() != x.RowAlign() )
+          LogicError("Reflecting from incorrect process");
     )
     F alpha;
     if( chi.IsLocal(0,0) )

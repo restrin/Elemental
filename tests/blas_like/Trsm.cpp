@@ -2,17 +2,17 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El.hpp>
 using namespace El;
 
-template<typename F> 
+template<typename F>
 void TestTrsm
 ( LeftOrRight side,
-  UpperOrLower uplo, 
+  UpperOrLower uplo,
   Orientation orientation,
   UnitOrNonUnit diag,
   Int m,
@@ -55,8 +55,8 @@ void TestTrsm
     timer.Start();
     Trsm( side, uplo, orientation, diag, alpha, A, Y );
     mpi::Barrier( g.Comm() );
-    const double runTime = timer.Stop(); 
-    const double realGFlops = 
+    const double runTime = timer.Stop();
+    const double realGFlops =
       ( side==LEFT ? double(m)*double(m)*double(n)
                    : double(m)*double(n)*double(n) ) /(1.e9*runTime);
     const double gFlops = ( IsComplex<F>::value ? 4*realGFlops : realGFlops );
@@ -78,7 +78,7 @@ void TestTrsm
     PopIndent();
 }
 
-int 
+int
 main( int argc, char* argv[] )
 {
     Environment env( argc, argv );
@@ -102,8 +102,8 @@ main( int argc, char* argv[] )
         PrintInputReport();
 
         if( gridHeight == 0 )
-            gridHeight = Grid::FindFactor( mpi::Size(comm) );
-        const GridOrder order = ( colMajor ? COLUMN_MAJOR : ROW_MAJOR );
+            gridHeight = Grid::DefaultHeight( mpi::Size(comm) );
+        const GridOrder order = colMajor ? COLUMN_MAJOR : ROW_MAJOR;
         const Grid g( comm, gridHeight, order );
         const LeftOrRight side = CharToLeftOrRight( sideChar );
         const UpperOrLower uplo = CharToUpperOrLower( uploChar );
@@ -147,6 +147,17 @@ main( int argc, char* argv[] )
         ( side, uplo, orientation, diag,
           m, n,
           QuadDouble(3),
+          g, print );
+
+        TestTrsm<Complex<DoubleDouble>>
+        ( side, uplo, orientation, diag,
+          m, n,
+          Complex<DoubleDouble>(3),
+          g, print );
+        TestTrsm<Complex<QuadDouble>>
+        ( side, uplo, orientation, diag,
+          m, n,
+          Complex<QuadDouble>(3),
           g, print );
 #endif
 

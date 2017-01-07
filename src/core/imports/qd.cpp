@@ -28,35 +28,39 @@ void FinalizeQD()
     fpu_fix_end( &::oldControlWord );
 }
 
+// TODO: Use a single templated implementation?
+DoubleDouble::operator long double() const
+{
+    EL_DEBUG_CSE
+    long double alpha = x[0];
+    alpha += x[1];
+    return alpha;
+}
+
 #ifdef EL_HAVE_QUAD
-DoubleDouble::DoubleDouble( const Quad& a )
-{
-    DEBUG_ONLY(CSE cse("DoubleDouble::DoubleDouble [Quad]"))
-    x[0] = a;
-    x[1] = (a-x[0]);
-}
-
-QuadDouble::QuadDouble( const Quad& a )
-{
-    DEBUG_ONLY(CSE cse("QuadDouble::QuadDouble [Quad]"))
-    Quad b = a;
-    x[0] = b;
-    for( Int j=1; j<4; ++j )
-    {
-        b -= x[j-1];
-        x[j] = b;
-    }
-}
-
 DoubleDouble::operator Quad() const
 {
-    DEBUG_ONLY(CSE cse("DoubleDouble::operator Quad"))
-    return Quad(x[0]) + x[1];
+    EL_DEBUG_CSE
+    Quad alpha = x[0];
+    alpha += x[1];
+    return alpha;
+}
+#endif
+
+// TODO: Use a single templated implementation?
+QuadDouble::operator long double() const
+{
+    EL_DEBUG_CSE
+    long double alpha = x[0];
+    for( Int j=1; j<4; ++j )
+        alpha += x[j];
+    return alpha;
 }
 
+#ifdef EL_HAVE_QUAD
 QuadDouble::operator Quad() const
 {
-    DEBUG_ONLY(CSE cse("QuadDouble::operator Quad"))
+    EL_DEBUG_CSE
     Quad alpha = x[0];
     for( Int j=1; j<4; ++j )
         alpha += x[j];
@@ -67,7 +71,7 @@ QuadDouble::operator Quad() const
 #ifdef EL_HAVE_MPC
 DoubleDouble::operator BigFloat() const
 {
-    DEBUG_ONLY(CSE cse("DoubleDouble::operator BigFloat"))
+    EL_DEBUG_CSE
     BigFloat alpha( x[0] );
     alpha += x[1];
     return alpha;
@@ -75,9 +79,10 @@ DoubleDouble::operator BigFloat() const
 
 QuadDouble::operator BigFloat() const
 {
-    DEBUG_ONLY(CSE cse("QuadDouble::operator BigFloat"))
+    EL_DEBUG_CSE
     BigFloat alpha( x[0] );
-    alpha += x[1];
+    for( Int j=1; j<4; ++j )
+        alpha += x[j];
     return alpha;
 }
 #endif

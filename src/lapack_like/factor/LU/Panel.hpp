@@ -15,12 +15,12 @@ namespace lu {
 template<typename F>
 void Panel( Matrix<F>& A, Permutation& P, Permutation& PB, Int offset )
 {
+    EL_DEBUG_CSE
     const Int m = A.Height(); 
     const Int n = A.Width();
     F* ABuf = A.Buffer();
     const Int ALDim = A.LDim();
-    DEBUG_ONLY(
-      CSE cse("lu::Panel");
+    EL_DEBUG_ONLY(
       if( A.Height() < n )
           LogicError("Must be a column panel");
     )
@@ -40,8 +40,8 @@ void Panel( Matrix<F>& A, Permutation& P, Permutation& PB, Int offset )
         // Find the index and value of the pivot candidate
         const Int maxInd = blas::MaxInd( ind2VertSize+1, aB1Buf, 1 );
         const Int iPiv = maxInd + k;
-        P.RowSwap( k+offset, iPiv+offset );
-        PB.RowSwap( k, iPiv );
+        P.Swap( k+offset, iPiv+offset );
+        PB.Swap( k, iPiv );
 
         // Swap the pivot row and current row
         if( iPiv != k )
@@ -73,6 +73,7 @@ void Panel
   Int offset,
   vector<F>& pivotBuffer )
 {
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int n = A.Width();
     const Int BLocHeight = B.LocalHeight();
@@ -82,8 +83,7 @@ void Panel
     const Int BLDim = B.LDim();
     mpi::Comm colComm = B.ColComm();
     mpi::Op maxLocOp = mpi::MaxLocOp<Real>();
-    DEBUG_ONLY(
-      CSE cse("lu::Panel");
+    EL_DEBUG_ONLY(
       AssertSameGrids( A, B );
       if( n != B.Width() )
           LogicError("A and B must be the same width");
@@ -115,8 +115,8 @@ void Panel
         // Compute and store the location of the new pivot
         const auto pivot = mpi::AllReduce( localPivot, maxLocOp, colComm );
         const Int iPiv = pivot.index;
-        P.RowSwap( k+offset, iPiv+offset );
-        PB.RowSwap( k, iPiv );
+        P.Swap( k+offset, iPiv+offset );
+        PB.Swap( k, iPiv );
 
         // Perform the pivot within this panel
         if( iPiv < n )

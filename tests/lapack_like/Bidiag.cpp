@@ -2,18 +2,18 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El.hpp>
 using namespace El;
 
-template<typename F> 
+template<typename F>
 void TestCorrectness
-( const Matrix<F>& A, 
-  const Matrix<F>& tP,
-  const Matrix<F>& tQ,
+( const Matrix<F>& A,
+  const Matrix<F>& householderScalarsP,
+  const Matrix<F>& householderScalarsQ,
         Matrix<F>& AOrig,
   bool print,
   bool display )
@@ -45,8 +45,8 @@ void TestCorrectness
         Matrix<F> Q, P;
         Identity( Q, m, m );
         Identity( P, n, n );
-        bidiag::ApplyQ( LEFT,  NORMAL, A, tQ, Q );
-        bidiag::ApplyP( RIGHT, NORMAL, A, tP, P );
+        bidiag::ApplyQ( LEFT,  NORMAL, A, householderScalarsQ, Q );
+        bidiag::ApplyP( RIGHT, NORMAL, A, householderScalarsP, P );
         if( print )
         {
             Print( Q, "Q" );
@@ -60,8 +60,8 @@ void TestCorrectness
     }
 
     // Reverse the accumulated Householder transforms
-    bidiag::ApplyQ( LEFT,  ADJOINT, A, tQ, AOrig );
-    bidiag::ApplyP( RIGHT, NORMAL,  A, tP, AOrig );
+    bidiag::ApplyQ( LEFT,  ADJOINT, A, householderScalarsQ, AOrig );
+    bidiag::ApplyP( RIGHT, NORMAL,  A, householderScalarsP, AOrig );
     if( print )
         Print( AOrig, "Manual bidiagonal" );
     if( display )
@@ -75,7 +75,7 @@ void TestCorrectness
     }
     else
     {
-        MakeTrapezoidal( LOWER, AOrig ); 
+        MakeTrapezoidal( LOWER, AOrig );
         MakeTrapezoidal( UPPER, AOrig, -1 );
     }
     B -= AOrig;
@@ -94,11 +94,11 @@ void TestCorrectness
         LogicError("Relative error was unacceptably large");
 }
 
-template<typename F> 
+template<typename F>
 void TestCorrectness
-( const DistMatrix<F>& A, 
-  const DistMatrix<F,STAR,STAR>& tP,
-  const DistMatrix<F,STAR,STAR>& tQ,
+( const DistMatrix<F>& A,
+  const DistMatrix<F,STAR,STAR>& householderScalarsP,
+  const DistMatrix<F,STAR,STAR>& householderScalarsQ,
         DistMatrix<F>& AOrig,
   bool print,
   bool display )
@@ -132,8 +132,8 @@ void TestCorrectness
         DistMatrix<F> Q(g), P(g);
         Identity( Q, m, m );
         Identity( P, n, n );
-        bidiag::ApplyQ( LEFT,  NORMAL, A, tQ, Q );
-        bidiag::ApplyP( RIGHT, NORMAL, A, tP, P );
+        bidiag::ApplyQ( LEFT,  NORMAL, A, householderScalarsQ, Q );
+        bidiag::ApplyP( RIGHT, NORMAL, A, householderScalarsP, P );
         if( print )
         {
             Print( Q, "Q" );
@@ -147,8 +147,8 @@ void TestCorrectness
     }
 
     // Reverse the accumulated Householder transforms
-    bidiag::ApplyQ( LEFT,  ADJOINT, A, tQ, AOrig );
-    bidiag::ApplyP( RIGHT, NORMAL,  A, tP, AOrig );
+    bidiag::ApplyQ( LEFT,  ADJOINT, A, householderScalarsQ, AOrig );
+    bidiag::ApplyP( RIGHT, NORMAL,  A, householderScalarsP, AOrig );
     if( print )
         Print( AOrig, "Manual bidiagonal" );
     if( display )
@@ -162,7 +162,7 @@ void TestCorrectness
     }
     else
     {
-        MakeTrapezoidal( LOWER, AOrig ); 
+        MakeTrapezoidal( LOWER, AOrig );
         MakeTrapezoidal( UPPER, AOrig, -1 );
     }
     B -= AOrig;
@@ -194,7 +194,7 @@ void TestBidiag
     Output("Testing with ",TypeName<F>());
     PushIndent();
     Matrix<F> A, AOrig;
-    Matrix<F> tP, tQ;
+    Matrix<F> householderScalarsP, householderScalarsQ;
 
     Uniform( A, m, n );
     if( correctness )
@@ -207,23 +207,24 @@ void TestBidiag
     Output("Starting bidiagonalization");
     Timer timer;
     timer.Start();
-    Bidiag( A, tP, tQ );
+    Bidiag( A, householderScalarsP, householderScalarsQ );
     // TODO: Flop calculation
     Output("Time = ",timer.Stop()," seconds.");
     if( print )
     {
         Print( A, "A after Bidiag" );
-        Print( tP, "tP after Bidiag" );
-        Print( tQ, "tQ after Bidiag" );
+        Print( householderScalarsP, "householderScalarsP after Bidiag" );
+        Print( householderScalarsQ, "householderScalarsQ after Bidiag" );
     }
     if( display )
     {
         Display( A, "A after Bidiag" );
-        Display( tP, "tP after Bidiag" );
-        Display( tQ, "tQ after Bidiag" );
+        Display( householderScalarsP, "householderScalarsP after Bidiag" );
+        Display( householderScalarsQ, "householderScalarsQ after Bidiag" );
     }
     if( correctness )
-        TestCorrectness( A, tP, tQ, AOrig, print, display );
+        TestCorrectness
+        ( A, householderScalarsP, householderScalarsQ, AOrig, print, display );
     PopIndent();
 }
 
@@ -239,7 +240,7 @@ void TestBidiag
     OutputFromRoot(g.Comm(),"Testing with ",TypeName<F>());
     PushIndent();
     DistMatrix<F> A(g), AOrig(g);
-    DistMatrix<F,STAR,STAR> tP(g), tQ(g);
+    DistMatrix<F,STAR,STAR> householderScalarsP(g), householderScalarsQ(g);
 
     Uniform( A, m, n );
     if( correctness )
@@ -253,28 +254,29 @@ void TestBidiag
     mpi::Barrier( g.Comm() );
     Timer timer;
     timer.Start();
-    Bidiag( A, tP, tQ );
+    Bidiag( A, householderScalarsP, householderScalarsQ );
     mpi::Barrier( g.Comm() );
     // TODO: Flop calculation
     OutputFromRoot(g.Comm(),"Time = ",timer.Stop()," seconds.");
     if( print )
     {
         Print( A, "A after Bidiag" );
-        Print( tP, "tP after Bidiag" );
-        Print( tQ, "tQ after Bidiag" );
+        Print( householderScalarsP, "householderScalarsP after Bidiag" );
+        Print( householderScalarsQ, "householderScalarsQ after Bidiag" );
     }
     if( display )
     {
         Display( A, "A after Bidiag" );
-        Display( tP, "tP after Bidiag" );
-        Display( tQ, "tQ after Bidiag" );
+        Display( householderScalarsP, "householderScalarsP after Bidiag" );
+        Display( householderScalarsQ, "householderScalarsQ after Bidiag" );
     }
     if( correctness )
-        TestCorrectness( A, tP, tQ, AOrig, print, display );
+        TestCorrectness
+        ( A, householderScalarsP, householderScalarsQ, AOrig, print, display );
     PopIndent();
 }
 
-int 
+int
 main( int argc, char* argv[] )
 {
     Environment env( argc, argv );
@@ -288,7 +290,7 @@ main( int argc, char* argv[] )
         const Int n = Input("--width","width of matrix",100);
         const Int nb = Input("--nb","algorithmic blocksize",96);
         const bool sequential = Input("--sequential","test sequential?",true);
-        const bool correctness = 
+        const bool correctness =
           Input("--correctness","test correctness?",true);
         const bool print = Input("--print","print matrices?",false);
         const bool display = Input("--display","display matrices?",false);
@@ -303,7 +305,7 @@ main( int argc, char* argv[] )
 #endif
 
         if( gridHeight == 0 )
-            gridHeight = Grid::FindFactor( mpi::Size(comm) );
+            gridHeight = Grid::DefaultHeight( mpi::Size(comm) );
         const GridOrder order = ( colMajor ? COLUMN_MAJOR : ROW_MAJOR );
         const Grid g( comm, gridHeight, order );
         SetBlocksize( nb );
@@ -311,47 +313,75 @@ main( int argc, char* argv[] )
 
         if( sequential && mpi::Rank() == 0 )
         {
-            TestBidiag<float>( m, n, correctness, print, display );
-            TestBidiag<Complex<float>>( m, n, correctness, print, display );
+            TestBidiag<float>
+            ( m, n, correctness, print, display );
+            TestBidiag<Complex<float>>
+            ( m, n, correctness, print, display );
 
-            TestBidiag<double>( m, n, correctness, print, display );
-            TestBidiag<Complex<double>>( m, n, correctness, print, display );
+            TestBidiag<double>
+            ( m, n, correctness, print, display );
+            TestBidiag<Complex<double>>
+            ( m, n, correctness, print, display );
 
 #ifdef EL_HAVE_QD
-            TestBidiag<DoubleDouble>( m, n, correctness, print, display );
-            TestBidiag<QuadDouble>( m, n, correctness, print, display );
+            TestBidiag<DoubleDouble>
+            ( m, n, correctness, print, display );
+            TestBidiag<QuadDouble>
+            ( m, n, correctness, print, display );
+            TestBidiag<Complex<DoubleDouble>>
+            ( m, n, correctness, print, display );
+            TestBidiag<Complex<QuadDouble>>
+            ( m, n, correctness, print, display );
 #endif
 
 #ifdef EL_HAVE_QUAD
-            TestBidiag<Quad>( m, n, correctness, print, display );
-            TestBidiag<Complex<Quad>>( m, n, correctness, print, display );
+            TestBidiag<Quad>
+            ( m, n, correctness, print, display );
+            TestBidiag<Complex<Quad>>
+            ( m, n, correctness, print, display );
 #endif
 
 #ifdef EL_HAVE_MPC
-            TestBidiag<BigFloat>( m, n, correctness, print, display );
-            TestBidiag<Complex<BigFloat>>( m, n, correctness, print, display );
+            TestBidiag<BigFloat>
+            ( m, n, correctness, print, display );
+            TestBidiag<Complex<BigFloat>>
+            ( m, n, correctness, print, display );
 #endif
         }
 
-        TestBidiag<float>( g, m, n, correctness, print, display );
-        TestBidiag<Complex<float>>( g, m, n, correctness, print, display );
+        TestBidiag<float>
+        ( g, m, n, correctness, print, display );
+        TestBidiag<Complex<float>>
+        ( g, m, n, correctness, print, display );
 
-        TestBidiag<double>( g, m, n, correctness, print, display );
-        TestBidiag<Complex<double>>( g, m, n, correctness, print, display );
+        TestBidiag<double>
+        ( g, m, n, correctness, print, display );
+        TestBidiag<Complex<double>>
+        ( g, m, n, correctness, print, display );
 
 #ifdef EL_HAVE_QD
-        TestBidiag<DoubleDouble>( g, m, n, correctness, print, display );
-        TestBidiag<QuadDouble>( g, m, n, correctness, print, display );
+        TestBidiag<DoubleDouble>
+        ( g, m, n, correctness, print, display );
+        TestBidiag<QuadDouble>
+        ( g, m, n, correctness, print, display );
+        TestBidiag<Complex<DoubleDouble>>
+        ( g, m, n, correctness, print, display );
+        TestBidiag<Complex<QuadDouble>>
+        ( g, m, n, correctness, print, display );
 #endif
 
 #ifdef EL_HAVE_QUAD
-        TestBidiag<Quad>( g, m, n, correctness, print, display );
-        TestBidiag<Complex<Quad>>( g, m, n, correctness, print, display );
+        TestBidiag<Quad>
+        ( g, m, n, correctness, print, display );
+        TestBidiag<Complex<Quad>>
+        ( g, m, n, correctness, print, display );
 #endif
 
 #ifdef EL_HAVE_MPC
-        TestBidiag<BigFloat>( g, m, n, correctness, print, display );
-        TestBidiag<Complex<BigFloat>>( g, m, n, correctness, print, display );
+        TestBidiag<BigFloat>
+        ( g, m, n, correctness, print, display );
+        TestBidiag<Complex<BigFloat>>
+        ( g, m, n, correctness, print, display );
 #endif
     }
     catch( exception& e ) { ReportException(e); }

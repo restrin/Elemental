@@ -2,13 +2,145 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El.hpp>
 using namespace std;
 using namespace El;
+
+template<typename F>
+void TestCorrectness
+( bool print,
+  Pencil pencil, UpperOrLower uplo,
+  const Matrix<F>& AOrig,
+  const Matrix<F>& BOrig,
+  const Matrix<F>& A,
+  const Matrix<F>& B,
+  const Matrix<Base<F>>& w,
+  const Matrix<F>& X )
+{
+    typedef Base<F> Real;
+    const Int n = X.Height();
+    const Int k = X.Width();
+    const Real eps = limits::Epsilon<Real>();
+
+    const Real oneNormA = HermitianOneNorm( uplo, AOrig );
+    const Real oneNormB = HermitianOneNorm( uplo, BOrig );
+
+    if( pencil == AXBX )
+    {
+        // Set Y := BXW, where W is the diagonal eigenvalue matrix
+        Matrix<F> Y;
+        Zeros( Y, n, k );
+        Hemm( LEFT, uplo, F(1), BOrig, X, F(0), Y );
+        DiagonalScale( RIGHT, NORMAL, w, Y );
+        // Y := Y - AX = BXW - AX
+        Hemm( LEFT, uplo, F(-1), AOrig, X, F(1), Y );
+        const Real infError = InfinityNorm( Y );
+        const Real relError = infError / (eps*n*Max(oneNormA,oneNormB));
+        Output("||A X - B X W||_oo / (eps n max(||A||_1,||B||_1) = ", relError);
+
+        Matrix<F> Z;
+        Z = X;
+        if( uplo == LOWER )
+            Trmm( LEFT, LOWER, ADJOINT, NON_UNIT, F(1), B, Z );
+        else
+            Trmm( LEFT, UPPER, NORMAL, NON_UNIT, F(1), B, Z );
+        Identity( Y, k, k );
+        Herk( uplo, ADJOINT, Real(-1), Z, Real(1), Y );
+        const Real infOrthogError = HermitianInfinityNorm( uplo, Y );
+        const Real relOrthogError = infOrthogError / (eps*n*oneNormB);
+        Output("||X^H B X - I||_oo  / (eps n ||B||_1) = ", relOrthogError);
+
+        // TODO: More refined failure conditions
+        if( relOrthogError > Real(200) )
+            LogicError("Relative orthogonality error was unacceptable");
+        if( relError > Real(100) )
+            LogicError("Relative error was unacceptably large");
+    }
+    else if( pencil == ABX )
+    {
+        // Set Y := BX
+        Matrix<F> Y;
+        Zeros( Y, n, k );
+        Hemm( LEFT, uplo, F(1), BOrig, X, F(0), Y );
+        // Set Z := AY = ABX
+        Matrix<F> Z( n, k );
+        Hemm( LEFT, uplo, F(1), AOrig, Y, F(0), Z );
+        // Set Z := Z - XW = ABX - XW
+        for( Int j=0; j<Z.Width(); ++j )
+        {
+            const Real omega = w(j);
+            for( Int i=0; i<Z.Height(); ++i )
+            {
+                Z(i,j) -= omega*X(i,j);
+            }
+        }
+        const Real infError = InfinityNorm( Z );
+        const Real relError = infError / (eps*n*Max(oneNormA,oneNormB));
+        Output
+        ("||A B X - X W||_oo  / (eps n Max(||A||_1,||B||_1)) = ",relError);
+
+        Z = X;
+        if( uplo == LOWER )
+            Trmm( LEFT, LOWER, ADJOINT, NON_UNIT, F(1), B, Z );
+        else
+            Trmm( LEFT, UPPER, NORMAL, NON_UNIT, F(1), B, Z );
+        Identity( Y, k, k );
+        Herk( uplo, ADJOINT, Real(-1), Z, Real(1), Y );
+        const Real infOrthogError = HermitianInfinityNorm( uplo, Y );
+        const Real relOrthogError = infOrthogError / (eps*n*oneNormB);
+        Output("||X^H B X - I||_oo / (eps n ||B||_1) = ",relOrthogError);
+
+        // TODO: More refined failure conditions
+        if( relOrthogError > Real(200) )
+            LogicError("Relative orthogonality error was unacceptable");
+        if( relError > Real(100) )
+            LogicError("Relative error was unacceptably large");
+    }
+    else /* pencil == BAX */
+    {
+        // Set Y := AX
+        Matrix<F> Y;
+        Zeros( Y, n, k );
+        Hemm( LEFT, uplo, F(1), AOrig, X, F(0), Y );
+        // Set Z := BY = BAX
+        Matrix<F> Z( n, k );
+        Hemm( LEFT, uplo, F(1), BOrig, Y, F(0), Z );
+        // Set Z := Z - XW = BAX-XW
+        for( Int j=0; j<Z.Width(); ++j )
+        {
+            const Real omega = w(j);
+            for( Int i=0; i<Z.Height(); ++i )
+            {
+                Z(i,j) -= omega*X(i,j);
+            }
+        }
+        const Real infError = InfinityNorm( Z );
+        const Real relError = infError / (eps*n*Max(oneNormA,oneNormB));
+        Output
+        ("||B A X - X W||_oo / (eps n Max(||A||_1,||B||_1)) = ",relError);
+
+        Z = X;
+        if( uplo == LOWER )
+            Trsm( LEFT, LOWER, NORMAL, NON_UNIT, F(1), B, Z );
+        else
+            Trsm( LEFT, UPPER, ADJOINT, NON_UNIT, F(1), B, Z );
+        Identity( Y, k, k );
+        Herk( uplo, ADJOINT, Real(-1), Z, Real(1), Y );
+        const Real infOrthogError = HermitianInfinityNorm( uplo, Y );
+        const Real relOrthogError = infOrthogError / (eps*n*oneNormB);
+        Output("||X^H B^-1 X - I||_oo  / (eps n ||B||_1) = ", relOrthogError);
+
+        // TODO: More refined failure conditions
+        if( relOrthogError > Real(200) )
+            LogicError("Relative orthogonality error was unacceptable");
+        if( relError > Real(100) )
+            LogicError("Relative error was unacceptably large");
+    }
+}
 
 template<typename F>
 void TestCorrectness
@@ -30,7 +162,7 @@ void TestCorrectness
     const Real oneNormA = HermitianOneNorm( uplo, AOrig );
     const Real oneNormB = HermitianOneNorm( uplo, BOrig );
 
-    DistMatrix<Real,MR,STAR> w_MR_STAR(true,X.RowAlign(),g); 
+    DistMatrix<Real,MR,STAR> w_MR_STAR(true,X.RowAlign(),g);
     w_MR_STAR = w;
 
     if( pencil == AXBX )
@@ -85,7 +217,7 @@ void TestCorrectness
               Matrix<F>& ZLoc = Z.Matrix();
         for( Int jLoc=0; jLoc<ZLoc.Width(); ++jLoc )
         {
-            const Real omega = w_MR_STARLoc(jLoc); 
+            const Real omega = w_MR_STARLoc(jLoc);
             for( Int iLoc=0; iLoc<ZLoc.Height(); ++iLoc )
             {
                 ZLoc(iLoc,jLoc) -= omega*XLoc(iLoc,jLoc);
@@ -132,7 +264,7 @@ void TestCorrectness
               Matrix<F>& ZLoc = Z.Matrix();
         for( Int jLoc=0; jLoc<ZLoc.Width(); ++jLoc )
         {
-            const Real omega = w_MR_STARLoc(jLoc); 
+            const Real omega = w_MR_STARLoc(jLoc);
             for( Int iLoc=0; iLoc<ZLoc.Height(); ++iLoc )
             {
                 ZLoc(iLoc,jLoc) -= omega*XLoc(iLoc,jLoc);
@@ -165,17 +297,76 @@ void TestCorrectness
     }
 }
 
+template<typename F>
+void TestHermitianGenDefEigSequential
+( Int m,
+  UpperOrLower uplo,
+  Pencil pencil,
+  bool onlyEigvals,
+  bool correctness,
+  bool print,
+  const HermitianEigCtrl<F>& ctrl )
+{
+    typedef Base<F> Real;
+    Matrix<F> A, B, AOrig, BOrig;
+    Matrix<Real> w;
+    Matrix<F> X;
+    Output("Testing with ",TypeName<F>());
+    PushIndent();
+
+    HermitianUniformSpectrum( A, m, 1, 10 );
+    if( pencil == BAX )
+    {
+        // Because we will multiply by L three times, generate HPD B more
+        // carefully than just adding m to its diagonal entries.
+        Zeros( B, m, m );
+        Matrix<F> C;
+        Uniform( C, m, m );
+        Herk( uplo, ADJOINT, Real(1), C, Real(0), B );
+    }
+    else
+        HermitianUniformSpectrum( B, m, 1, 10 );
+
+    if( correctness && !onlyEigvals )
+    {
+        AOrig = A;
+        BOrig = B;
+    }
+    if( print )
+    {
+        Print( A, "A" );
+        Print( B, "B" );
+    }
+
+    Output("Starting Hermitian Generalized-Definite Eigensolver...");
+    Timer timer;
+    timer.Start();
+    if( onlyEigvals )
+        HermitianGenDefEig( pencil, uplo, A, B, w, ctrl );
+    else
+        HermitianGenDefEig( pencil, uplo, A, B, w, X, ctrl );
+    const double runTime = timer.Stop();
+    Output("Time = ",runTime," seconds");
+    if( print )
+    {
+        Print( w, "eigenvalues:" );
+        if( !onlyEigvals )
+            Print( X, "eigenvectors:" );
+    }
+    if( correctness && !onlyEigvals )
+        TestCorrectness( print, pencil, uplo, AOrig, BOrig, A, B, w, X );
+    PopIndent();
+}
+
 template<typename F,Dist U=MC,Dist V=MR,Dist S=VR>
 void TestHermitianGenDefEig
 ( Int m,
   UpperOrLower uplo,
   Pencil pencil,
-  bool testCorrectness,
-  bool print,
   bool onlyEigvals,
-  SortType sort,
-  const Grid& g, 
-  const HermitianEigSubset<Base<F>> subset, 
+  bool correctness,
+  bool print,
+  const Grid& g,
   const HermitianEigCtrl<F>& ctrl )
 {
     typedef Base<F> Real;
@@ -188,7 +379,7 @@ void TestHermitianGenDefEig
     HermitianUniformSpectrum( A, m, 1, 10 );
     if( pencil == BAX )
     {
-        // Because we will multiply by L three times, generate HPD B more 
+        // Because we will multiply by L three times, generate HPD B more
         // carefully than just adding m to its diagonal entries.
         Zeros( B, m, m );
         DistMatrix<F> C(g);
@@ -198,7 +389,7 @@ void TestHermitianGenDefEig
     else
         HermitianUniformSpectrum( B, m, 1, 10 );
 
-    if( testCorrectness && !onlyEigvals )
+    if( correctness && !onlyEigvals )
     {
         AOrig = A;
         BOrig = B;
@@ -215,9 +406,9 @@ void TestHermitianGenDefEig
     Timer timer;
     timer.Start();
     if( onlyEigvals )
-        HermitianGenDefEig( pencil, uplo, A, B, w, sort, subset, ctrl );
+        HermitianGenDefEig( pencil, uplo, A, B, w, ctrl );
     else
-        HermitianGenDefEig( pencil, uplo, A, B, w, X, sort, subset, ctrl );
+        HermitianGenDefEig( pencil, uplo, A, B, w, X, ctrl );
     mpi::Barrier( g.Comm() );
     const double runTime = timer.Stop();
     OutputFromRoot(g.Comm(),"Time = ",runTime," seconds");
@@ -227,7 +418,7 @@ void TestHermitianGenDefEig
         if( !onlyEigvals )
             Print( X, "eigenvectors:" );
     }
-    if( testCorrectness && !onlyEigvals )
+    if( correctness && !onlyEigvals )
         TestCorrectness( print, pencil, uplo, AOrig, BOrig, A, B, w, X );
     PopIndent();
 }
@@ -237,71 +428,72 @@ void TestSuite
 ( Int m,
   UpperOrLower uplo,
   Pencil pencil,
-  char range,
-  Int il, Int iu,
-  Base<F> vl, Base<F> vu,
-  bool timeStages,
-  Int nbLocal,
-  bool avoidTrmv,
-  bool testCorrectness,
-  bool print,
   bool onlyEigvals,
-  SortType sort,
-  const Grid& g )
+  bool sequential,
+  bool distributed,
+  bool correctness,
+  bool print,
+  const Grid& g,
+  const HermitianEigCtrl<double>& ctrlDbl )
 {
     typedef Base<F> Real;
     OutputFromRoot(g.Comm(),"Testing with ",TypeName<F>());
     PushIndent();
 
+    auto subsetDbl = ctrlDbl.tridiagEigCtrl.subset;
     HermitianEigSubset<Real> subset;
-    if( range == 'I' )
-    {
-        subset.indexSubset = true;
-        subset.lowerIndex = il;
-        subset.upperIndex = iu;
-    }
-    else if( range == 'V' )
-    {
-        subset.rangeSubset = true;
-        subset.lowerBound = vl;
-        subset.upperBound = vu;
-    }
+    subset.indexSubset = subsetDbl.indexSubset;
+    subset.lowerIndex = subsetDbl.lowerIndex;
+    subset.upperIndex = subsetDbl.upperIndex;
+    subset.rangeSubset = subsetDbl.rangeSubset;
+    subset.lowerBound = subsetDbl.lowerBound;
+    subset.upperBound = subsetDbl.upperBound;
 
     HermitianEigCtrl<F> ctrl;
-    ctrl.timeStages = timeStages;
-    ctrl.tridiagCtrl.symvCtrl.bsize = nbLocal;
-    ctrl.tridiagCtrl.symvCtrl.avoidTrmvBasedLocalSymv = avoidTrmv;
+    ctrl.timeStages = ctrlDbl.timeStages;
+    ctrl.useScaLAPACK = ctrlDbl.useScaLAPACK;
+    ctrl.tridiagCtrl.symvCtrl.bsize =
+      ctrlDbl.tridiagCtrl.symvCtrl.bsize;
+    ctrl.tridiagCtrl.symvCtrl.avoidTrmvBasedLocalSymv =
+      ctrlDbl.tridiagCtrl.symvCtrl.avoidTrmvBasedLocalSymv;
+    ctrl.tridiagEigCtrl.sort = ctrlDbl.tridiagEigCtrl.sort;
+    ctrl.tridiagEigCtrl.alg = ctrlDbl.tridiagEigCtrl.alg;
+    ctrl.tridiagEigCtrl.subset = subset;
 
-    OutputFromRoot(g.Comm(),"Normal tridiag algorithms:");
-    ctrl.tridiagCtrl.approach = HERMITIAN_TRIDIAG_NORMAL;
-    TestHermitianGenDefEig<F>
-    ( m, uplo, pencil, testCorrectness, print, 
-      onlyEigvals, sort, g, subset, ctrl );
+    if( sequential && g.Rank() == 0 )
+    {
+        TestHermitianGenDefEigSequential<F>
+        ( m, uplo, pencil, onlyEigvals, correctness, print, ctrl );
+    }
+    if( distributed )
+    {
+        OutputFromRoot(g.Comm(),"Normal tridiag algorithms:");
+        ctrl.tridiagCtrl.approach = HERMITIAN_TRIDIAG_NORMAL;
+        TestHermitianGenDefEig<F>
+        ( m, uplo, pencil, onlyEigvals, correctness, print, g, ctrl );
 
-    OutputFromRoot(g.Comm(),"Square row-major algorithms:");
-    ctrl.tridiagCtrl.approach = HERMITIAN_TRIDIAG_SQUARE;
-    ctrl.tridiagCtrl.order = ROW_MAJOR;
-    TestHermitianGenDefEig<F>
-    ( m, uplo, pencil, testCorrectness, print, 
-      onlyEigvals, sort, g, subset, ctrl );
+        OutputFromRoot(g.Comm(),"Square row-major algorithms:");
+        ctrl.tridiagCtrl.approach = HERMITIAN_TRIDIAG_SQUARE;
+        ctrl.tridiagCtrl.order = ROW_MAJOR;
+        TestHermitianGenDefEig<F>
+        ( m, uplo, pencil, onlyEigvals, correctness, print, g, ctrl );
 
-    OutputFromRoot(g.Comm(),"Square column-major algorithms:");
-    ctrl.tridiagCtrl.approach = HERMITIAN_TRIDIAG_SQUARE;
-    ctrl.tridiagCtrl.order = COLUMN_MAJOR;
-    TestHermitianGenDefEig<F>
-    ( m, uplo, pencil, testCorrectness, print, 
-      onlyEigvals, sort, g, subset, ctrl );
+        OutputFromRoot(g.Comm(),"Square column-major algorithms:");
+        ctrl.tridiagCtrl.approach = HERMITIAN_TRIDIAG_SQUARE;
+        ctrl.tridiagCtrl.order = COLUMN_MAJOR;
+        TestHermitianGenDefEig<F>
+        ( m, uplo, pencil, onlyEigvals, correctness, print, g, ctrl );
 
-    // Also test with non-standard distributions
-    OutputFromRoot(g.Comm(),"Nonstandard distributions:");
-    TestHermitianGenDefEig<F,MR,MC,MC>
-    ( m, uplo, pencil, testCorrectness, print, 
-      onlyEigvals, sort, g, subset, ctrl );
+        // Also test with non-standard distributions
+        OutputFromRoot(g.Comm(),"Nonstandard distributions:");
+        TestHermitianGenDefEig<F,MR,MC,MC>
+        ( m, uplo, pencil, onlyEigvals, correctness, print, g, ctrl );
+    }
 
     PopIndent();
 }
 
-int 
+int
 main( int argc, char* argv[] )
 {
     Environment env( argc, argv );
@@ -316,7 +508,7 @@ main( int argc, char* argv[] )
              "1 is A x = lambda B x, "
              "2 is A B x = lambda x, "
              "3 is B A x = lambda x",1);
-        const bool onlyEigvals = Input 
+        const bool onlyEigvals = Input
             ("--onlyEigvals","only compute eigenvalues?",false);
         const char range = Input
             ("--range",
@@ -331,9 +523,16 @@ main( int argc, char* argv[] )
         const Int m = Input("--height","height of matrix",100);
         const Int nb = Input("--nb","algorithmic blocksize",96);
         const Int nbLocal = Input("--nbLocal","local blocksize",32);
-        const bool avoidTrmv = 
+        const bool avoidTrmv =
             Input("--avoidTrmv","avoid Trmv based Symv",true);
-        const bool testCorrectness = Input
+        const bool useScaLAPACK =
+          Input("--useScaLAPACK","test ScaLAPACK?",false);
+        const Int algInt = Input("--algInt","0: QR, 1: D&C, 2: MRRR",1);
+        const bool sequential =
+          Input("--sequential","test sequential?",true);
+        const bool distributed =
+          Input("--distributed","test distributed?",true);
+        const bool correctness = Input
             ("--correctness","test correctness?",true);
         const bool print = Input("--print","print matrices?",false);
         const bool testReal = Input("--testReal","test real matrices?",true);
@@ -343,15 +542,16 @@ main( int argc, char* argv[] )
         PrintInputReport();
 
         if( r == 0 )
-            r = Grid::FindFactor( commSize );
+            r = Grid::DefaultHeight( commSize );
         const GridOrder order = ( colMajor ? COLUMN_MAJOR : ROW_MAJOR );
         const Grid g( comm, r, order );
         const UpperOrLower uplo = CharToUpperOrLower( uploChar );
+        const auto alg = static_cast<HermitianTridiagEigAlg>(algInt);
         SetBlocksize( nb );
         if( range != 'A' && range != 'I' && range != 'V' )
             throw runtime_error("'range' must be 'A', 'I', or 'V'");
         const SortType sort = static_cast<SortType>(sortInt);
-        if( testCorrectness && onlyEigvals )
+        if( correctness && onlyEigvals )
             OutputFromRoot
             (g.Comm(),"Cannot test correctness with only eigenvalues.");
         Pencil pencil;
@@ -378,29 +578,94 @@ main( int argc, char* argv[] )
         (g.Comm(),"Will test ",( uplo==LOWER ? "lower" : "upper" )," ",
          pencilString," HermitianGenDefEig.");
 
+        // Convert an initial double-precision control structure into each of
+        // the datatypes for simplicity
+        HermitianEigSubset<double> subset;
+        if( range == 'I' )
+        {
+            subset.indexSubset = true;
+            subset.lowerIndex = il;
+            subset.upperIndex = iu;
+        }
+        else if( range == 'V' )
+        {
+            subset.rangeSubset = true;
+            subset.lowerBound = vl;
+            subset.upperBound = vu;
+        }
+
+        HermitianEigCtrl<double> ctrl;
+        ctrl.timeStages = timeStages;
+        ctrl.useScaLAPACK = useScaLAPACK;
+        ctrl.tridiagCtrl.symvCtrl.bsize = nbLocal;
+        ctrl.tridiagCtrl.symvCtrl.avoidTrmvBasedLocalSymv = avoidTrmv;
+        ctrl.tridiagEigCtrl.sort = sort;
+        ctrl.tridiagEigCtrl.alg = alg;
+        ctrl.tridiagEigCtrl.subset = subset;
+
         if( testReal )
         {
             TestSuite<float>
-            ( m, uplo, pencil, range, il, iu, float(vl), float(vu),
-              timeStages, nbLocal, avoidTrmv, testCorrectness, print,
-              onlyEigvals, sort, g );
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
 
             TestSuite<double>
-            ( m, uplo, pencil, range, il, iu, double(vl), double(vu),
-              timeStages, nbLocal, avoidTrmv, testCorrectness, print,
-              onlyEigvals, sort, g );
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+
+#ifdef EL_HAVE_QD
+            TestSuite<DoubleDouble>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+
+            TestSuite<QuadDouble>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+#endif
+
+#ifdef EL_HAVE_QUAD
+            TestSuite<Quad>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+#endif
+
+#ifdef EL_HAVE_MPC
+            TestSuite<BigFloat>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+#endif
         }
         if( testCpx )
         {
             TestSuite<Complex<float>>
-            ( m, uplo, pencil, range, il, iu, float(vl), float(vu),
-              timeStages, nbLocal, avoidTrmv, testCorrectness, print,
-              onlyEigvals, sort, g );
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
 
             TestSuite<Complex<double>>
-            ( m, uplo, pencil, range, il, iu, double(vl), double(vu),
-              timeStages, nbLocal, avoidTrmv, testCorrectness, print,
-              onlyEigvals, sort, g );
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+
+#ifdef EL_HAVE_QD
+            TestSuite<Complex<DoubleDouble>>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+
+            TestSuite<Complex<QuadDouble>>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+#endif
+
+#ifdef EL_HAVE_QUAD
+            TestSuite<Complex<Quad>>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+#endif
+
+#ifdef EL_HAVE_MPC
+            TestSuite<Complex<BigFloat>>
+            ( m, uplo, pencil, onlyEigvals,
+              sequential, distributed, correctness, print, g, ctrl );
+#endif
         }
     }
     catch( exception& e ) { ReportException(e); }

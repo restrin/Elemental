@@ -10,15 +10,10 @@
 namespace El {
 namespace msquasitrsm {
 
-// NOTE: The less stable blas::Givens is used instead of blas::Givens due to
-//       the fact that the caching of an expensive-to-compute function of 
-//       machine constants is recomputed for every call of the latter to avoid
-//       a thread safety issue.
-
 template<typename F>
 void LLNUnb( const Matrix<F>& L, const Matrix<F>& shifts, Matrix<F>& X )
 {
-    DEBUG_ONLY(CSE cse("msquasitrsm::LLNUnb"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int m = X.Height();
     const Int n = X.Width();
@@ -50,7 +45,7 @@ void LLNUnb( const Matrix<F>& L, const Matrix<F>& shifts, Matrix<F>& X )
                 const F delta22 = LBuf[(k+1)+(k+1)*ldl] - shifts.Get(j,0);
                 // Decompose D = L Q
                 Real c; F s;
-                const F gamma11 = blas::Givens( delta11, delta12, c, s );
+                const F gamma11 = Givens( delta11, delta12, c, s );
                 const F gamma21 =        c*delta21 + s*delta22;
                 const F gamma22 = -Conj(s)*delta21 + c*delta22;
 
@@ -95,7 +90,7 @@ void LLNUnb( const Matrix<F>& L, const Matrix<F>& shifts, Matrix<F>& X )
 template<typename F>
 void LLN( const Matrix<F>& L, const Matrix<F>& shifts, Matrix<F>& X )
 {
-    DEBUG_ONLY(CSE cse("msquasitrsm::LLN"))
+    EL_DEBUG_CSE
     const Int m = X.Height();
     const Int bsize = Blocksize();
 
@@ -122,11 +117,11 @@ void LLN( const Matrix<F>& L, const Matrix<F>& shifts, Matrix<F>& X )
 // For large numbers of RHS's, e.g., width(X) >> p
 template<typename F>
 void LLNLarge
-( const ElementalMatrix<F>& LPre,
-  const ElementalMatrix<F>& shiftsPre, 
-        ElementalMatrix<F>& XPre )
+( const AbstractDistMatrix<F>& LPre,
+  const AbstractDistMatrix<F>& shiftsPre, 
+        AbstractDistMatrix<F>& XPre )
 {
-    DEBUG_ONLY(CSE cse("msquasitrsm::LLNLarge"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = LPre.Grid();
@@ -180,11 +175,11 @@ void LLNLarge
 // For medium numbers of RHS's, e.g., width(X) ~= p
 template<typename F>
 void LLNMedium
-( const ElementalMatrix<F>& LPre,
-  const ElementalMatrix<F>& shiftsPre, 
-        ElementalMatrix<F>& XPre )
+( const AbstractDistMatrix<F>& LPre,
+  const AbstractDistMatrix<F>& shiftsPre, 
+        AbstractDistMatrix<F>& XPre )
 {
-    DEBUG_ONLY(CSE cse("msquasitrsm::LLNMedium"))
+    EL_DEBUG_CSE
     const Int m = XPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = LPre.Grid();
@@ -247,8 +242,8 @@ void LLNSmall
   const DistMatrix<F,shiftColDist,shiftRowDist>& shifts, 
         DistMatrix<F,     colDist,STAR        >& X )
 {
-    DEBUG_ONLY(
-      CSE cse("msquasitrsm::LLNSmall");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( L.ColAlign() != X.ColAlign() )
           LogicError("L and X are assumed to be aligned");
     )

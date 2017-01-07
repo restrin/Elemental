@@ -21,8 +21,8 @@ void Trstrm
   F alpha, const Matrix<F>& A, Matrix<F>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("Trstrm");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( A.Height() != A.Width() || X.Height() != X.Width() )
           LogicError("Triangular matrices must be square");
       if( A.Height() != X.Height() )
@@ -73,10 +73,10 @@ template<typename F>
 void Trstrm
 ( LeftOrRight side, UpperOrLower uplo, 
   Orientation orientation, UnitOrNonUnit diag,
-  F alpha, const ElementalMatrix<F>& A, ElementalMatrix<F>& X,
+  F alpha, const AbstractDistMatrix<F>& A, AbstractDistMatrix<F>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("Trstrm"))
+    EL_DEBUG_CSE
     if( side == LEFT && uplo == LOWER )
     {
         if( orientation == NORMAL )
@@ -138,7 +138,7 @@ void Trstrm
   template void Trstrm \
   ( LeftOrRight side, UpperOrLower uplo, \
     Orientation orientation, UnitOrNonUnit diag, \
-    F alpha, const ElementalMatrix<F>& A, ElementalMatrix<F>& X, \
+    F alpha, const AbstractDistMatrix<F>& A, AbstractDistMatrix<F>& X, \
     bool checkIfSingular ); \
   template void Trstrm \
   ( LeftOrRight side, UpperOrLower uplo, \

@@ -16,17 +16,17 @@ void Hemm
 ( LeftOrRight side, UpperOrLower uplo,
   T alpha, const Matrix<T>& A, const Matrix<T>& B, T beta, Matrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("Hemm"))
+    EL_DEBUG_CSE
     Symm( side, uplo, alpha, A, B, beta, C, true );
 }
 
 template<typename T>
 void Hemm
 ( LeftOrRight side, UpperOrLower uplo,
-  T alpha, const ElementalMatrix<T>& A, const ElementalMatrix<T>& B,
-  T beta,        ElementalMatrix<T>& C )
+  T alpha, const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& B,
+  T beta,        AbstractDistMatrix<T>& C )
 {
-    DEBUG_ONLY(CSE cse("Hemm"))
+    EL_DEBUG_CSE
     Symm( side, uplo, alpha, A, B, beta, C, true );
 }
 
@@ -37,8 +37,8 @@ void Hemm
     T beta,        Matrix<T>& C ); \
   template void Hemm \
   ( LeftOrRight side, UpperOrLower uplo, \
-    T alpha, const ElementalMatrix<T>& A, const ElementalMatrix<T>& B, \
-    T beta,        ElementalMatrix<T>& C );
+    T alpha, const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& B, \
+    T beta,        AbstractDistMatrix<T>& C );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

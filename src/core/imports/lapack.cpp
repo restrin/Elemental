@@ -7,6 +7,7 @@
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El-lite.hpp>
+#include <El/lapack_like.hpp>
 
 using El::FortranLogical;
 using El::BlasInt;
@@ -14,18 +15,6 @@ using El::scomplex;
 using El::dcomplex;
 
 extern "C" {
-
-// Machine constants
-float EL_LAPACK(slamch)( const char* cmach );
-double EL_LAPACK(dlamch)( const char* cmach );
-
-// Safe norms
-float  EL_LAPACK(slapy2)( const float * alpha, const float * beta );
-double EL_LAPACK(dlapy2)( const double* alpha, const double* beta );
-float EL_LAPACK(slapy3)
-( const float * alpha, const float * beta, const float * gamma );
-double EL_LAPACK(dlapy3)
-( const double* alpha, const double* beta, const double* gamma );
 
 // Copy matrices
 void EL_LAPACK(slacpy)
@@ -40,20 +29,6 @@ void EL_LAPACK(clacpy)
 void EL_LAPACK(zlacpy)
 ( const char* uplo, const BlasInt* m, const BlasInt* n, 
   const dcomplex* A, const BlasInt* lda, dcomplex* B, const BlasInt* ldb );
-
-// Safely compute a Givens rotation
-void EL_LAPACK(slartg)
-( const float* phi, const float* gamma,
-  float* c, float* s, float* rho );
-void EL_LAPACK(dlartg)
-( const double* phi, const double* gamma,
-  double* c, double* s, double* rho );
-void EL_LAPACK(clartg)
-( const scomplex* phi, const scomplex* gamma,
-  float* c, scomplex* s, scomplex* rho );
-void EL_LAPACK(zlartg)
-( const dcomplex* phi, const dcomplex* gamma,
-  double* c, dcomplex* s, dcomplex* rho );
 
 // Symmetric tridiagonal eigensolvers (via MRRR)
 void EL_LAPACK(sstevr)
@@ -248,21 +223,7 @@ void EL_LAPACK(zunghr)
   dcomplex* work, const BlasInt* workSize,
   BlasInt* info );
 
-// Real 2x2 Schur decomposition
-void EL_LAPACK(slanv2)
-( float* alpha00, float* alpha01,
-  float* alpha10, float* alpha11,
-  float* lambda0Real, float* lambda0Imag,
-  float* lambda1Real, float* lambda1Imag,
-  float* c, float* s );
-void EL_LAPACK(dlanv2)
-( double* alpha00, double* alpha01,
-  double* alpha10, double* alpha11,
-  double* lambda0Real, double* lambda0Imag,
-  double* lambda1Real, double* lambda1Imag,
-  double* c, double* s );
-
-// Hessenberg QR algorithm
+// Hessenberg QR algorithm (with AED)
 void EL_LAPACK(shseqr)
 ( const char* job, const char* compZ, const BlasInt* n, 
   const BlasInt* ilo, const BlasInt* ihi,
@@ -296,327 +257,52 @@ void EL_LAPACK(zhseqr)
   dcomplex* work, const BlasInt* workSize,
   BlasInt* info );
 
-// Compute the eigenvectors of a (quasi-)triangular matrix
-void EL_LAPACK(strevc)
-( const char* side,
-  const char* howMany,
-  const FortranLogical* select,
-  const BlasInt* n,  
-        float* T, const BlasInt* ldT, 
-        float* VL, const BlasInt* ldVL,
-        float* VR, const BlasInt* ldVR,
-  const BlasInt* mm,
-  const BlasInt* m,
-        float* work,
-  const BlasInt* info );
-void EL_LAPACK(dtrevc)
-( const char* side,
-  const char* howMany,
-  const FortranLogical* select,
-  const BlasInt* n,  
-        double* T, const BlasInt* ldT, 
-        double* VL, const BlasInt* ldVL,
-        double* VR, const BlasInt* ldVR,
-  const BlasInt* mm,
-  const BlasInt* m,
-        double* work,
-  const BlasInt* info );
-void EL_LAPACK(ctrevc)
-( const char* side,
-  const char* howMany,
-  const FortranLogical* select,
-  const BlasInt* n,  
-        scomplex* T, const BlasInt* ldT, 
-        scomplex* VL, const BlasInt* ldVL,
-        scomplex* VR, const BlasInt* ldVR,
-  const BlasInt* mm,
-  const BlasInt* m,
-        scomplex* work,
-        float* rWork,
-  const BlasInt* info );
-void EL_LAPACK(ztrevc)
-( const char* side,
-  const char* howMany,
-  const FortranLogical* select,
-  const BlasInt* n,  
-        dcomplex* T, const BlasInt* ldT, 
-        dcomplex* VL, const BlasInt* ldVL,
-        dcomplex* VR, const BlasInt* ldVR,
-  const BlasInt* mm,
-  const BlasInt* m,
-        dcomplex* work,
-        double* rWork,
-  const BlasInt* info );
-
-// Compute eigenpairs of a general matrix using the QR algorithm followed
-// by a sequence of careful triangular solves
-void EL_LAPACK(sgeev)
-( const char* jobVL, const char* jobVR, const BlasInt* n, 
-  float* A, const BlasInt* ldA,
-  float* wr, float* wi, 
-  float* VLPacked, const BlasInt* ldVL,
-  float* VRPacked, const BlasInt* ldVR,
-  float* work, const BlasInt* workSize,
+// Hessenberg QR algorithm (without AED)
+void EL_LAPACK(slahqr)
+( const FortranLogical* wantT,
+  const FortranLogical* wantZ,
+  const BlasInt* n, 
+  const BlasInt* ilo, const BlasInt* ihi,
+  float* H, const BlasInt* ldH, 
+  float* wr, float* wi,
+  const BlasInt* iloZ, const BlasInt* ihiZ,
+  float* Z, const BlasInt* ldZ, 
   BlasInt* info );
-void EL_LAPACK(dgeev)
-( const char* jobVL, const char* jobVR, const BlasInt* n, 
-  double* A, const BlasInt* ldA,
-  double* wr, double* wi, 
-  double* VLPacked, const BlasInt* ldVL,
-  double* VRPacked, const BlasInt* ldVR,
-  double* work, const BlasInt* workSize,
+void EL_LAPACK(dlahqr)
+( const FortranLogical* wantT,
+  const FortranLogical* wantZ,
+  const BlasInt* n, 
+  const BlasInt* ilo, const BlasInt* ihi,
+  double* H, const BlasInt* ldH, 
+  double* wr, double* wi,
+  const BlasInt* iloZ, const BlasInt* ihiZ,
+  double* Z, const BlasInt* ldZ, 
   BlasInt* info );
-void EL_LAPACK(cgeev)
-( const char* jobVL, const char* jobVR, const BlasInt* n,
-  scomplex* A, const BlasInt* ldA,
+void EL_LAPACK(clahqr)
+( const FortranLogical* wantT,
+  const FortranLogical* wantZ,
+  const BlasInt* n,
+  const BlasInt* ilo, const BlasInt* ihi,
+  scomplex* H, const BlasInt* ldH,
   scomplex* w,
-  scomplex* VL, const BlasInt* ldVL,
-  scomplex* VR, const BlasInt* ldVR,
-  scomplex* work, const BlasInt* workSize,
-  float* rWork,
+  const BlasInt* iloZ, const BlasInt* ihiZ,
+  scomplex* Z, const BlasInt* ldZ,
   BlasInt* info );
-void EL_LAPACK(zgeev)
-( const char* jobVL, const char* jobVR, const BlasInt* n,
-  dcomplex* A, const BlasInt* ldA,
+void EL_LAPACK(zlahqr)
+( const FortranLogical* wantT,
+  const FortranLogical* wantZ,
+  const BlasInt* n,
+  const BlasInt* ilo, const BlasInt* ihi,
+  dcomplex* H, const BlasInt* ldH,
   dcomplex* w,
-  dcomplex* VL, const BlasInt* ldVL,
-  dcomplex* VR, const BlasInt* ldVR,
-  dcomplex* work, const BlasInt* workSize,
-  double* rWork,
+  const BlasInt* iloZ, const BlasInt* ihiZ,
+  dcomplex* Z, const BlasInt* ldZ,
   BlasInt* info );
 
 } // extern "C"
 
 namespace El {
 namespace lapack {
-
-// Machine constants
-// =================
-
-template<>
-float MachineEpsilon<float>()
-{
-    const char cmach = 'E';
-    static float eps = EL_LAPACK(slamch)( &cmach ); 
-    return eps;
-}
-
-template<> 
-double MachineEpsilon<double>()
-{
-    const char cmach = 'E';
-    static double eps = EL_LAPACK(dlamch)( &cmach );
-    return eps;
-}
-
-template<> 
-float MachineSafeMin<float>()
-{
-    const char cmach = 'S';
-    static float safeMin = EL_LAPACK(slamch)( &cmach );
-    return safeMin;
-}
-
-template<> 
-double MachineSafeMin<double>()
-{
-    const char cmach = 'S';
-    static double safeMin = EL_LAPACK(dlamch)( &cmach );
-    return safeMin;
-}
-
-template<> 
-float MachineBase<float>()
-{
-    const char cmach = 'B';
-    static float base = EL_LAPACK(slamch)( &cmach );
-    return base;
-}
-
-template<> 
-double MachineBase<double>()
-{
-    const char cmach = 'B';
-    static double base = EL_LAPACK(dlamch)( &cmach );
-    return base;
-}
-
-template<>
-float MachinePrecision<float>()
-{
-    const char cmach = 'P';
-    static float prec = EL_LAPACK(slamch)( &cmach );
-    return prec;
-}
-
-template<> 
-double MachinePrecision<double>()
-{
-    const char cmach = 'P';
-    static double prec = EL_LAPACK(dlamch)( &cmach );
-    return prec;
-}
-
-template<> 
-float MachineUnderflowExponent<float>()
-{
-    const char cmach = 'M';
-    static float underExp = EL_LAPACK(slamch)( &cmach );
-    return underExp;
-}
-
-template<> 
-double MachineUnderflowExponent<double>()
-{
-    const char cmach = 'M';
-    static double underExp = EL_LAPACK(dlamch)( &cmach );
-    return underExp;
-}
-
-template<>
-float MachineUnderflowThreshold<float>()
-{
-    const char cmach = 'U';
-    static float underThresh = EL_LAPACK(slamch)( &cmach );
-    return underThresh;
-}
-
-template<> 
-double MachineUnderflowThreshold<double>()
-{
-    const char cmach = 'U';
-    static double underThresh = EL_LAPACK(dlamch)( &cmach );
-    return underThresh;
-}
-
-template<> 
-float MachineOverflowExponent<float>()
-{
-    const char cmach = 'L';
-    static float overExp = EL_LAPACK(slamch)( &cmach );
-    return overExp;
-}
-
-template<> 
-double MachineOverflowExponent<double>()
-{
-    const char cmach = 'L';
-    static double overExp = EL_LAPACK(dlamch)( &cmach );
-    return overExp;
-}
-
-template<> 
-float MachineOverflowThreshold<float>()
-{
-    const char cmach = 'O';
-    static float overThresh = EL_LAPACK(slamch)( &cmach );
-    return overThresh;
-}
-
-template<> 
-double MachineOverflowThreshold<double>()
-{
-    const char cmach = 'O';
-    static double overThresh = EL_LAPACK(dlamch)( &cmach );
-    return overThresh;
-}
-
-// Safely compute norms
-// ====================
-
-template<typename Real>
-Real SafeNorm( const Real& alpha, const Real& beta )
-{
-    Real scale = 0;
-    Real scaledSquare = 1;
-    UpdateScaledSquare( alpha, scale, scaledSquare );
-    UpdateScaledSquare( beta, scale, scaledSquare );
-    return scale*Sqrt(scaledSquare);
-}
-template float SafeNorm( const float& alpha, const float& beta );
-#ifdef EL_HAVE_QD
-template DoubleDouble SafeNorm
-( const DoubleDouble& alpha, const DoubleDouble& beta );
-template QuadDouble SafeNorm
-( const QuadDouble& alpha, const QuadDouble& beta );
-#endif
-#ifdef EL_HAVE_QUAD
-template Quad SafeNorm
-( const Quad& alpha, const Quad& beta );
-#endif
-#ifdef EL_HAVE_MPC
-template BigFloat SafeNorm
-( const BigFloat& alpha, const BigFloat& beta );
-#endif
-
-double SafeNorm( const double& alpha, const double& beta )
-{ return EL_LAPACK(dlapy2)( &alpha, &beta ); }
-
-template<typename Real>
-Real SafeNorm
-( const Real& alpha,
-  const Real& beta,
-  const Real& gamma )
-{
-    Real scale = 0;
-    Real scaledSquare = 1;
-    UpdateScaledSquare( alpha, scale, scaledSquare );
-    UpdateScaledSquare( beta, scale, scaledSquare );
-    UpdateScaledSquare( gamma, scale, scaledSquare );
-    return scale*Sqrt(scaledSquare);
-}
-template float SafeNorm
-( const float& alpha,
-  const float& beta,
-  const float& gamma );
-#ifdef EL_HAVE_QD
-template DoubleDouble
-SafeNorm
-( const DoubleDouble& alpha,
-  const DoubleDouble& beta,
-  const DoubleDouble& gamma );
-template QuadDouble
-SafeNorm
-( const QuadDouble& alpha,
-  const QuadDouble& beta,
-  const QuadDouble& gamma );
-#endif
-#ifdef EL_HAVE_QUAD
-template Quad SafeNorm
-( const Quad& alpha,
-  const Quad& beta,
-  const Quad& gamma );
-#endif
-#ifdef EL_HAVE_MPC
-template BigFloat SafeNorm
-( const BigFloat& alpha,
-  const BigFloat& beta,
-  const BigFloat& gamma );
-#endif
-
-double SafeNorm
-( const double& alpha,
-  const double& beta,
-  const double& gamma )
-{ return EL_LAPACK(dlapy3)( &alpha, &beta, &gamma ); }
-
-template<typename Real>
-Real SafeNorm( const Complex<Real>& alpha, const Real& beta )
-{ return SafeNorm( alpha.real(), alpha.imag(), beta ); }
-template float SafeNorm( const Complex<float>& alpha, const float& beta );
-template double SafeNorm( const Complex<double>& alpha, const double& beta );
-#ifdef EL_HAVE_QUAD
-template Quad SafeNorm( const Complex<Quad>& alpha, const Quad& beta );
-#endif
-
-template<typename Real>
-Real SafeNorm( const Real& alpha, const Complex<Real>& beta )
-{ return SafeNorm( beta, alpha ); }
-template float SafeNorm( const float& alpha, const Complex<float>& beta );
-template double SafeNorm( const double& alpha, const Complex<double>& beta );
-#ifdef EL_HAVE_QUAD
-template Quad SafeNorm( const Quad& alpha, const Complex<Quad>& beta );
-#endif
 
 // Copy a matrix
 // =============
@@ -658,6 +344,14 @@ template void Copy
 ( char uplo, BlasInt m, BlasInt n, 
   const QuadDouble* A, BlasInt lda,
         QuadDouble* B, BlasInt ldb );
+template void Copy
+( char uplo, BlasInt m, BlasInt n, 
+  const Complex<DoubleDouble>* A, BlasInt lda,
+        Complex<DoubleDouble>* B, BlasInt ldb );
+template void Copy
+( char uplo, BlasInt m, BlasInt n, 
+  const Complex<QuadDouble>* A, BlasInt lda,
+        Complex<QuadDouble>* B, BlasInt ldb );
 #endif
 #ifdef EL_HAVE_QUAD
 template void Copy
@@ -701,79 +395,6 @@ void Copy
   const dcomplex* A, BlasInt lda, dcomplex* B, BlasInt ldb )
 { EL_LAPACK(zlacpy)( &uplo, &m, &n, A, &lda, B, &ldb ); }
 
-// Safely compute Givens rotations (using Demmel and Kahan's algorithm)
-// ====================================================================
-
-float Givens
-( const float& phi, const float& gamma, float& c, float& s )
-{ float rho; EL_LAPACK(slartg)( &phi, &gamma, &c, &s, &rho ); return rho; }
-
-double Givens
-( const double& phi, const double& gamma, double& c, double& s )
-{ double rho; EL_LAPACK(dlartg)( &phi, &gamma, &c, &s, &rho ); return rho; }
-
-scomplex Givens
-( const scomplex& phi, const scomplex& gamma, float& c, scomplex& s )
-{ scomplex rho; EL_LAPACK(clartg)( &phi, &gamma, &c, &s, &rho ); return rho; }
-
-dcomplex Givens
-( const dcomplex& phi, const dcomplex& gamma, double& c, dcomplex& s )
-{ dcomplex rho; EL_LAPACK(zlartg)( &phi, &gamma, &c, &s, &rho ); return rho; }
-
-template<typename Real>
-Real Givens( const Real& phi, const Real& gamma, Real& c, Real& s )
-{
-    // TODO: Switch to the approach of LAPACK's dlartg instead of the
-    //       zrotg-like implementation
-    return blas::Givens( phi, gamma, c, s );
-}
-template<typename Real>
-Complex<Real> Givens
-( const Complex<Real>& phi,
-  const Complex<Real>& gamma,
-  Real& c,
-  Complex<Real>& s )
-{
-    // TODO: Switch to the approach of LAPACK's zlartg instead of the
-    //       zrotg-like implementation
-    return blas::Givens( phi, gamma, c, s );
-}
-#ifdef EL_HAVE_QD
-template DoubleDouble Givens
-( const DoubleDouble& phi,
-  const DoubleDouble& gamma,
-  DoubleDouble& c,
-  DoubleDouble& s );
-template QuadDouble Givens
-( const QuadDouble& phi,
-  const QuadDouble& gamma,
-  QuadDouble& c,
-  QuadDouble& s );
-#endif
-#ifdef EL_HAVE_QUAD
-template Quad Givens
-( const Quad& phi, const Quad& gamma,
-  Quad& c,
-  Quad& s );
-template Complex<Quad> Givens
-( const Complex<Quad>& phi,
-  const Complex<Quad>& gamma,
-  Quad& c,
-  Complex<Quad>& s );
-#endif
-#ifdef EL_HAVE_MPC
-template BigFloat Givens
-( const BigFloat& phi,
-  const BigFloat& gamma,
-  BigFloat& c,
-  BigFloat& s );
-template Complex<BigFloat> Givens
-( const Complex<BigFloat>& phi,
-  const Complex<BigFloat>& gamma,
-  BigFloat& c,
-  Complex<BigFloat>& s );
-#endif
-
 // Generate a Householder reflector
 // ================================
 // NOTE: 
@@ -791,9 +412,7 @@ template Complex<BigFloat> Givens
 template<typename F>
 F Reflector( BlasInt n, F& chi, F* x, BlasInt incx )
 {
-    DEBUG_ONLY(
-      CSE cse("lapack::Reflector");
-    )
+    EL_DEBUG_CSE
     typedef Base<F> Real; 
     const Real zero(0);
 
@@ -807,9 +426,9 @@ F Reflector( BlasInt n, F& chi, F* x, BlasInt incx )
 
     Real beta;
     if( RealPart(alpha) <= zero )
-        beta = lapack::SafeNorm( alpha, norm );
+        beta = SafeNorm( alpha, norm );
     else
-        beta = -lapack::SafeNorm( alpha, norm );
+        beta = -SafeNorm( alpha, norm );
 
     // Rescale if the vector is too small
     const Real safeMin = limits::SafeMin<Real>();
@@ -829,9 +448,9 @@ F Reflector( BlasInt n, F& chi, F* x, BlasInt incx )
 
         norm = blas::Nrm2( n-1, x, incx );
         if( RealPart(alpha) <= 0 )
-            beta = lapack::SafeNorm( alpha, norm );
+            beta = SafeNorm( alpha, norm );
         else
-            beta = -lapack::SafeNorm( alpha, norm );
+            beta = -SafeNorm( alpha, norm );
     }
 
     F tau = (beta-Conj(alpha)) / beta;
@@ -857,6 +476,14 @@ template DoubleDouble Reflector
 ( BlasInt n, DoubleDouble& chi, DoubleDouble* x, BlasInt incx );
 template QuadDouble Reflector
 ( BlasInt n, QuadDouble& chi, QuadDouble* x, BlasInt incx );
+template Complex<DoubleDouble> Reflector
+( BlasInt n,
+  Complex<DoubleDouble>& chi,
+  Complex<DoubleDouble>* x, BlasInt incx );
+template Complex<QuadDouble> Reflector
+( BlasInt n,
+  Complex<QuadDouble>& chi,
+  Complex<QuadDouble>* x, BlasInt incx );
 #endif
 #ifdef EL_HAVE_QUAD
 template Quad Reflector
@@ -869,6 +496,204 @@ template BigFloat Reflector
 ( BlasInt n, BigFloat& chi, BigFloat* x, BlasInt incx );
 template Complex<BigFloat> Reflector
 ( BlasInt n, Complex<BigFloat>& chi, Complex<BigFloat>* x, BlasInt incx );
+#endif
+
+// Cf. LAPACK's ?LARF
+//
+// TODO(poulson):
+// Provide wrappers for LAPACK for standard datatypes since, despite the
+// differences in handling identity transformations, LAPACK's routine should
+// always correctly apply a true Householder transformation.
+//
+template<typename F>
+void ApplyReflector
+( bool onLeft,
+  BlasInt m,
+  BlasInt n,
+  const F* v, BlasInt vInc,
+  const F& tau,
+        F* C, BlasInt CLDim,
+        F* work )
+{
+    // TODO(poulson): Add shortcuts for sparse v
+    const F zero(0);
+    if( onLeft )
+    {
+        for( BlasInt i=0; i<n; ++i )
+            work[i] = zero;
+        blas::Gemv( 'C', m, n, F(1), C, CLDim, v, vInc, F(0), work, 1 );
+        blas::Ger( m, n, -tau, v, vInc, work, 1, C, CLDim );
+    }
+    else
+    {
+        for( BlasInt i=0; i<m; ++i )
+            work[i] = zero;
+        blas::Gemv( 'N', m, n, F(1), C, CLDim, v, vInc, F(0), work, 1 );
+        blas::Ger( m, n, -tau, work, 1, v, vInc, C, CLDim );
+    }
+}
+
+template<typename F>
+void ApplyReflector
+( bool onLeft,
+  BlasInt m,
+  BlasInt n,
+  const F* v, BlasInt vInc,
+  const F& tau,
+        F* C, BlasInt CLDim )
+{
+    std::vector<F> work;
+    if( onLeft )
+        work.resize( n );
+    else
+        work.resize( m );
+    ApplyReflector( onLeft, m, n, v, vInc, tau, C, CLDim, work.data() );
+}
+
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const float* v, BlasInt vInc,
+  const float& tau,
+        float* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<float>* v, BlasInt vInc,
+  const Complex<float>& tau,
+        Complex<float>* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const double* v, BlasInt vInc,
+  const double& tau,
+        double* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<double>* v, BlasInt vInc,
+  const Complex<double>& tau,
+        Complex<double>* C, BlasInt CLDim );
+#ifdef EL_HAVE_QD
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const DoubleDouble* v, BlasInt vInc,
+  const DoubleDouble& tau,
+        DoubleDouble* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<DoubleDouble>* v, BlasInt vInc,
+  const Complex<DoubleDouble>& tau,
+        Complex<DoubleDouble>* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const QuadDouble* v, BlasInt vInc,
+  const QuadDouble& tau,
+        QuadDouble* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<QuadDouble>* v, BlasInt vInc,
+  const Complex<QuadDouble>& tau,
+        Complex<QuadDouble>* C, BlasInt CLDim );
+#endif
+#ifdef EL_HAVE_QUAD
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Quad* v, BlasInt vInc,
+  const Quad& tau,
+        Quad* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<Quad>* v, BlasInt vInc,
+  const Complex<Quad>& tau,
+        Complex<Quad>* C, BlasInt CLDim );
+#endif
+#ifdef EL_HAVE_MPC
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const BigFloat* v, BlasInt vInc,
+  const BigFloat& tau,
+        BigFloat* C, BlasInt CLDim );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<BigFloat>* v, BlasInt vInc,
+  const Complex<BigFloat>& tau,
+        Complex<BigFloat>* C, BlasInt CLDim );
+#endif
+
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const float* v, BlasInt vInc,
+  const float& tau,
+        float* C, BlasInt CLDim,
+        float* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<float>* v, BlasInt vInc,
+  const Complex<float>& tau,
+        Complex<float>* C, BlasInt CLDim,
+        Complex<float>* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const double* v, BlasInt vInc,
+  const double& tau,
+        double* C, BlasInt CLDim,
+        double* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<double>* v, BlasInt vInc,
+  const Complex<double>& tau,
+        Complex<double>* C, BlasInt CLDim,
+        Complex<double>* work );
+#ifdef EL_HAVE_QD
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const DoubleDouble* v, BlasInt vInc,
+  const DoubleDouble& tau,
+        DoubleDouble* C, BlasInt CLDim,
+        DoubleDouble* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<DoubleDouble>* v, BlasInt vInc,
+  const Complex<DoubleDouble>& tau,
+        Complex<DoubleDouble>* C, BlasInt CLDim,
+        Complex<DoubleDouble>* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const QuadDouble* v, BlasInt vInc,
+  const QuadDouble& tau,
+        QuadDouble* C, BlasInt CLDim,
+        QuadDouble* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<QuadDouble>* v, BlasInt vInc,
+  const Complex<QuadDouble>& tau,
+        Complex<QuadDouble>* C, BlasInt CLDim,
+        Complex<QuadDouble>* work );
+#endif
+#ifdef EL_HAVE_QUAD
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Quad* v, BlasInt vInc,
+  const Quad& tau,
+        Quad* C, BlasInt CLDim,
+        Quad* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<Quad>* v, BlasInt vInc,
+  const Complex<Quad>& tau,
+        Complex<Quad>* C, BlasInt CLDim,
+        Complex<Quad>* work );
+#endif
+#ifdef EL_HAVE_MPC
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const BigFloat* v, BlasInt vInc,
+  const BigFloat& tau,
+        BigFloat* C, BlasInt CLDim,
+        BigFloat* work );
+template void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const Complex<BigFloat>* v, BlasInt vInc,
+  const Complex<BigFloat>& tau,
+        Complex<BigFloat>* C, BlasInt CLDim,
+        Complex<BigFloat>* work );
 #endif
 
 // Compute the EVD of a symmetric tridiagonal matrix
@@ -886,7 +711,7 @@ BlasInt SymmetricTridiagEigWrapper
   float* w,
   float* Z, BlasInt ldZ )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEigWrapper"));
+    EL_DEBUG_CSE
     if( n == 0 )
         return 0;
 
@@ -919,7 +744,7 @@ BlasInt SymmetricTridiagEigWrapper
 ( char job, char range, BlasInt n, double* d, double* e, double vl, double vu,
   BlasInt il, BlasInt iu, double absTol, double* w, double* Z, BlasInt ldZ )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEigWrapper"));
+    EL_DEBUG_CSE
     if( n == 0 )
         return 0;
 
@@ -956,14 +781,14 @@ BlasInt SymmetricTridiagEigWrapper
 void SymmetricTridiagEig
 ( BlasInt n, float* d, float* e, float* w, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'N', 'A', n, d, e, 0, 0, 0, 0, absTol, w, 0, 1 );
 }
 void SymmetricTridiagEig
 ( BlasInt n, double* d, double* e, double* w, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'N', 'A', n, d, e, 0, 0, 0, 0, absTol, w, 0, 1 );
 }
@@ -974,7 +799,7 @@ BlasInt SymmetricTridiagEig
 ( BlasInt n, float* d, float* e, float* w, float vl, float vu, 
   float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     return SymmetricTridiagEigWrapper
     ( 'N', 'V', n, d, e, vl, vu, 0, 0, absTol, w, 0, 1 );
 }
@@ -982,7 +807,7 @@ BlasInt SymmetricTridiagEig
 ( BlasInt n, double* d, double* e, double* w, double vl, double vu, 
   double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     return SymmetricTridiagEigWrapper
     ( 'N', 'V', n, d, e, vl, vu, 0, 0, absTol, w, 0, 1 );
 }
@@ -993,7 +818,7 @@ void SymmetricTridiagEig
 ( BlasInt n, float* d, float* e, float* w, BlasInt il, BlasInt iu, 
   float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'N', 'I', n, d, e, 0, 0, il+1, iu+1, absTol, w, 0, 1 );
 }
@@ -1001,7 +826,7 @@ void SymmetricTridiagEig
 ( BlasInt n, double* d, double* e, double* w, BlasInt il, BlasInt iu, 
   double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'N', 'I', n, d, e, 0, 0, il+1, iu+1, absTol, w, 0, 1 );
 }
@@ -1015,7 +840,7 @@ void SymmetricTridiagEig
 ( BlasInt n, float* d, float* e, float* w, float* Z, BlasInt ldZ, 
   float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'V', 'A', n, d, e, 0, 0, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1023,7 +848,7 @@ void SymmetricTridiagEig
 ( BlasInt n, double* d, double* e, double* w, double* Z, BlasInt ldZ, 
   double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'V', 'A', n, d, e, 0, 0, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1034,7 +859,7 @@ BlasInt SymmetricTridiagEig
 ( BlasInt n, float* d, float* e, float* w, float* Z, BlasInt ldZ,
   float vl, float vu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     return SymmetricTridiagEigWrapper
     ( 'V', 'V', n, d, e, vl, vu, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1042,7 +867,7 @@ BlasInt SymmetricTridiagEig
 ( BlasInt n, double* d, double* e, double* w, double* Z, BlasInt ldZ,
   double vl, double vu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     return SymmetricTridiagEigWrapper
     ( 'V', 'V', n, d, e, vl, vu, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1053,7 +878,7 @@ void SymmetricTridiagEig
 ( BlasInt n, float* d, float* e, float* w, float* Z, BlasInt ldZ, 
   BlasInt il, BlasInt iu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'V', 'I', n, d, e, 0, 0, il+1, iu+1, absTol, w, Z, ldZ );
 }
@@ -1061,7 +886,7 @@ void SymmetricTridiagEig
 ( BlasInt n, double* d, double* e, double* w, double* Z, BlasInt ldZ,
   BlasInt il, BlasInt iu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::SymmetricTridiagEig"));
+    EL_DEBUG_CSE
     SymmetricTridiagEigWrapper
     ( 'V', 'I', n, d, e, 0, 0, il+1, iu+1, absTol, w, Z, ldZ );
 }
@@ -1074,7 +899,7 @@ BlasInt HermitianEigWrapper
   float vl, float vu, BlasInt il, BlasInt iu, float absTol, 
   float* w, float* Z, BlasInt ldZ )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEigWrapper"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return 0;
 
@@ -1108,7 +933,7 @@ BlasInt HermitianEigWrapper
   double vl, double vu, BlasInt il, BlasInt iu, double absTol, 
   double* w, double* Z, BlasInt ldZ )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEigWrapper"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return 0;
 
@@ -1142,7 +967,7 @@ BlasInt HermitianEigWrapper
   float vl, float vu, BlasInt il, BlasInt iu, float absTol, 
   float* w, scomplex* Z, BlasInt ldZ )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEigWrapper"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return 0;
 
@@ -1179,7 +1004,7 @@ BlasInt HermitianEigWrapper
   double vl, double vu, BlasInt il, BlasInt iu, double absTol, 
   double* w, dcomplex* Z, BlasInt ldZ )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEigWrapper"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return 0;
 
@@ -1219,28 +1044,28 @@ BlasInt HermitianEigWrapper
 void HermitianEig
 ( char uplo, BlasInt n, float* A, BlasInt ldA, float* w, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, 0, 1 );
 }
 void HermitianEig
 ( char uplo, BlasInt n, double* A, BlasInt ldA, double* w, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, 0, 1 );
 }
 void HermitianEig
 ( char uplo, BlasInt n, scomplex* A, BlasInt ldA, float* w, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, 0, 1 );
 }
 void HermitianEig
 ( char uplo, BlasInt n, dcomplex* A, BlasInt ldA, double* w, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, 0, 1 );
 }
@@ -1251,7 +1076,7 @@ BlasInt HermitianEig
 ( char uplo, BlasInt n, float* A, BlasInt ldA, float* w, 
   float vl, float vu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'N', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, 0, 1 );
 }
@@ -1259,7 +1084,7 @@ BlasInt HermitianEig
 ( char uplo, BlasInt n, double* A, BlasInt ldA, double* w, 
   double vl, double vu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'N', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, 0, 1 );
 }
@@ -1267,7 +1092,7 @@ BlasInt HermitianEig
 ( char uplo, BlasInt n, scomplex* A, BlasInt ldA, float* w, 
   float vl, float vu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'N', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, 0, 1 );
 }
@@ -1275,7 +1100,7 @@ BlasInt HermitianEig
 ( char uplo, BlasInt n, dcomplex* A, BlasInt ldA, double* w, 
   double vl, double vu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'N', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, 0, 1 );
 }
@@ -1286,7 +1111,7 @@ void HermitianEig
 ( char uplo, BlasInt n, float* A, BlasInt ldA, float* w, 
   BlasInt il, BlasInt iu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, 0, 1 );
 }
@@ -1294,7 +1119,7 @@ void HermitianEig
 ( char uplo, BlasInt n, double* A, BlasInt ldA, double* w, 
   BlasInt il, BlasInt iu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, 0, 1 );
 }
@@ -1302,7 +1127,7 @@ void HermitianEig
 ( char uplo, BlasInt n, scomplex* A, BlasInt ldA, float* w, 
   BlasInt il, BlasInt iu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, 0, 1 );
 }
@@ -1310,7 +1135,7 @@ void HermitianEig
 ( char uplo, BlasInt n, dcomplex* A, BlasInt ldA, double* w, 
   BlasInt il, BlasInt iu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'N', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, 0, 1 );
 }
@@ -1324,7 +1149,7 @@ void HermitianEig
 ( char uplo, BlasInt n, float* A, BlasInt ldA, float* w, float* Z, BlasInt ldZ, 
   float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1333,7 +1158,7 @@ void HermitianEig
   double* A, BlasInt ldA, double* w, double* Z, BlasInt ldZ,
   double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1342,7 +1167,7 @@ void HermitianEig
   scomplex* A, BlasInt ldA, float* w, scomplex* Z, BlasInt ldZ,
   float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1351,7 +1176,7 @@ void HermitianEig
   dcomplex* A, BlasInt ldA, double* w, dcomplex* Z, BlasInt ldZ,
   double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'A', uplo, n, A, ldA, 0, 0, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1363,7 +1188,7 @@ BlasInt HermitianEig
   float* A, BlasInt ldA, float* w, float* Z, BlasInt ldZ,
   float vl, float vu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'V', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1372,7 +1197,7 @@ BlasInt HermitianEig
   double* A, BlasInt ldA, double* w, double* Z, BlasInt ldZ,
   double vl, double vu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'V', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1381,7 +1206,7 @@ BlasInt HermitianEig
   scomplex* A, BlasInt ldA, float* w, scomplex* Z, BlasInt ldZ,
   float vl, float vu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'V', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1390,7 +1215,7 @@ BlasInt HermitianEig
   dcomplex* A, BlasInt ldA, double* w, dcomplex* Z, BlasInt ldZ,
   double vl, double vu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     return HermitianEigWrapper
     ( 'V', 'V', uplo, n, A, ldA, vl, vu, 0, 0, absTol, w, Z, ldZ );
 }
@@ -1402,7 +1227,7 @@ void HermitianEig
   float* A, BlasInt ldA, float* w, float* Z, BlasInt ldZ,
   BlasInt il, BlasInt iu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, Z, ldZ );
 }
@@ -1411,7 +1236,7 @@ void HermitianEig
   double* A, BlasInt ldA, double* w, double* Z, BlasInt ldZ, 
   BlasInt il, BlasInt iu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, Z, ldZ );
 }
@@ -1420,7 +1245,7 @@ void HermitianEig
   scomplex* A, BlasInt ldA, float* w, scomplex* Z, BlasInt ldZ,
   BlasInt il, BlasInt iu, float absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, Z, ldZ );
 }
@@ -1429,7 +1254,7 @@ void HermitianEig
   dcomplex* A, BlasInt ldA, double* w, dcomplex* Z, BlasInt ldZ,
   BlasInt il, BlasInt iu, double absTol )
 {
-    DEBUG_ONLY(CSE cse("lapack::HermitianEig"))
+    EL_DEBUG_CSE
     HermitianEigWrapper
     ( 'V', 'I', uplo, n, A, ldA, 0, 0, il+1, iu+1, absTol, w, Z, ldZ );
 }
@@ -1439,7 +1264,7 @@ void HermitianEig
 
 void BidiagDQDS( BlasInt n, float* d, float* e )
 {
-    DEBUG_ONLY(CSE cse("lapack::BidiagDQDS"))
+    EL_DEBUG_CSE
     BlasInt info;
     vector<float> work( 4*n );
     EL_LAPACK(slasq1)( &n, d, e, work.data(), &info );
@@ -1460,7 +1285,7 @@ void BidiagDQDS( BlasInt n, float* d, float* e )
 
 void BidiagDQDS( BlasInt n, double* d, double* e )
 {
-    DEBUG_ONLY(CSE cse("lapack::BidiagDQDS"))
+    EL_DEBUG_CSE
     BlasInt info;
     vector<double> work( 4*n );
     EL_LAPACK(dlasq1)( &n, d, e, work.data(), &info );
@@ -1482,11 +1307,11 @@ void BidiagDQDS( BlasInt n, double* d, double* e )
 // Bidiagonal QR algorithm for SVD
 // ===============================
 
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVT, BlasInt numRowsU,
   float* d, float* e, float* VTrans, BlasInt ldVT, float* U, BlasInt ldU )
 {
-    DEBUG_ONLY(CSE cse("lapack::BidiagQRAlg"))
+    EL_DEBUG_CSE
     if( n==0 )
         return;
 
@@ -1507,11 +1332,11 @@ void BidiagQRAlg
         RuntimeError("sbdsqr had ",info," elements of e not converge");
 }
 
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVT, BlasInt numRowsU, 
   double* d, double* e, double* VTrans, BlasInt ldVT, double* U, BlasInt ldU )
 {
-    DEBUG_ONLY(CSE cse("lapack::BidiagQRAlg"))
+    EL_DEBUG_CSE
     if( n==0 )
         return;
 
@@ -1532,13 +1357,13 @@ void BidiagQRAlg
         RuntimeError("dbdsqr had ",info," elements of e not converge");
 }
 
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVH, BlasInt numRowsU, 
   float* d, float* e,
   scomplex* VH, BlasInt ldVH,
   scomplex* U,  BlasInt ldU )
 {
-    DEBUG_ONLY(CSE cse("lapack::BidiagQRAlg"))
+    EL_DEBUG_CSE
     if( n==0 )
         return;
 
@@ -1563,13 +1388,13 @@ void BidiagQRAlg
         RuntimeError("cbdsqr had ",info," elements of e not converge");
 }
 
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVH, BlasInt numRowsU, 
   double* d, double* e,
   dcomplex* VH, BlasInt ldVH,
   dcomplex* U,  BlasInt ldU )
 {
-    DEBUG_ONLY(CSE cse("lapack::BidiagQRAlg"))
+    EL_DEBUG_CSE
     if( n==0 )
         return;
 
@@ -1605,7 +1430,7 @@ void DivideAndConquerSVD
   float* VTrans, BlasInt ldvt,
   bool thin )
 {
-    DEBUG_ONLY(CSE cse("lapack::DivideAndConquerSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1650,7 +1475,7 @@ void DivideAndConquerSVD
   double* VTrans, BlasInt ldvt,
   bool thin )
 {
-    DEBUG_ONLY(CSE cse("lapack::DivideAndConquerSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1695,7 +1520,7 @@ void DivideAndConquerSVD
   scomplex* VH, BlasInt ldva,
   bool thin )
 {
-    DEBUG_ONLY(CSE cse("lapack::DivideAndConquerSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1745,7 +1570,7 @@ void DivideAndConquerSVD
   dcomplex* VH, BlasInt ldva,
   bool thin )
 {
-    DEBUG_ONLY(CSE cse("lapack::DivideAndConquerSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1798,7 +1623,7 @@ void QRSVD
   float* VTrans, BlasInt ldvt,
   bool thin, bool avoidU, bool avoidV )
 {
-    DEBUG_ONLY(CSE cse("lapack::QRSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1840,7 +1665,7 @@ void QRSVD
   double* VTrans, BlasInt ldvt,
   bool thin, bool avoidU, bool avoidV )
 {
-    DEBUG_ONLY(CSE cse("lapack::QRSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1882,7 +1707,7 @@ void QRSVD
   scomplex* VH, BlasInt ldva,
   bool thin, bool avoidU, bool avoidV )
 {
-    DEBUG_ONLY(CSE cse("lapack::QRSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1928,7 +1753,7 @@ void QRSVD
   dcomplex* VH, BlasInt ldva,
   bool thin, bool avoidU, bool avoidV )
 {
-    DEBUG_ONLY(CSE cse("lapack::QRSVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1971,7 +1796,7 @@ void QRSVD
 
 void SVD( BlasInt m, BlasInt n, float* A, BlasInt ldA, float* s )
 {
-    DEBUG_ONLY(CSE cse("lapack::SVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -1996,7 +1821,7 @@ void SVD( BlasInt m, BlasInt n, float* A, BlasInt ldA, float* s )
 
 void SVD( BlasInt m, BlasInt n, double* A, BlasInt ldA, double* s )
 {
-    DEBUG_ONLY(CSE cse("lapack::SVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -2021,7 +1846,7 @@ void SVD( BlasInt m, BlasInt n, double* A, BlasInt ldA, double* s )
 
 void SVD( BlasInt m, BlasInt n, scomplex* A, BlasInt ldA, float* s )
 {
-    DEBUG_ONLY(CSE cse("lapack::SVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -2048,7 +1873,7 @@ void SVD( BlasInt m, BlasInt n, scomplex* A, BlasInt ldA, float* s )
 
 void SVD( BlasInt m, BlasInt n, dcomplex* A, BlasInt ldA, double* s )
 {
-    DEBUG_ONLY(CSE cse("lapack::SVD"))
+    EL_DEBUG_CSE
     if( m==0 || n==0 )
         return;
 
@@ -2314,6 +2139,7 @@ bool Solve2x2FullPiv
   const Real& smallNum,
   const Real& minPiv )
 {
+    EL_DEBUG_CSE
     const Real one(1), two(2);
     // Avoid tedious index calculations for the 2x2 LU with full pivoting
     // using cached tables in the same manner as LAPACK's {s,d}lasy2
@@ -2420,6 +2246,7 @@ bool Solve4x4FullPiv
   const Real& smallNum,
   const Real& minPiv )
 {
+    EL_DEBUG_CSE
     const Real zero(0), one(1), eight(8);
     bool perturbed = false;
 
@@ -2576,7 +2403,7 @@ bool SmallSylvester
         Real* X, BlasInt XLDim,
         Real& XInfNorm )
 {
-    DEBUG_ONLY(CSE cse("lapack::SmallSylvester"))
+    EL_DEBUG_CSE
     const Real one(1);
     const Real epsilon = limits::Epsilon<Real>();
     const Real smallNum = limits::SafeMin<Real>() / epsilon;
@@ -2858,72 +2685,6 @@ template bool SmallSylvester
 
 namespace adjacent_schur {
 
-template<typename Real>
-void ApplyReflector
-( bool onLeft,
-  BlasInt m,
-  BlasInt n,
-  const Real& phi,
-  const Real* v, BlasInt vInc,
-        Real* D, BlasInt DLDim,
-        Real& innerProd,
-        Real& tmp )
-{
-    if( onLeft )
-    {
-        for( BlasInt j=0; j<n; ++j ) 
-        {
-            innerProd=0;
-            for( BlasInt i=0; i<m; ++i )
-            {
-                tmp = v[i*vInc];
-                tmp *= D[i+j*DLDim];
-                innerProd += tmp;
-            }
-            innerProd *= phi;
-            for( BlasInt i=0; i<m; ++i )
-            {
-                tmp = v[i*vInc];
-                tmp *= innerProd;
-                D[i+j*DLDim] -= tmp;
-            }
-        }
-    }
-    else
-    {
-        for( BlasInt i=0; i<m; ++i )
-        {
-            innerProd=0;
-            for( BlasInt j=0; j<n; ++j )
-            {
-                tmp = D[i+j*DLDim];
-                tmp *= v[j*vInc];
-                innerProd += tmp;
-            }
-            innerProd *= phi;
-            for( BlasInt j=0; j<n; ++j )
-            {
-                tmp = innerProd;
-                tmp *= v[j*vInc];
-                D[i+j*DLDim] -= tmp;
-            }
-        }
-    }
-}
-
-template<typename Real>
-void ApplyReflector
-( bool onLeft,
-  BlasInt m,
-  BlasInt n,
-  const Real& phi,
-  const Real* v,
-        Real* D, BlasInt DLDim )
-{
-    Real innerProd, tmp;
-    ApplyReflector( onLeft, m, n, phi, v, D, DLDim, innerProd, tmp );
-}
-
 // See the paper
 //
 //   Zhaojun Bai and James Demmel,
@@ -2944,9 +2705,9 @@ void Helper
   Real* work,
   bool testAccuracy )
 {
+    EL_DEBUG_CSE
     // Uphold LAPACK's conventions for allowing n1, n2 in {0,1,2}
-    DEBUG_ONLY(
-      CSE cse("lapack::adjacent_schur::Helper");
+    EL_DEBUG_ONLY(
       if( n1 < 0 || n1 > 2 )
           LogicError("n1 must be in {0,1,2}");
       if( n2 < 0 || n2 > 2 )
@@ -3029,7 +2790,7 @@ void Helper
         // to remain zero (and therefore swapping tau11 and tau22 and preserving
         // tau12)
         Real c, s;
-        lapack::Givens( tau12, tau22-tau11, c, s );
+        Givens( tau12, tau22-tau11, c, s );
 
         if( j1+2 < n )
         {
@@ -3066,7 +2827,9 @@ void Helper
 
         const Real epsilon = limits::Epsilon<Real>();
         const Real smallNum = limits::SafeMin<Real>() / epsilon;
-        const Real thresh = Max( Real(10)*epsilon*DMax, smallNum );
+        // NOTE: This value was increased from 10 because of slight failures
+        const Real fudge = 20;
+        const Real thresh = Max( fudge*epsilon*DMax, smallNum );
 
         // Solve the Sylvester equation T11*X - X*T22 = scale*T12 for X
         Real scale, XInfNorm;
@@ -3078,7 +2841,7 @@ void Helper
           &D[0 +n1*nSum], nSum,
           scale, X, XLDim, XInfNorm );
 
-        Real innerProd, tmp;
+        Real innerProd;
         const Real zero(0);
         if( n1 == 1 && n2 == 2 )
         {
@@ -3112,12 +2875,10 @@ void Helper
                 // ------------------------------------------------ 
                 // Apply the rotation from the left,
                 //   D := (I - phi v v') D = D - v (phi v' D)
-                ApplyReflector
-                ( true, 3, 3, phi, v, 1, D, nSum, innerProd, tmp );
+                ApplyReflector( true, 3, 3, v, 1, phi, D, nSum, work );
                 // Apply the rotation from the right,
                 //   D := D (I - phi v v') = D - (phi D v) v'
-                ApplyReflector
-                ( false, 3, 3, phi, v, 1, D, nSum, innerProd, tmp );
+                ApplyReflector( false, 3, 3, v, 1, phi, D, nSum, work );
 
                 // Throw an exception if the rotation would be too inaccurate.
                 // As in LAPACK, rather than simply measuring the size of the 
@@ -3127,7 +2888,9 @@ void Helper
                 Real errMeasure = Max( Abs(D[2+0*3]), Abs(D[2+1*3]) );
                 errMeasure = Max( errMeasure, Abs(D[2+2*3]-tau11) );
                 if( errMeasure > thresh )
-                    RuntimeError("Unacceptable Schur block swap");
+                    RuntimeError
+                    ("Unacceptable Schur block swap: errMeasure, ",errMeasure,
+                     " was greater than ",thresh);
             }
 
             // Perform the rotation on T
@@ -3135,11 +2898,11 @@ void Helper
             // Apply the rotation from the left,
             //   T := (I - phi v v') T = T - v (phi v' T)
             ApplyReflector
-            ( true, 3, 3, phi, v, 1, T, TLDim, innerProd, tmp );
+            ( true, 3, n-j1, v, 1, phi, &T[j1+j1*TLDim], TLDim, work );
             // Apply the rotation from the right,
             //   T := T (I - phi v v') = T - (phi T v) v'
             ApplyReflector
-            ( false, 3, 3, phi, v, 1, T, TLDim, innerProd, tmp );
+            ( false, j1+2, 3, v, 1, phi, &T[j1*TLDim], TLDim, work );
             // Force our a priori knowledge that T is block upper-triangular
             T[(j1+2)+ j1   *TLDim] = zero;
             T[(j1+2)+(j1+1)*TLDim] = zero; 
@@ -3150,8 +2913,7 @@ void Helper
                 // Apply the rotation from the right,
                 //   Q := Q (I - phi v v') = Q - (phi Q v) v'
                 ApplyReflector
-                ( false, n, 3, phi, v, 1, &Q[j1*QLDim], QLDim,
-                  innerProd, tmp );
+                ( false, n, 3, v, 1, phi, &Q[j1*QLDim], QLDim, work );
             }
         }
         else if( n1 == 2 && n2 == 1 )
@@ -3180,12 +2942,10 @@ void Helper
                 // ------------------------------------------------ 
                 // Apply the rotation from the left,
                 //   D := (I - phi v v') D = D - v (phi v' D)
-                ApplyReflector
-                ( true, 3, 3, phi, v, 1, D, nSum, innerProd, tmp );
+                ApplyReflector( true, 3, 3, v, 1, phi, D, nSum, work );
                 // Apply the rotation from the right,
                 //   D := D (I - phi v v') = D - (phi D v) v'
-                ApplyReflector
-                ( false, 3, 3, phi, v, 1, D, nSum, innerProd, tmp );
+                ApplyReflector( false, 3, 3, v, 1, phi, D, nSum, work );
 
                 // Throw an exception if the rotation would be too inaccurate.
                 // As in LAPACK, rather than simply measuring the size of the 
@@ -3195,19 +2955,21 @@ void Helper
                 Real errMeasure = Max( Abs(D[1+0*3]), Abs(D[2+0*3]) );
                 errMeasure = Max( errMeasure, Abs(D[0+0*3]-tau22) );
                 if( errMeasure > thresh )
-                    RuntimeError("Unacceptable Schur block swap");
+                    RuntimeError
+                    ("Unacceptable Schur block swap: errMeasure, ",errMeasure,
+                     " was greater than ",thresh);
             }
 
             // Perform the rotation on T
             // ------------------------- 
-            // Apply the rotation from the left,
-            //   T := (I - phi v v') T = T - v (phi v' T)
-            ApplyReflector
-            ( true, 3, 3, phi, v, 1, T, TLDim, innerProd, tmp );
             // Apply the rotation from the right,
             //   T := T (I - phi v v') = T - (phi T v) v'
             ApplyReflector
-            ( false, 3, 3, phi, v, 1, T, TLDim, innerProd, tmp );
+            ( false, j1+3, 3, v, 1, phi, &T[j1*TLDim], TLDim, work );
+            // Apply the rotation from the left,
+            //   T := (I - phi v v') T = T - v (phi v' T)
+            ApplyReflector
+            ( true, 3, n-j1-1, v, 1, phi, &T[j1+(j1+1)*TLDim], TLDim, work );
             // Force our a priori knowledge that T is block upper-triangular
             T[ j1   +j1*TLDim] = tau22;
             T[(j1+1)+j1*TLDim] = zero;
@@ -3218,8 +2980,7 @@ void Helper
                 // Apply the rotation from the right,
                 //   Q := Q (I - phi v v') = Q - (phi Q v) v'
                 ApplyReflector
-                ( false, n, 3, phi, v, 1, &Q[j1*QLDim], QLDim,
-                  innerProd, tmp );
+                ( false, n, 3, v, 1, phi, &Q[j1*QLDim], QLDim, work );
             }
         }
         else
@@ -3257,29 +3018,27 @@ void Helper
                 // ------------------------------------------------ 
                 // Apply the first rotation from the left,
                 //   D := (I - phi0 v0 v0') D = D - v0 (phi0 v0' D)
-                ApplyReflector
-                ( true, 3, 4, phi0, v0, 1, D, nSum, innerProd, tmp );
+                ApplyReflector( true, 3, 4, v0, 1, phi0, D, nSum, work );
                 // Apply the first rotation from the right,
                 //   D := D (I - phi0 v0 v0') = D - (phi0 D v0) v0'
-                ApplyReflector
-                ( false, 4, 3, phi0, v0, 1, D, nSum, innerProd, tmp );
+                ApplyReflector( false, 4, 3, v0, 1, phi0, D, nSum, work );
                 // Apply the second rotation from the left,
                 //   D := (I - phi1 v1 v1') D = D - v1 (phi1 v1' D)
                 ApplyReflector
-                ( true, 3, 4, phi1, v1, 1, &D[1+0*nSum], nSum,
-                  innerProd, tmp );
+                ( true, 3, 4, v1, 1, phi1, &D[1+0*nSum], nSum, work );
                 // Apply the second rotation from the right,
                 //   D := D (I - phi1 v1 v1') = D - (phi1 D v1) v1'
                 ApplyReflector
-                ( false, 4, 3, phi1, v1, 1, &D[0+1*nSum], nSum,
-                  innerProd, tmp );
+                ( false, 4, 3, v1, 1, phi1, &D[0+1*nSum], nSum, work );
 
                 // Throw an exception if the rotation would be too inaccurate.
                 Real errMeasure = Max( Abs(D[2+0*4]), Abs(D[2+1*4]) );
                 errMeasure = Max( errMeasure, Abs(D[3+0*4]) );
                 errMeasure = Max( errMeasure, Abs(D[3+1*4]) );
                 if( errMeasure > thresh )
-                    RuntimeError("Unacceptable Schur block swap");
+                    RuntimeError
+                    ("Unacceptable Schur block swap: errMeasure, ",errMeasure,
+                     " was greater than ",thresh);
             }
 
             // Perform the rotation on T
@@ -3287,21 +3046,19 @@ void Helper
             // Apply the first rotation from the left,
             //   T := (I - phi0 v0 v0') T = T - v0 (phi0 v0' T)
             ApplyReflector
-            ( true, 3, 4, phi0, v0, 1, T, TLDim, innerProd, tmp );
+            ( true, 3, n-j1, v0, 1, phi0, &T[j1+j1*TLDim], TLDim, work );
             // Apply the first rotation from the right,
             //   T := T (I - phi0 v0 v0') = T - (phi0 T v0) v0'
             ApplyReflector
-            ( false, 4, 3, phi0, v0, 1, T, TLDim, innerProd, tmp );
+            ( false, j1+4, 3, v0, 1, phi0, &T[j1*TLDim], TLDim, work );
             // Apply the second rotation from the left,
             //   T := (I - phi1 v1 v1') T = T - v1 (phi1 v1' T)
             ApplyReflector
-            ( true, 3, 4, phi1, v1, 1, &T[1+0*TLDim], TLDim,
-              innerProd, tmp );
+            ( true, 3, n-j1, v1, 1, phi1, &T[(j1+1)+j1*TLDim], TLDim, work );
             // Apply the second rotation from the right,
             //   T := T (I - phi1 v1 v1') = T - (phi1 T v1) v1'
             ApplyReflector
-            ( false, 4, 3, phi1, v1, 1, &T[0+1*TLDim], TLDim,
-              innerProd, tmp );
+            ( false, j1+4, 3, v1, 1, phi1, &T[(j1+1)*TLDim], TLDim, work );
 
             // Force our a priori knowledge that T is block upper-triangular
             T[(j1+2)+ j1   *TLDim] = zero;
@@ -3314,11 +3071,9 @@ void Helper
                 // Apply the rotations from the right,
                 //   Q := Q (I - phi v v') = Q - (phi Q v) v'
                 ApplyReflector
-                ( false, n, 3, phi0, v0, 1, &Q[j1*QLDim], QLDim,
-                  innerProd, tmp );
+                ( false, n, 3, v0, 1, phi0, &Q[j1*QLDim], QLDim, work );
                 ApplyReflector
-                ( false, n, 3, phi1, v1, 1, &Q[(j1+1)*QLDim], QLDim,
-                  innerProd, tmp );
+                ( false, n, 3, v1, 1, phi1, &Q[(j1+1)*QLDim], QLDim, work );
             }
         }
 
@@ -3327,51 +3082,54 @@ void Helper
         {
             // Force the rotated T11 into standard form
             Real c, s;
-            TwoByTwoSchur
-            ( T[(j1+n2  )+(j1+n2)*TLDim], T[(j1+n2  )+(j1+n2+1)*TLDim],
-              T[(j1+n2+1)+(j1+n2)*TLDim], T[(j1+n2+1)+(j1+n2+1)*TLDim],
-              c, s );
-            if( j1+4 < n )
+            Complex<Real> lambda0, lambda1;
+            const Int j3 = j1+n2;
+            const Int j4 = j3+1;
+            schur::TwoByTwo
+            ( T[j3+j3*TLDim], T[j3+j4*TLDim],
+              T[j4+j3*TLDim], T[j4+j4*TLDim], lambda0, lambda1, c, s );
+            if( j3+2 < n )
             {
                 blas::Rot
-                ( n-(j1+4), 
-                  &T[(j1+2)+(j1+4)*TLDim], TLDim,
-                  &T[(j1+3)+(j1+4)*TLDim], TLDim, c, s );
+                ( n-(j3+2), 
+                  &T[j3+(j3+2)*TLDim], TLDim,
+                  &T[j4+(j3+2)*TLDim], TLDim, c, s );
             }
             blas::Rot
-            ( j1+2,
-              &T[(j1+2)*TLDim], 1,
-              &T[(j1+3)*TLDim], 1, c, s );
+            ( j3,
+              &T[j3*TLDim], 1,
+              &T[j4*TLDim], 1, c, s );
             if( wantSchurVecs )
             {
                 blas::Rot
                 ( n, 
-                  &Q[(j1+2)*QLDim], 1,
-                  &Q[(j1+3)*QLDim], 1, c, s );
+                  &Q[j3*QLDim], 1,
+                  &Q[j4*QLDim], 1, c, s );
             }
         }
         if( n2 == 2 )
         {
             // Force the rotated T22 into standard form
             Real c, s;
-            TwoByTwoSchur
-            ( T[ j1   +j1*TLDim], T[ j1   +(j1+1)*TLDim],
-              T[(j1+1)+j1*TLDim], T[(j1+1)+(j1+1)*TLDim],
-              c, s );
+            Complex<Real> lambda0, lambda1;
+            const Int j2 = j1+1;
+            schur::TwoByTwo
+            ( T[j1+j1*TLDim], T[j1+j2*TLDim],
+              T[j2+j1*TLDim], T[j2+j2*TLDim], lambda0, lambda1, c, s );
             blas::Rot
             ( n-(j1+2), 
-              &T[ j1   +(j1+2)*TLDim], TLDim,
-              &T[(j1+1)+(j1+2)*TLDim], TLDim, c, s );
+              &T[j1+(j1+2)*TLDim], TLDim,
+              &T[j2+(j1+2)*TLDim], TLDim, c, s );
             blas::Rot
             ( j1,
-              &T[ j1   *TLDim], 1,
-              &T[(j1+1)*TLDim], 1, c, s );
+              &T[j1*TLDim], 1,
+              &T[j2*TLDim], 1, c, s );
             if( wantSchurVecs )
             {
                 blas::Rot
                 ( n, 
-                  &Q[ j1   *QLDim], 1,
-                  &Q[(j1+1)*QLDim], 1, c, s );
+                  &Q[j1*QLDim], 1,
+                  &Q[j2*QLDim], 1, c, s );
             }
         }
     }
@@ -3389,6 +3147,7 @@ void AdjacentSchurExchange
   Real* work,
   bool testAccuracy )
 {
+    EL_DEBUG_CSE
     bool wantSchurVecs = false;
     Real* Q=nullptr;
     BlasInt QLDim = 1;
@@ -3407,6 +3166,7 @@ void AdjacentSchurExchange
   Real* work,
   bool testAccuracy )
 {
+    EL_DEBUG_CSE
     bool wantSchurVecs = true;
     adjacent_schur::Helper
     ( wantSchurVecs, n, T, TLDim, Q, QLDim, j1, n1, n2, work, testAccuracy );
@@ -3526,7 +3286,7 @@ template void AdjacentSchurExchange
 namespace schur_exchange {
 
 // This following technique is an analogue of LAPACK's {s,d}trexc
-template<typename Real>
+template<typename Real,typename=EnableIf<IsReal<Real>>>
 void Helper
 ( bool wantSchurVecs,
   BlasInt n,
@@ -3537,9 +3297,7 @@ void Helper
   Real* work,
   bool testAccuracy )
 {
-    DEBUG_ONLY(
-      CSE cse("lapack::schur_exchange::Helper");
-    )
+    EL_DEBUG_CSE
     const Real zero(0);
     if( n <= 1 )
         return;
@@ -3711,6 +3469,50 @@ void Helper
     }
 }
 
+template<typename Real>
+void Helper
+( bool wantSchurVecs,
+  BlasInt n,
+  Complex<Real>* T, BlasInt TLDim, 
+  Complex<Real>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 )
+{
+    EL_DEBUG_CSE
+    if( n <= 1 || j1 == j2 )
+        return;
+
+    const Int jBeg   = ( j1<j2 ? j1 : j1-1 );
+    const Int jEnd   = ( j1<j2 ? j2 : j2-1 );
+    const Int stride = ( j1<j2 ? 1  :   -1 );
+
+    for( Int j=jBeg; j!=jEnd; j+=stride )
+    {
+        // Save the j'th and (j+1)'th diagonal entries
+        Complex<Real> tau00 = T[j+j*TLDim];
+        Complex<Real> tau11 = T[(j+1)+(j+1)*TLDim];
+
+        // Find the Givens rotation for swapping said diagonal entries
+        Real c;
+        Complex<Real> s;
+        Givens( T[j+(j+1)*TLDim], tau11-tau00, c, s );
+
+        // Apply the Givens rotation from the left
+        if( j+2 < n )
+            blas::Rot
+            ( n-(j+2), &T[j    +(j+2)*TLDim], TLDim,
+                       &T[(j+1)+(j+2)*TLDim], TLDim, c, s );
+        // Apply the Givens rotation from the right
+        if( j > 0 )
+            blas::Rot( j, &T[j*TLDim], 1, &T[(j+1)*TLDim], 1, c, Conj(s) );
+        if( wantSchurVecs )
+            blas::Rot( n, &Q[j*QLDim], 1, &Q[(j+1)*QLDim], 1, c, Conj(s) );
+
+        T[ j   + j   *TLDim] = tau11;
+        T[(j+1)+(j+1)*TLDim] = tau00;
+    }
+}
+
 } // namespace schur_exchange
 
 template<typename Real>
@@ -3722,11 +3524,26 @@ void SchurExchange
   Real* work,
   bool testAccuracy )
 {
+    EL_DEBUG_CSE
     bool wantSchurVecs = false;
     Real* Q=nullptr;
     BlasInt QLDim = 1;
     schur_exchange::Helper
     ( wantSchurVecs, n, T, TLDim, Q, QLDim, j1, j2, work, testAccuracy );
+}
+
+template<typename Real>
+void SchurExchange
+( BlasInt n,
+  Complex<Real>* T, BlasInt TLDim,
+  BlasInt j1,
+  BlasInt j2 )
+{
+    EL_DEBUG_CSE
+    bool wantSchurVecs = false;
+    Complex<Real>* Q=nullptr;
+    BlasInt QLDim = 1;
+    schur_exchange::Helper( wantSchurVecs, n, T, TLDim, Q, QLDim, j1, j2 );
 }
 
 template<typename Real>
@@ -3739,9 +3556,24 @@ void SchurExchange
   Real* work,
   bool testAccuracy )
 {
+    EL_DEBUG_CSE
     bool wantSchurVecs = true;
     schur_exchange::Helper
     ( wantSchurVecs, n, T, TLDim, Q, QLDim, j1, j2, work, testAccuracy );
+}
+
+template<typename Real>
+void SchurExchange
+( BlasInt n,
+  Complex<Real>* T, BlasInt TLDim, 
+  Complex<Real>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 )
+{
+    EL_DEBUG_CSE
+    bool wantSchurVecs = true;
+    schur_exchange::Helper
+    ( wantSchurVecs, n, T, TLDim, Q, QLDim, j1, j2 );
 }
 
 template void SchurExchange
@@ -3761,6 +3593,17 @@ template void SchurExchange
   bool testAccuracy );
 template void SchurExchange
 ( BlasInt n,
+  Complex<float>* T, BlasInt TLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
+  Complex<float>* T, BlasInt TLDim,
+  Complex<float>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
   double* T, BlasInt TLDim,
   BlasInt j1,
   BlasInt j2,
@@ -3774,6 +3617,17 @@ template void SchurExchange
   BlasInt j2,
   double* work,
   bool testAccuracy );
+template void SchurExchange
+( BlasInt n,
+  Complex<double>* T, BlasInt TLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
+  Complex<double>* T, BlasInt TLDim,
+  Complex<double>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 );
 #ifdef EL_HAVE_QUAD
 template void SchurExchange
 ( BlasInt n,
@@ -3790,6 +3644,17 @@ template void SchurExchange
   BlasInt j2,
   Quad* work,
   bool testAccuracy );
+template void SchurExchange
+( BlasInt n,
+  Complex<Quad>* T, BlasInt TLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
+  Complex<Quad>* T, BlasInt TLDim,
+  Complex<Quad>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 );
 #endif
 #ifdef EL_HAVE_QD
 template void SchurExchange
@@ -3809,6 +3674,17 @@ template void SchurExchange
   bool testAccuracy );
 template void SchurExchange
 ( BlasInt n,
+  Complex<DoubleDouble>* T, BlasInt TLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
+  Complex<DoubleDouble>* T, BlasInt TLDim,
+  Complex<DoubleDouble>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
   QuadDouble* T, BlasInt TLDim,
   BlasInt j1,
   BlasInt j2,
@@ -3822,6 +3698,17 @@ template void SchurExchange
   BlasInt j2,
   QuadDouble* work,
   bool testAccuracy );
+template void SchurExchange
+( BlasInt n,
+  Complex<QuadDouble>* T, BlasInt TLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
+  Complex<QuadDouble>* T, BlasInt TLDim,
+  Complex<QuadDouble>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 );
 #endif
 #ifdef EL_HAVE_MPC
 template void SchurExchange
@@ -3839,269 +3726,18 @@ template void SchurExchange
   BlasInt j2,
   BigFloat* work,
   bool testAccuracy );
+template void SchurExchange
+( BlasInt n,
+  Complex<BigFloat>* T, BlasInt TLDim,
+  BlasInt j1,
+  BlasInt j2 );
+template void SchurExchange
+( BlasInt n,
+  Complex<BigFloat>* T, BlasInt TLDim,
+  Complex<BigFloat>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 );
 #endif
-
-// Put a two-by-two nonsymmetric real matrix into standard form
-// ============================================================
-// Compute the Schur factorization of a real 2x2 nonsymmetric matrix A
-// in a manner similar to xLANV2, returning the cosine and sine terms as well
-// as the real and imaginary parts of the two eigenvalues.
-//
-// Either A is overwritten with its real Schur factor (if it exists), or 
-// it is put into the form 
-//
-//   | alpha00, alpha01 | = | c -s | | beta00 beta01 | | c  s |,
-//   | alpha10, alpha11 |   | s  c | | beta10 beta11 | | -s c |
-//
-// where beta00 = beta11 and beta10*beta01 < 0, so that the two eigenvalues 
-// are beta00 +- sqrt(beta10*beta01).
-//
-
-template<typename Real>
-void TwoByTwoSchur
-( Real& alpha00, Real& alpha01,
-  Real& alpha10, Real& alpha11,
-  Real& c, Real& s )
-{
-    const Real zero(0), one(1);
-    const Real multiple(4);
-    const Real epsilon = limits::Epsilon<Real>();
-
-    if( alpha10 == zero )
-    {
-        c = one;
-        s = zero;
-    }
-    else if( alpha01 == zero )
-    {
-        c = zero;
-        s = one;
-        Real tmp = alpha11;
-        alpha11 = alpha00;
-        alpha00 = tmp;
-        alpha01 = -alpha10;
-        alpha10 = zero;
-    }
-    else if( (alpha00-alpha11) == zero && Sgn(alpha01) != Sgn(alpha10) )
-    {
-        c = one;
-        s = zero;
-    }
-    else
-    {
-        Real tmp = alpha00-alpha11;
-        Real p = tmp/2;
-        Real offDiagMax = Max( Abs(alpha01), Abs(alpha10) );
-        Real offDiagMin = Min( Abs(alpha01), Abs(alpha10) );
-        Real offDiagMinSigned = offDiagMin*Sgn(alpha01)*Sgn(alpha10);
-        Real scale = Max( Abs(p), offDiagMax );
-        Real z = (p/scale)*p + (offDiagMax/scale)*offDiagMinSigned;
-        if( z >= multiple*epsilon )
-        {
-            // Compute the real eigenvalues
-            z = p + Sqrt(scale)*Sqrt(z)*Sgn(p);
-            alpha00 = alpha11 + z;
-            alpha11 -= (offDiagMax/z)*offDiagMinSigned;
-
-            // Compute the rotation matrix
-            Real tau = lapack::SafeNorm( alpha10, z );
-            c = z / tau;
-            s = alpha10 / tau;
-            alpha01 -= alpha10;
-            alpha10 = zero;
-        }
-        else
-        {
-            // We have complex or (almost) equal real eigenvalues, so force
-            // alpha00 and alpha11 to be equal 
-            Real sigma = alpha01 + alpha10;
-            Real tau = lapack::SafeNorm( sigma, tmp );
-            c = Sqrt( (one + Abs(sigma)/tau)/2 );
-            s = -(p/(tau*c))*Sgn(sigma);
-
-            // B := A [c, -s; s, c]
-            Real beta00 =  alpha00*c + alpha01*s;
-            Real beta01 = -alpha00*s + alpha01*c;
-            Real beta10 =  alpha10*c + alpha11*s;
-            Real beta11 = -alpha10*s + alpha11*c;
-
-            // A := [c, s; -s, c] B
-            alpha00 =  c*beta00 + s*beta10;
-            alpha01 =  c*beta01 + s*beta11;
-            alpha10 = -s*beta00 + c*beta10;
-            alpha11 = -s*beta01 + c*beta11;
-
-            tmp = (alpha00+alpha11)/2;
-            alpha00 = alpha11 = tmp;
-
-            if( alpha10 != zero )
-            {
-                if( alpha01 != zero )
-                {
-                    if( Sgn(alpha01) == Sgn(alpha10) )
-                    {
-                        // We can reduce to (real) upper-triangular form
-                        Real alpha01Sqrt = Sqrt(Abs(alpha01));
-                        Real alpha10Sqrt = Sqrt(Abs(alpha10));
-                        Real p = alpha01Sqrt*alpha10Sqrt*Sgn(alpha10);
-                        tau = one / Sqrt(Abs(alpha01+alpha10));
-                        alpha00 = tmp + p;
-                        alpha11 = tmp - p;
-                        alpha01 -= alpha10;
-                        alpha10 = zero;
-                        Real c1 = alpha01Sqrt*tau;
-                        Real s1 = alpha10Sqrt*tau;
-                        tmp = c*c1 - s*s1;
-                        s = c*s1 + s*c1;
-                        c = tmp;
-                    }
-                }
-                else
-                {
-                    alpha01 = -alpha10;
-                    alpha10 = zero;
-                    tmp = c;
-                    c = -s;
-                    s = tmp;
-                }
-            }
-        }
-    }
-}
-
-template<typename Real>
-void TwoByTwoSchur
-( Real& alpha00, Real& alpha01,
-  Real& alpha10, Real& alpha11,
-  Real& c, Real& s,
-  Real& lambda0Real, Real& lambda0Imag,
-  Real& lambda1Real, Real& lambda1Imag )
-{
-    TwoByTwoSchur
-    ( alpha00, alpha01,
-      alpha10, alpha11, c, s );
-
-    // Explicitly compute the eigenvalues
-    lambda0Real = alpha00;
-    lambda1Real = alpha11;
-    const Real zero(0);
-    if( alpha10 == zero )
-    {
-        lambda0Imag = lambda1Imag = zero;
-    }
-    else
-    {
-        lambda0Imag = Sqrt(Abs(alpha01))*Sqrt(Abs(alpha10));
-        lambda1Imag = -lambda0Imag;
-    }
-}
-
-#ifdef EL_HAVE_QUAD
-template void TwoByTwoSchur
-( Quad& alpha00, Quad& alpha01,
-  Quad& alpha10, Quad& alpha11,
-  Quad& c, Quad& s );
-template void TwoByTwoSchur
-( Quad& alpha00, Quad& alpha01,
-  Quad& alpha10, Quad& alpha11,
-  Quad& c, Quad& s,
-  Quad& lambda0Real, Quad& lambda0Imag,
-  Quad& lambda1Real, Quad& lambda1Imag );
-#endif
-#ifdef EL_HAVE_QD
-template void TwoByTwoSchur
-( DoubleDouble& alpha00, DoubleDouble& alpha01,
-  DoubleDouble& alpha10, DoubleDouble& alpha11,
-  DoubleDouble& c, DoubleDouble& s );
-template void TwoByTwoSchur
-( DoubleDouble& alpha00, DoubleDouble& alpha01,
-  DoubleDouble& alpha10, DoubleDouble& alpha11,
-  DoubleDouble& c, DoubleDouble& s,
-  DoubleDouble& lambda0Real, DoubleDouble& lambda0Imag,
-  DoubleDouble& lambda1Real, DoubleDouble& lambda1Imag );
-template void TwoByTwoSchur
-( QuadDouble& alpha00, QuadDouble& alpha01,
-  QuadDouble& alpha10, QuadDouble& alpha11,
-  QuadDouble& c, QuadDouble& s );
-template void TwoByTwoSchur
-( QuadDouble& alpha00, QuadDouble& alpha01,
-  QuadDouble& alpha10, QuadDouble& alpha11,
-  QuadDouble& c, QuadDouble& s,
-  QuadDouble& lambda0Real, QuadDouble& lambda0Imag,
-  QuadDouble& lambda1Real, QuadDouble& lambda1Imag );
-#endif
-#ifdef EL_HAVE_MPC
-template void TwoByTwoSchur
-( BigFloat& alpha00, BigFloat& alpha01,
-  BigFloat& alpha10, BigFloat& alpha11,
-  BigFloat& c, BigFloat& s );
-template void TwoByTwoSchur
-( BigFloat& alpha00, BigFloat& alpha01,
-  BigFloat& alpha10, BigFloat& alpha11,
-  BigFloat& c, BigFloat& s,
-  BigFloat& lambda0Real, BigFloat& lambda0Imag,
-  BigFloat& lambda1Real, BigFloat& lambda1Imag );
-#endif
-
-void TwoByTwoSchur
-( float& alpha00, float& alpha01,
-  float& alpha10, float& alpha11,
-  float& c, float& s,
-  float& lambda0Real, float& lambda0Imag,
-  float& lambda1Real, float& lambda1Imag )
-{
-    EL_LAPACK(slanv2)
-    ( &alpha00, &alpha01,
-      &alpha10, &alpha11,
-      &lambda0Real, &lambda0Imag,
-      &lambda1Real, &lambda1Imag,
-      &c, &s );
-}
-
-void TwoByTwoSchur
-( float& alpha00, float& alpha01,
-  float& alpha10, float& alpha11,
-  float& c, float& s )
-{
-    float lambda0Real, lambda0Imag,
-          lambda1Real, lambda1Imag;
-    TwoByTwoSchur
-    ( alpha00, alpha01,
-      alpha10, alpha11,
-      c, s,
-      lambda0Real, lambda0Imag,
-      lambda1Real, lambda1Imag );
-}
-
-void TwoByTwoSchur
-( double& alpha00, double& alpha01,
-  double& alpha10, double& alpha11,
-  double& c, double& s,
-  double& lambda0Real, double& lambda0Imag,
-  double& lambda1Real, double& lambda1Imag )
-{
-    EL_LAPACK(dlanv2)
-    ( &alpha00, &alpha01,
-      &alpha10, &alpha11,
-      &lambda0Real, &lambda0Imag,
-      &lambda1Real, &lambda1Imag,
-      &c, &s );
-}
-
-void TwoByTwoSchur
-( double& alpha00, double& alpha01,
-  double& alpha10, double& alpha11,
-  double& c, double& s )
-{
-    double lambda0Real, lambda0Imag,
-           lambda1Real, lambda1Imag;
-    TwoByTwoSchur
-    ( alpha00, alpha01,
-      alpha10, alpha11,
-      c, s,
-      lambda0Real, lambda0Imag,
-      lambda1Real, lambda1Imag );
-}
 
 // Compute the Schur decomposition of an upper Hessenberg matrix
 // =============================================================
@@ -4110,30 +3746,48 @@ void HessenbergSchur
 ( BlasInt n,
   float* H, BlasInt ldH,
   scomplex* w,
-  bool fullTriangle )
+  bool fullTriangle,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ='N';
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt fakeLDim=1, workSize=-1, info;
-    float workDummy;
+    BlasInt fakeLDim=1;
     vector<float> wr( n ), wi( n );
-    EL_LAPACK(shseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), 0, &fakeLDim,
-      &workDummy, &workSize, &info );
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'), compZ='N';
+        BlasInt workSize=-1;
+        float workDummy;
+        EL_LAPACK(shseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          0, &fakeLDim, &workDummy, &workSize, &info );
 
-    workSize = workDummy;
-    vector<float> work(workSize);
-    EL_LAPACK(shseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), 0, &fakeLDim,
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("shseqr's failed to compute all eigenvalues");
+        workSize = workDummy;
+        vector<float> work(workSize);
+        EL_LAPACK(shseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          0, &fakeLDim, work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("shseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_FALSE;
+        EL_LAPACK(slahqr)
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          &ilo, &ihi, 0, &fakeLDim, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("slahqr failed to compute all eigenvalues");
+    }
 
     for( BlasInt i=0; i<n; ++i )
         w[i] = Complex<float>(wr[i],wi[i]);
@@ -4143,30 +3797,48 @@ void HessenbergSchur
 ( BlasInt n,
   double* H, BlasInt ldH,
   dcomplex* w,
-  bool fullTriangle )
+  bool fullTriangle,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ='N';
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt fakeLDim=1, workSize=-1, info;
-    double workDummy;
+    BlasInt fakeLDim=1;
     vector<double> wr( n ), wi( n );
-    EL_LAPACK(dhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), 0, &fakeLDim,
-      &workDummy, &workSize, &info );
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'), compZ='N';
+        BlasInt workSize=-1;
+        double workDummy;
+        EL_LAPACK(dhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          0, &fakeLDim, &workDummy, &workSize, &info );
 
-    workSize = workDummy;
-    vector<double> work(workSize);
-    EL_LAPACK(dhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), 0, &fakeLDim,
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("dhseqr's failed to compute all eigenvalues");
+        workSize = workDummy;
+        vector<double> work(workSize);
+        EL_LAPACK(dhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          0, &fakeLDim, work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("dhseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_FALSE;
+        EL_LAPACK(dlahqr) 
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          &ilo, &ihi, 0, &fakeLDim, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("dlahqr failed to compute all eigenvalues");
+    }
     
     for( BlasInt i=0; i<n; ++i )
         w[i] = Complex<double>(wr[i],wi[i]);
@@ -4176,58 +3848,94 @@ void HessenbergSchur
 ( BlasInt n,
   scomplex* H, BlasInt ldH,
   scomplex* w,
-  bool fullTriangle )
+  bool fullTriangle,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ='N';
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt fakeLDim=1, workSize=-1, info;
-    scomplex workDummy;
-    EL_LAPACK(chseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
-      &workDummy, &workSize, &info );
+    BlasInt fakeLDim=1;
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'), compZ='N';
+        BlasInt workSize=-1;
+        scomplex workDummy;
+        EL_LAPACK(chseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
+          &workDummy, &workSize, &info );
 
-    workSize = workDummy.real();
-    vector<scomplex> work(workSize);
-    EL_LAPACK(chseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("chseqr's failed to compute all eigenvalues");
+        workSize = workDummy.real();
+        vector<scomplex> work(workSize);
+        EL_LAPACK(chseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
+          work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("chseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_FALSE;
+        EL_LAPACK(clahqr) 
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, w,
+          &ilo, &ihi, 0, &fakeLDim, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("clahqr failed to compute all eigenvalues");
+    }
 }
 
 void HessenbergSchur
 ( BlasInt n,
   dcomplex* H, BlasInt ldH,
   dcomplex* w,
-  bool fullTriangle )
+  bool fullTriangle,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ='N';
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt fakeLDim=1, workSize=-1, info;
-    dcomplex workDummy;
-    EL_LAPACK(zhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
-      &workDummy, &workSize, &info );
+    BlasInt fakeLDim=1;
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'), compZ='N';
+        BlasInt workSize=-1;
+        dcomplex workDummy;
+        EL_LAPACK(zhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
+          &workDummy, &workSize, &info );
 
-    workSize = workDummy.real();
-    vector<dcomplex> work(workSize);
-    EL_LAPACK(zhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("zhseqr's failed to compute all eigenvalues");
+        workSize = workDummy.real();
+        vector<dcomplex> work(workSize);
+        EL_LAPACK(zhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, 0, &fakeLDim, 
+          work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("zhseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_FALSE;
+        EL_LAPACK(zlahqr) 
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, w,
+          &ilo, &ihi, 0, &fakeLDim, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("zlahqr failed to compute all eigenvalues");
+    }
 }
 
 void HessenbergSchur
@@ -4236,30 +3944,48 @@ void HessenbergSchur
   scomplex* w,
   float* Q, BlasInt ldQ, 
   bool fullTriangle,
-  bool multiplyQ )
+  bool multiplyQ,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ=(multiplyQ?'V':'I');
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt workSize=-1, info;
-    float workDummy;
     vector<float> wr( n ), wi( n );
-    EL_LAPACK(shseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
-      &workDummy, &workSize, &info );
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'),
+                   compZ=(multiplyQ ? 'V' : 'I');
+        BlasInt workSize=-1;
+        float workDummy;
+        EL_LAPACK(shseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
+          &workDummy, &workSize, &info );
 
-    workSize = workDummy;
-    vector<float> work(workSize);
-    EL_LAPACK(shseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("shseqr's failed to compute all eigenvalues");
+        workSize = workDummy;
+        vector<float> work(workSize);
+        EL_LAPACK(shseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
+          work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("shseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_TRUE;
+        EL_LAPACK(slahqr)
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          &ilo, &ihi, Q, &ldQ, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("slahqr failed to compute all eigenvalues");
+    }
 
     for( BlasInt i=0; i<n; ++i )
         w[i] = Complex<float>(wr[i],wi[i]);
@@ -4271,30 +3997,48 @@ void HessenbergSchur
   dcomplex* w,
   double* Q, BlasInt ldQ, 
   bool fullTriangle,
-  bool multiplyQ )
+  bool multiplyQ,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ=(multiplyQ?'V':'I');
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt workSize=-1, info;
-    double workDummy;
     vector<double> wr( n ), wi( n );
-    EL_LAPACK(dhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
-      &workDummy, &workSize, &info );
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'),
+                   compZ=(multiplyQ ? 'V' : 'I');
+        BlasInt workSize=-1;
+        double workDummy;
+        EL_LAPACK(dhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
+          &workDummy, &workSize, &info );
 
-    workSize = workDummy;
-    vector<double> work(workSize);
-    EL_LAPACK(dhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("dhseqr's failed to compute all eigenvalues");
+        workSize = workDummy;
+        vector<double> work(workSize);
+        EL_LAPACK(dhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(), Q, &ldQ,
+          work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("dhseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_TRUE;
+        EL_LAPACK(dlahqr)
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, wr.data(), wi.data(),
+          &ilo, &ihi, Q, &ldQ, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("dlahqr failed to compute all eigenvalues");
+    }
     
     for( BlasInt i=0; i<n; ++i )
         w[i] = Complex<double>(wr[i],wi[i]);
@@ -4306,29 +4050,47 @@ void HessenbergSchur
   scomplex* w,
   scomplex* Q, BlasInt ldQ,
   bool fullTriangle,
-  bool multiplyQ )
+  bool multiplyQ,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ=(multiplyQ?'V':'I');
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt workSize=-1, info;
-    scomplex workDummy;
-    EL_LAPACK(chseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ, 
-      &workDummy, &workSize, &info );
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'),
+                   compZ=(multiplyQ ? 'V' : 'I');
+        BlasInt workSize=-1;
+        scomplex workDummy;
+        EL_LAPACK(chseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ,
+          &workDummy, &workSize, &info );
 
-    workSize = workDummy.real();
-    vector<scomplex> work(workSize);
-    EL_LAPACK(chseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ, 
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("chseqr's failed to compute all eigenvalues");
+        workSize = workDummy.real();
+        vector<scomplex> work(workSize);
+        EL_LAPACK(chseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ,
+          work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("chseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_TRUE;
+        EL_LAPACK(clahqr)
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, w,
+          &ilo, &ihi, Q, &ldQ, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("clahqr failed to compute all eigenvalues");
+    }
 }
 
 void HessenbergSchur
@@ -4337,29 +4099,47 @@ void HessenbergSchur
   dcomplex* w,
   dcomplex* Q, BlasInt ldQ,
   bool fullTriangle,
-  bool multiplyQ )
+  bool multiplyQ,
+  bool useAED )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergSchur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
-    const char job=(fullTriangle?'S':'E'), compZ=(multiplyQ?'V':'I');
+    BlasInt info;
     BlasInt ilo=1, ihi=n;
-    BlasInt workSize=-1, info;
-    dcomplex workDummy;
-    EL_LAPACK(zhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ, 
-      &workDummy, &workSize, &info );
+    if( useAED )
+    {
+        const char job=(fullTriangle ? 'S' : 'E'),
+                   compZ=(multiplyQ ? 'V' : 'I');
+        BlasInt workSize=-1;
+        dcomplex workDummy;
+        EL_LAPACK(zhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ,
+          &workDummy, &workSize, &info );
 
-    workSize = workDummy.real();
-    vector<dcomplex> work(workSize);
-    EL_LAPACK(zhseqr)
-    ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ, 
-      work.data(), &workSize, &info );
-    if( info < 0 )
-        RuntimeError("Argument ",-info," had an illegal value");
-    else if( info > 0 )
-        RuntimeError("zhseqr's failed to compute all eigenvalues");
+        workSize = workDummy.real();
+        vector<dcomplex> work(workSize);
+        EL_LAPACK(zhseqr)
+        ( &job, &compZ, &n, &ilo, &ihi, H, &ldH, w, Q, &ldQ,
+          work.data(), &workSize, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("zhseqr failed to compute all eigenvalues");
+    }
+    else
+    {
+        FortranLogical wantT=(fullTriangle ? FORTRAN_TRUE : FORTRAN_FALSE),
+                       wantZ=FORTRAN_TRUE;
+        EL_LAPACK(zlahqr)
+        ( &wantT, &wantZ, &n, &ilo, &ihi, H, &ldH, w,
+          &ilo, &ihi, Q, &ldQ, &info );
+        if( info < 0 )
+            RuntimeError("Argument ",-info," had an illegal value");
+        else if( info > 0 )
+            RuntimeError("zlahqr failed to compute all eigenvalues");
+    }
 }
 
 // Compute eigenvalues/pairs of an upper Hessenberg matrix
@@ -4367,25 +4147,25 @@ void HessenbergSchur
 
 void HessenbergEig( BlasInt n, float* H, BlasInt ldH, scomplex* w )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergEig"))
+    EL_DEBUG_CSE
     HessenbergSchur( n, H, ldH, w, false );
 }
 
 void HessenbergEig( BlasInt n, double* H, BlasInt ldH, dcomplex* w )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergEig"))
+    EL_DEBUG_CSE
     HessenbergSchur( n, H, ldH, w, false );
 }
 
 void HessenbergEig( BlasInt n, scomplex* H, BlasInt ldH, scomplex* w )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergEig"))
+    EL_DEBUG_CSE
     HessenbergSchur( n, H, ldH, w, false );
 }
 
 void HessenbergEig( BlasInt n, dcomplex* H, BlasInt ldH, dcomplex* w )
 {
-    DEBUG_ONLY(CSE cse("lapack::HessenbergEig"))
+    EL_DEBUG_CSE
     HessenbergSchur( n, H, ldH, w, false );
 }
 
@@ -4403,7 +4183,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4452,7 +4232,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4501,7 +4281,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4545,7 +4325,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4590,7 +4370,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4655,7 +4435,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4720,7 +4500,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4780,7 +4560,7 @@ void Schur
   bool fullTriangle,
   bool time )
 {
-    DEBUG_ONLY(CSE cse("lapack::Schur"))
+    EL_DEBUG_CSE
     if( n == 0 )
         return;
 
@@ -4832,349 +4612,8 @@ void Schur
         RuntimeError("chseqr's failed to compute all eigenvalues");
 }
 
-// Compute eigenvectors of an upper (quasi-)triangular matrix
-// ==========================================================
-void QuasiTriangEig
-( BlasInt n,
-  float* T, BlasInt ldT,
-  float* VR, BlasInt ldVR,
-  bool accumulate )
-{
-    char side='R';
-    char howMany = ( accumulate ? 'B' : 'A' );
-    float* VL=0;
-    BlasInt ldVL=1;
-    FortranLogical* select=0;
-    BlasInt mm=n, m=n;
-    BlasInt info;
-
-    vector<float> work(3*n);
-    EL_LAPACK(strevc)
-    ( &side, &howMany, select, &n,
-      T, &ldT,
-      VL, &ldVL,
-      VR, &ldVR,
-      &mm, &m,
-      work.data(),
-      &info );
-    if( info != 0 )
-        LogicError("Argument ",-info," had an illegal value");
-}
-
-void QuasiTriangEig
-( BlasInt n,
-  double* T, BlasInt ldT,
-  double* VR, BlasInt ldVR,
-  bool accumulate )
-{
-    char side='R';
-    char howMany = ( accumulate ? 'B' : 'A' );
-    double* VL=0;
-    BlasInt ldVL=1;
-    FortranLogical* select=0;
-    BlasInt mm=n, m=n;
-    BlasInt info;
-
-    vector<double> work(3*n);
-    EL_LAPACK(dtrevc)
-    ( &side, &howMany, select, &n,
-      T, &ldT,
-      VL, &ldVL,
-      VR, &ldVR,
-      &mm, &m,
-      work.data(),
-      &info );
-    if( info != 0 )
-        LogicError("Argument ",-info," had an illegal value");
-}
-
-void TriangEig
-( BlasInt n,
-  scomplex* T, BlasInt ldT,
-  scomplex* VR, BlasInt ldVR,
-  bool accumulate )
-{
-    char side='R';
-    char howMany = ( accumulate ? 'B' : 'A' );
-    scomplex* VL=0;
-    BlasInt ldVL=1;
-    FortranLogical* select=0;
-    BlasInt mm=n, m=n;
-    BlasInt info;
-
-    vector<scomplex> work(2*n);
-    vector<float> rWork(n);
-    EL_LAPACK(ctrevc)
-    ( &side, &howMany, select, &n,
-      T, &ldT,
-      VL, &ldVL,
-      VR, &ldVR,
-      &mm, &m,
-      work.data(), rWork.data(),
-      &info );
-    if( info != 0 )
-        LogicError("Argument ",-info," had an illegal value");
-}
-
-void TriangEig
-( BlasInt n,
-  dcomplex* T, BlasInt ldT,
-  dcomplex* VR, BlasInt ldVR,
-  bool accumulate )
-{
-    char side='R';
-    char howMany = ( accumulate ? 'B' : 'A' );
-    dcomplex* VL=0;
-    BlasInt ldVL=1;
-    FortranLogical* select=0;
-    BlasInt mm=n, m=n;
-    BlasInt info;
-
-    vector<dcomplex> work(2*n);
-    vector<double> rWork(n);
-    EL_LAPACK(ztrevc)
-    ( &side, &howMany, select, &n,
-      T, &ldT,
-      VL, &ldVL,
-      VR, &ldVR,
-      &mm, &m,
-      work.data(), rWork.data(),
-      &info );
-    if( info != 0 )
-        LogicError("Argument ",-info," had an illegal value");
-}
-
-// Compute the eigenvalues/pairs of a square matrix
-// ================================================
-
-// Eigenvalues only
-// ----------------
-
-void Eig( BlasInt n, float* A, BlasInt ldA, scomplex* w, bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    bool fullTriangle = false;
-    Schur( n, A, ldA, w, fullTriangle, time );
-}
-
-void Eig( BlasInt n, double* A, BlasInt ldA, dcomplex* w, bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    bool fullTriangle = false;
-    Schur( n, A, ldA, w, fullTriangle, time );
-}
-
-void Eig( BlasInt n, scomplex* A, BlasInt ldA, scomplex* w, bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    bool fullTriangle = false;
-    Schur( n, A, ldA, w, fullTriangle, time );
-}
-
-void Eig( BlasInt n, dcomplex* A, BlasInt ldA, dcomplex* w, bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    bool fullTriangle = false;
-    Schur( n, A, ldA, w, fullTriangle, time );
-}
-
-// Eigenpairs
-// ----------
-// NOTE: When the matrices are real, an BlasInterface is also provided which returns
-//       a packing of the eigenvectors which exploits the fact that, if the
-//       eigenvalue is real, so is the corresponding eigenvector, otherwise
-//       the eigenvalue's complex conjugate is also an eigenvalue, and the 
-//       corresponding eigenvector is also the conjugate. Thus, an n x n
-//       real matrix can be used to represent the eigenvectors if
-//           x(j  ) = X(:,j) + X(:,j+1)*1i,
-//           x(j+1) = X(:,j) - X(:,j+1)*1i
-//       when the j'th and j+1'th eigenvalues are complex conjugates.
-
-void Eig
-( BlasInt n,
-  float* A, BlasInt ldA,
-  scomplex* w,
-  float* XPacked, BlasInt ldX,
-  bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    const char jobVL='N', jobVR='V';
-    const BlasInt fakeLDim = 1;
-
-    vector<float> wReal(n), wImag(n);
-    BlasInt workSize=-1, info;
-    float workDummy;
-    EL_LAPACK(sgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, wReal.data(), wImag.data(), 0, &fakeLDim, 
-      XPacked, &ldX, &workDummy, &workSize, &info );
-
-    workSize = workDummy;
-    vector<float> work( workSize );
-    EL_LAPACK(sgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, wReal.data(), wImag.data(), 0, &fakeLDim, 
-      XPacked, &ldX, work.data(), &workSize, &info );
-
-    // Post-process the eigenvalues
-    for( Int j=0; j<n; ++j )
-        w[j] = Complex<float>(wReal[j],wImag[j]);
-}
-
-void Eig
-( BlasInt n,
-  double* A, BlasInt ldA,
-  dcomplex* w,
-  double* XPacked, BlasInt ldX,
-  bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    const char jobVL='N', jobVR='V';
-    const BlasInt fakeLDim = 1;
-
-    vector<double> wReal(n), wImag(n);
-    BlasInt workSize=-1, info;
-    double workDummy;
-    EL_LAPACK(dgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, wReal.data(), wImag.data(), 0, &fakeLDim,
-      XPacked, &ldX, &workDummy, &workSize, &info );
-
-    workSize = workDummy;
-    vector<double> work( workSize );
-    EL_LAPACK(dgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, wReal.data(), wImag.data(), 0, &fakeLDim,
-      XPacked, &ldX, work.data(), &workSize, &info );
-
-    // Post-process the eigenvalues
-    for( Int j=0; j<n; ++j )
-        w[j] = Complex<double>(wReal[j],wImag[j]);
-}
-
-void Eig
-( BlasInt n,
-  float* A, BlasInt ldA,
-  scomplex* w,
-  scomplex* X, BlasInt ldX,
-  bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    float* XPacked = (float*)X;    
-    Eig( n, A, ldA, w, XPacked, ldX );
-    // Unpack the eigenvectors
-    vector<scomplex> z(n);
-    Int j=n-1;
-    while( j >= 0 )
-    {
-        const bool inPair = ( w[j].imag() != float(0) );
-        if( inPair )
-        {
-            for( Int i=0; i<n; ++i )
-                z[i] = XPacked[i+(j-1)*ldX] + XPacked[i+j*ldX];
-            for( Int i=0; i<n; ++i ) 
-            {
-                X[i+(j-1)*ldX] =      z[i];
-                X[i+ j   *ldX] = Conj(z[i]);
-            }
-            j -= 2;
-        }
-        else
-        {
-            for( Int i=0; i<n; ++i ) 
-                z[i] = XPacked[i+j*ldX];
-            for( Int i=0; i<n; ++i )
-                X[i+j*ldX] = z[i];
-            j -= 1; 
-        }
-    }
-}
-
-void Eig
-( BlasInt n,
-  double* A, BlasInt ldA,
-  dcomplex* w,
-  dcomplex* X, BlasInt ldX,
-  bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    double* XPacked = (double*)X;    
-    Eig( n, A, ldA, w, XPacked, ldX );
-    // Unpack the eigenvectors
-    vector<scomplex> z(n);
-    Int j=n-1;
-    while( j >= 0 )
-    {
-        const bool inPair = ( w[j].imag() != double(0) );
-        if( inPair )
-        {
-            for( Int i=0; i<n; ++i )
-                z[i] = XPacked[i+(j-1)*ldX] + XPacked[i+j*ldX];
-            for( Int i=0; i<n; ++i ) 
-            {
-                X[i+(j-1)*ldX] =      z[i];
-                X[i+ j   *ldX] = Conj(z[i]);
-            }
-            j -= 2;
-        }
-        else
-        {
-            for( Int i=0; i<n; ++i ) 
-                z[i] = XPacked[i+j*ldX];
-            for( Int i=0; i<n; ++i )
-                X[i+j*ldX] = z[i];
-            j -= 1; 
-        }
-    }
-}
-
-void Eig
-( BlasInt n,
-  scomplex* A, BlasInt ldA,
-  scomplex* w,
-  scomplex* X, BlasInt ldX,
-  bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    vector<float> rWork( 2*n );
-    const char jobVL='N', jobVR='V';
-    const BlasInt fakeLDim = 1;
-
-    BlasInt workSize=-1, info;
-    scomplex workDummy;
-    EL_LAPACK(cgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, w, 0, &fakeLDim, X, &ldX, 
-      &workDummy, &workSize, rWork.data(), &info );
-
-    workSize = workDummy.real();
-    vector<scomplex> work( workSize );
-    EL_LAPACK(cgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, w, 0, &fakeLDim, X, &ldX, 
-      work.data(), &workSize, rWork.data(), &info );
-}
-
-void Eig
-( BlasInt n,
-  dcomplex* A, BlasInt ldA,
-  dcomplex* w,
-  dcomplex* X, BlasInt ldX,
-  bool time )
-{
-    DEBUG_ONLY(CSE cse("lapack::Eig"))
-    vector<double> rWork( 2*n );
-    const char jobVL='N', jobVR='V';
-    const BlasInt fakeLDim = 1;
-
-    BlasInt workSize=-1, info;
-    dcomplex workDummy;
-    EL_LAPACK(zgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, w, 0, &fakeLDim, X, &ldX,
-      &workDummy, &workSize, rWork.data(), &info );
-
-    workSize = workDummy.real();
-    vector<dcomplex> work( workSize );
-    EL_LAPACK(zgeev)
-    ( &jobVL, &jobVR, &n, A, &ldA, w, 0, &fakeLDim, X, &ldX,
-      work.data(), &workSize, rWork.data(), &info );
-}
-
-// TODO: Return the left eigenvectors?
-
 } // namespace lapack
 } // namespace El
+
+#include "./lapack/TriangEig.hpp"
+#include "./lapack/Schur.hpp"

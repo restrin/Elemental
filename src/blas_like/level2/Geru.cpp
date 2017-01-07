@@ -18,8 +18,8 @@ void Geru
   const Matrix<T>& y,
         Matrix<T>& A )
 {
-    DEBUG_ONLY(
-      CSE cse("Geru");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( ( x.Height() != 1 && x.Width() != 1 ) ||
           ( y.Height() != 1 && y.Width() != 1 ) )
           LogicError("x and y must be vectors");
@@ -40,12 +40,12 @@ void Geru
 template<typename T>
 void Geru
 ( T alpha,
-  const ElementalMatrix<T>& x, 
-  const ElementalMatrix<T>& y,
-        ElementalMatrix<T>& APre )
+  const AbstractDistMatrix<T>& x, 
+  const AbstractDistMatrix<T>& y,
+        AbstractDistMatrix<T>& APre )
 {
-    DEBUG_ONLY(
-      CSE cse("Geru");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( APre, x, y );
       if( ( x.Width() != 1 && x.Height() != 1 ) ||
           ( y.Width() != 1 && y.Height() != 1 )   )
@@ -133,9 +133,9 @@ void Geru
           Matrix<T>& A ); \
   template void Geru \
   ( T alpha, \
-    const ElementalMatrix<T>& x, \
-    const ElementalMatrix<T>& y, \
-          ElementalMatrix<T>& A );
+    const AbstractDistMatrix<T>& x, \
+    const AbstractDistMatrix<T>& y, \
+          AbstractDistMatrix<T>& A );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

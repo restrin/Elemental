@@ -23,8 +23,8 @@ void LocalAccumulateRLT
   const DistMatrix<T,MR,STAR>& XTrans,
         DistMatrix<T,MC,STAR>& ZTrans )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LocalAccumulateRLT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( L, XTrans, ZTrans );
       if( L.Height() != L.Width() ||
           L.Height() != XTrans.Height() ||
@@ -71,11 +71,11 @@ template<typename T>
 void RLTA
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& LPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& LPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::RLTA");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( LPre, XPre );
       // TODO: More error checks
     )
@@ -120,11 +120,11 @@ template<typename T>
 void RLTC
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& LPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& LPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::RLTC");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( LPre, XPre );
       if( orientation == NORMAL )
           LogicError("Expected Adjoint/Transpose option");
@@ -181,10 +181,10 @@ template<typename T>
 void RLT
 ( Orientation orientation,
   UnitOrNonUnit diag,
-  const ElementalMatrix<T>& L,
-        ElementalMatrix<T>& X )
+  const AbstractDistMatrix<T>& L,
+        AbstractDistMatrix<T>& X )
 {
-    DEBUG_ONLY(CSE cse("trmm::RLT"))
+    EL_DEBUG_CSE
     // TODO: Come up with a better routing mechanism
     if( L.Height() > 5*X.Height() )
         RLTA( orientation, diag, L, X );

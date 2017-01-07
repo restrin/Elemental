@@ -12,11 +12,18 @@
 #  which can be found in the LICENSE file in the root directory, or at
 #  http://opensource.org/licenses/BSD-2-Clause
 #
-cmake_minimum_required(VERSION 2.8.12)
+if(APPLE)
+  # RPATH support for OS X was introduced in this version
+  cmake_minimum_required(VERSION 2.8.12)
+else()
+  # It is likely/possible that this version could be decreased, but this version
+  # was chosen to support the default version of CMake in CentOS 7
+  cmake_minimum_required(VERSION 2.8.11)
+endif()
 
 project(Elemental C CXX)
 set(EL_VERSION_MAJOR 0)
-set(EL_VERSION_MINOR 86-dev)
+set(EL_VERSION_MINOR 88-dev)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -42,9 +49,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 # "OpenMP_CXX_FLAGS"
 #   Overrides the default compile flags for adding OpenMP support to CXX code
 
-# TODO: Add list of MPI variables here, such as "MPI_CXX_COMPILE_FLAGS"
+# TODO(poulson): Add list of MPI variables here, such as
+# "MPI_CXX_COMPILE_FLAGS"
 
-# TODO: Add discussion of "MATH_LIBS" and "REFERENCE_ROOT"
+# TODO(poulson): Add discussion of "MATH_LIBS" and "REFERENCE_ROOT"
 
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
 if(SUPPORTS_SHARED)
@@ -57,6 +65,35 @@ if(BUILD_SHARED_LIBS AND NOT SUPPORTS_SHARED)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries?")
 endif()
 
+# Useful to turn off for shipping in OS packages
+option(BINARY_SUBDIRECTORIES "Install binaries into tree based on type" ON)
+
+include(GNUInstallDirs)
+if(NOT CMAKE_INSTALL_INCLUDEDIR)
+  set(CMAKE_INSTALL_INCLUDEDIR "include")
+endif()
+if(CMAKE_INSTALL_LIBDIR)
+  if(IS_ABSOLUTE CMAKE_INSTALL_LIBDIR)
+    message(FATAL_ERROR "CMAKE_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR} was an absolute path but Elemental requires it to be relative to CMAKE_INSTALL_PREFIX")
+  endif()
+else()
+  set(CMAKE_INSTALL_LIBDIR "lib")
+endif()
+if(NOT CMAKE_INSTALL_BINDIR)
+  set(CMAKE_INSTALL_BINDIR "bin/elemental")
+endif()
+if(NOT CMAKE_INSTALL_DATADIR)
+  set(CMAKE_INSTALL_DATADIR "share")
+endif()
+if(NOT CMAKE_INSTALL_DOCDIR)
+  set(CMAKE_INSTALL_DOCDIR "share/doc/elemental")
+endif()
+if(NOT CMAKE_INSTALL_SYSCONFDIR)
+  set(CMAKE_INSTALL_SYSCONFDIR "etc")
+endif()
+if(NOT INSTALL_CMAKE_DIR)
+  set( INSTALL_CMAKE_DIR "CMake")
+endif()
 # Whether or not to attempt to use OpenMP within hot-spots in Elemental
 # (NOTE: This option is not actively maintained)
 option(EL_HYBRID "Make use of OpenMP within MPI packing/unpacking" OFF)
@@ -66,7 +103,7 @@ option(EL_C_INTERFACE "Build C interface" ON)
 if(BUILD_SHARED_LIBS AND EL_C_INTERFACE)
   # Define PYTHON_SITE_PACKAGES if you want to install the python package
   # somewhere other than the default system-wide location (e.g., within your
-  # home directory). Alternatively, if you do NOT define PYTHON_SITE_PACKAGES 
+  # home directory). Alternatively, if you do NOT define PYTHON_SITE_PACKAGES
   # and instead define INSTALL_PYTHON_INTO_USER_SITE=ON, Elemental will
   # install its Python interface into site.USER_SITE in your home directory.
   option(INSTALL_PYTHON_PACKAGE "Install Python interface? (requires Python 2.x)" OFF)
@@ -101,7 +138,7 @@ option(EL_DISABLE_MKL_CSRMV "Avoid MKL's CSR mat-vec?" ON)
 
 option(EL_DISABLE_BLIS_LAPACK "Avoid BLIS+LAPACK" OFF)
 option(EL_PREFER_BLIS_LAPACK "Prefer BLIS+LAPACK over alternatives?" OFF)
-option(EL_FORCE_BLIS_LAPACK_BUILD 
+option(EL_FORCE_BLIS_LAPACK_BUILD
   "Avoid search for BLIS and instead buiild?" OFF)
 
 option(EL_DISABLE_OPENBLAS "Avoid OpenBLAS" OFF)
@@ -109,13 +146,12 @@ option(EL_PREFER_OPENBLAS "Prefer OpenBLAS over alternatives?" OFF)
 option(EL_FORCE_OPENBLAS_BUILD
   "Avoid search for OpenBLAS and instead build?" OFF)
 
-# Ugh. Elemental currently supports ScaLAPACK building its own custom
-# BLAS and LAPACK if Elemental is using a custom symbol suffix for its own.
-if(EL_USE_64BIT_BLAS_INTS AND
+option(EL_DISABLE_SCALAPACK "Avoid ScaLAPACK" ON)
+if(NOT EL_DISABLE_SCALAPACK AND EL_USE_64BIT_BLAS_INTS AND
    (NOT CUSTOM_BLAS_SUFFIX OR NOT CUSTOM_LAPACK_SUFFIX))
-  option(EL_DISABLE_SCALAPACK "Avoid ScaLAPACK" ON)
-else()
-  option(EL_DISABLE_SCALAPACK "Avoid ScaLAPACK" OFF)
+  # Ugh. Elemental currently supports ScaLAPACK building its own custom
+  # BLAS and LAPACK if Elemental is using a custom symbol suffix for its own.
+  message(FATAL_ERROR "ScaLAPACK is not supported for 64-bit builds with manually specified BLAS/LAPACK libraries")
 endif()
 option(EL_FORCE_SCALAPACK_BUILD
   "Avoid search for ScaLAPACK and instead build?" OFF)
@@ -134,10 +170,10 @@ option(EL_FORCE_PARMETIS_BUILD "Force build of ParMETIS?" OFF)
 # in using Elemental in commercial applications should disable ParMETIS
 option(EL_DISABLE_PARMETIS "Disable ParMETIS?" OFF)
 
-# If ParMETIS is disabled, a search is performed for METIS via find_package, 
-# and, if this search fails, METIS is cloned from the git repo 
+# If ParMETIS is disabled, a search is performed for METIS via find_package,
+# and, if this search fails, METIS is cloned from the git repo
 #     https://github.com/poulson/Metis.git.
-# If EL_FORCE_METIS_BUILD is turned on, then no initial call to find_package is 
+# If EL_FORCE_METIS_BUILD is turned on, then no initial call to find_package is
 # performed.
 #
 # Should you want to manually specify a METIS installation, you can set the
@@ -210,10 +246,10 @@ mark_as_advanced(EL_VECTOR_WARNINGS)
 
 # Add the header file include directories first (so they have priority)
 # ---------------------------------------------------------------------
-message(STATUS 
+message(STATUS
   "Appending ${PROJECT_SOURCE_DIR}/include for Elemental's source includes")
 include_directories("${PROJECT_SOURCE_DIR}/include")
-message(STATUS 
+message(STATUS
   "Appending ${PROJECT_BINARY_DIR}/include for Elemental's binary includes")
 include_directories("${PROJECT_BINARY_DIR}/include")
 
@@ -259,33 +295,73 @@ endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} UPPER_BUILD_TYPE)
 
 # Set the basic compile flags from the build type
+#
+# The -fcx-fortran-rules GCC option was added due to it leading to a factor of
+# 10 performance difference in the complex Hessenberg QR sweeps. It seems that
+# this option is enabled by default for Clang and Intel compilers (but this
+# assumption is worth checking).
+#
 if(NOT WIN32)
   set(LANGUAGES CXX C Fortran)
   foreach(LANG ${LANGUAGES})
     if(NOT ${LANG}_FLAGS)
       if(EL_RELEASE)
-        set(${LANG}_FLAGS "-O3" CACHE STRING
+        set(LANG_FLAGS_STRING
           "${LANG} optimization flags for ${UPPER_BUILD_TYPE} mode")
-      else()
         if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-          set(${LANG}_FLAGS "-O2 -g -Wall -Wunused-variable -Wunused-but-set-variable -Wunused-local-typedefs" CACHE STRING "${LANG} optimization/debug flags for ${UPPER_BUILD_TYPE} mode")
+          set(${LANG}_FLAGS "-O3 -fcx-fortran-rules"
+            CACHE STRING ${LANG_FLAGS_STRING})
+        elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+          set(${LANG}_FLAGS "-O3 -Wno-tautological-compare"
+            CACHE STRING ${LANG_FLAGS_STRING})
         else()
-          set(${LANG}_FLAGS "-O2 -g" CACHE STRING
-            "${LANG} optimization/debug flags for ${UPPER_BUILD_TYPE} mode")
+          set(${LANG}_FLAGS "-O3" CACHE STRING ${LANG_FLAGS_STRING})
+        endif()
+      else()
+        set(LANG_FLAGS_STRING
+          "${LANG} optimization/debug flags for ${UPPER_BUILD_TYPE} mode")
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+          set(${LANG}_FLAGS "-O2 -g -fcx-fortran-rules -Wall -Wunused-variable -Wunused-but-set-variable -Wunused-local-typedefs"
+            CACHE STRING ${LANG_FLAGS_STRING})
+        elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+          set(${LANG}_FLAGS "-O2 -g -Wno-tautological-compare"
+            CACHE STRING ${LANG_FLAGS_STRING})
+        else()
+          set(${LANG}_FLAGS "-O2 -g" CACHE STRING ${LANG_FLAGS_STRING})
         endif()
       endif()
     endif()
   endforeach()
 endif()
 
-# Disable the requirement for safe exception handling in MSVC builds (otherwise there are conflicts with OpenBLAS)
+# Disable the requirement for safe exception handling in MSVC builds
+# (otherwise there are conflicts with OpenBLAS)
 if(MSVC)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SAFESEH:NO")
   set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /SAFESEH:NO")
-  set(CMAKE_EXE_LINKER_FLAGS_${UPPER_BUILD_TYPE} "${CMAKE_EXE_LINKER_FLAGS_${UPPER_BUILD_TYPE}} /SAFESEH:NO")
-  set(CMAKE_SHARED_LINKER_FLAGS_${UPPER_BUILD_TYPE} "${CMAKE_SHARED_LINKER_FLAGS_${UPPER_BUILD_TYPE}} /SAFESEH:NO")
-  set(CMAKE_MODULE_LINKER_FLAGS_${UPPER_BUILD_TYPE} "${CMAKE_MODULE_LINKER_FLAGS_${UPPER_BUILD_TYPE}} /SAFESEH:NO")
+  set(CMAKE_EXE_LINKER_FLAGS_${UPPER_BUILD_TYPE}
+    "${CMAKE_EXE_LINKER_FLAGS_${UPPER_BUILD_TYPE}} /SAFESEH:NO")
+  set(CMAKE_SHARED_LINKER_FLAGS_${UPPER_BUILD_TYPE}
+    "${CMAKE_SHARED_LINKER_FLAGS_${UPPER_BUILD_TYPE}} /SAFESEH:NO")
+  set(CMAKE_MODULE_LINKER_FLAGS_${UPPER_BUILD_TYPE}
+    "${CMAKE_MODULE_LINKER_FLAGS_${UPPER_BUILD_TYPE}} /SAFESEH:NO")
+endif()
+
+if(APPLE AND EL_RELEASE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
+  NOT EL_IGNORE_OSX_GCC_ALIGNMENT_PROBLEM)
+  # There seems to only be a problem for the 5.x and 6.x series, as 4.9 seems
+  # to be fine, even with -O3 optimization.
+  #
+  # Please see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=35271 for what
+  # appears to be a related (although, now quite dated) issue.
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
+    # This version of GCC might be fine; there are issues with GCC exception
+    # handling (at the very least, effecting Homebrew GCC 4.9 on Sierra).
+    message(WARNING "Please ensure that your version of GCC is functioning on this platform. Homebrew GCC 4.9 is known to cause segfaults when C++ exceptions are thrown on OS X Sierra.")
+  else()
+    message(FATAL_ERROR "Due to what appears to be a bug in GCC 5.x and 6.x (you appear to be using GCC ${CMAKE_CXX_COMPILER_VERSION}) enforcement of 16-byte stack alignments when using -O3 on OS X, Release builds with GCC on OS X are currently disabled by default. Please see the comments towards the bottom of https://github.com/elemental/Elemental/issues/181 for more details. If you know what you're doing, feel free to rebuild with -D EL_IGNORE_OSX_GCC_ALIGNMENT_PROBLEM=ON")
+  endif()
 endif()
 
 # Handle RPATHs for Mac
@@ -300,15 +376,15 @@ if(APPLE)
   # (but later on when installing)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 
-  # Add automatically determined parts of RPATH which point to directories 
+  # Add automatically determined parts of RPATH which point to directories
   # outside the build tree to the install RPATH
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
   # RPATH to be used when installing, but only if it's not a system directory
-  list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES 
+  list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
     "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
   if("${isSystemDir}" STREQUAL "-1")
-    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
   endif()
 endif()
 
@@ -319,7 +395,7 @@ include(detect/Fortran)
 # Detect C++11
 # ------------
 include(detect/CXX)
-set(CXX_FLAGS "${CXX_FLAGS} ${CXX11_COMPILER_FLAGS}")
+set(CXX_FLAGS "${CXX_FLAGS} ${CXX14_COMPILER_FLAGS}")
 
 # Detect MPI
 # ----------
@@ -361,8 +437,8 @@ include(external_projects/ElMath)
 # ----------------------------------------------------------
 set(CMAKE_CXX_FLAGS_${UPPER_BUILD_TYPE} ${CXX_FLAGS})
 set(EL_LINK_FLAGS)
-if(MPI_LINK_FLAGS)
-  set(EL_LINK_FLAGS ${MPI_LINK_FLAGS})
+if(MPI_CXX_LINK_FLAGS)
+  set(EL_LINK_FLAGS ${MPI_CXX_LINK_FLAGS})
 endif()
 if(EL_BUILT_BLIS_LAPACK)
   if(EL_LINK_FLAGS)
@@ -424,15 +500,17 @@ endif()
 configure_file("${PROJECT_SOURCE_DIR}/cmake/configure_files/config.h.in"
                "${PROJECT_BINARY_DIR}/include/El/config.h")
 install(FILES "${PROJECT_BINARY_DIR}/include/El/config.h"
-        DESTINATION include/El)
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/El)
 add_custom_target(El_config DEPENDS "${PROJECT_BINARY_DIR}/include/El/config.h")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/"
-  DESTINATION include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 # Define the main library for Elemental
 # -------------------------------------
 add_library(El ${EL_C_CPP_FILES})
+set_target_properties(El PROPERTIES VERSION ${EL_VERSION_MINOR}
+  SOVERSION ${EL_VERSION_MAJOR})
 add_dependencies(El El_config)
 if(EL_BUILT_SCALAPACK)
   add_dependencies(El project_scalapack)
@@ -459,7 +537,7 @@ target_link_libraries(El ${LINK_LIBS})
 if(EL_LINK_FLAGS)
   set_target_properties(El PROPERTIES LINK_FLAGS ${EL_LINK_FLAGS})
 endif()
-install(TARGETS El EXPORT ElTargets DESTINATION lib)
+install(TARGETS El EXPORT ElementalTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # Decide if/how to install the Python interface
 # ---------------------------------------------
@@ -472,14 +550,14 @@ if(BUILD_SHARED_LIBS)
       if(INSTALL_PYTHON_INTO_USER_SITE)
         execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
           "import site; print site.USER_SITE"
-          OUTPUT_VARIABLE PYTHON_SITE_PACKAGES 
+          OUTPUT_VARIABLE PYTHON_SITE_PACKAGES
           OUTPUT_STRIP_TRAILING_WHITESPACE)
       else()
         execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
           "from distutils.sysconfig import get_python_lib; print get_python_lib()"
-          OUTPUT_VARIABLE PYTHON_SITE_PACKAGES 
+          OUTPUT_VARIABLE PYTHON_SITE_PACKAGES
           OUTPUT_STRIP_TRAILING_WHITESPACE)
-      endif()  
+      endif()
       set(PYTHON_SITE_PACKAGES "${PYTHON_SITE_PACKAGES}"
         CACHE PATH "Destination for Python site package directory")
     endif()
@@ -496,9 +574,12 @@ if(BUILD_SHARED_LIBS)
       DESTINATION python/El/core)
   endif()
 endif()
-
+if(BINARY_SUBDIRECTORIES)
+   set(EXPERIMENTAL_INSTALL_DIR experimental/g3d)
+endif()
 # Experimental
 # ============
+# NOTE: This is insanely outdated
 if(EL_EXPERIMENTAL)
   set(EXPERIMENTAL_DIR "${PROJECT_SOURCE_DIR}/experimental")
   # Build the G3D example(s)
@@ -511,14 +592,33 @@ if(EL_EXPERIMENTAL)
       OBJECT_DEPENDS "${PREPARED_HEADERS}")
     target_link_libraries(experimental-g3d-${EXPER} El)
     set_target_properties(experimental-g3d-${EXPER} PROPERTIES
-      OUTPUT_NAME ${EXPER} RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
+      OUTPUT_NAME ${EXPER}
+      SUFFIX "${CMAKE_EXECUTABLE_SUFFIX_CXX}"
+      RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
     if(EL_LINK_FLAGS)
       set_target_properties(experimental-g3d-${EXPER} PROPERTIES
         LINK_FLAGS ${EL_LINK_FLAGS})
     endif()
-    install(TARGETS experimental-g3d-${EXPER} DESTINATION bin/experimental/g3d)
+    install(TARGETS experimental-g3d-${EXPER} DESTINATION ${CMAKE_INSTALL_BINDIR}/${EXPERIMENTAL_INSTALL_DIR})
   endforeach()
 endif()
+
+# Install data
+# ============
+# TODO(poulson): Also install into the build directory? How to have drivers
+# automatically find the right path?
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/"
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/elemental/ FILES_MATCHING PATTERN "*.*")
+
+# Install license and author information
+# ======================================
+install(FILES
+  "${PROJECT_SOURCE_DIR}/AUTHORS"
+  "${PROJECT_SOURCE_DIR}/LICENSE"
+  "${PROJECT_SOURCE_DIR}/PUBLICATIONS.bib"
+  "${PROJECT_SOURCE_DIR}/README.md"
+  "${PROJECT_SOURCE_DIR}/REFERENCES.bib"
+  DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
 # Tests and examples
 # ==================
@@ -526,19 +626,21 @@ include(CTest)
 
 # Sandbox test
 # ------------
-install(FILES "${PROJECT_SOURCE_DIR}/sandbox/Makefile" DESTINATION sandbox)
-install(FILES "${PROJECT_SOURCE_DIR}/sandbox/test.cpp" DESTINATION sandbox)
+install(FILES "${PROJECT_SOURCE_DIR}/sandbox/Makefile"
+  DESTINATION ${CMAKE_INSTALL_DOCDIR}/sandbox)
+install(FILES "${PROJECT_SOURCE_DIR}/sandbox/test.cpp"
+  DESTINATION ${CMAKE_INSTALL_DOCDIR}/sandbox)
 add_executable(sandbox-test "${PROJECT_SOURCE_DIR}/sandbox/test.cpp")
 set_source_files_properties("${PROJECT_SOURCE_DIR}/sandbox/test.cpp"
   PROPERTIES OBJECT_DEPENDS "${PREPARED_HEADERS}")
 target_link_libraries(sandbox-test El)
-set_target_properties(sandbox-test PROPERTIES OUTPUT_NAME sandbox-test 
+set_target_properties(sandbox-test PROPERTIES
+  OUTPUT_NAME sandbox-test
+  SUFFIX "${CMAKE_EXECUTABLE_SUFFIX_CXX}"
   RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 if(EL_LINK_FLAGS)
   set_target_properties(sandbox-test PROPERTIES LINK_FLAGS ${EL_LINK_FLAGS})
 endif()
-add_test(NAME sandbox/test WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/bin"
-  COMMAND sandbox-test)
 
 # Test drivers
 # ------------
@@ -557,16 +659,26 @@ if(EL_TESTS)
       set_source_files_properties("${DRIVER}" PROPERTIES
         OBJECT_DEPENDS "${PREPARED_HEADERS}")
       target_link_libraries(tests-${TYPE}-${TESTNAME} El)
+      if(BINARY_SUBDIRECTORIES)
+        set(TEST_INSTALL_DIR test/${TYPE})
+        set(TEST_OUTPUT_NAME ${TESTNAME})
+      else()
+        set(TEST_OUTPUT_NAME tests-${TYPE}-${TESTNAME})
+      endif()
       set_target_properties(tests-${TYPE}-${TESTNAME} PROPERTIES
-        OUTPUT_NAME ${TESTNAME} RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
+        OUTPUT_NAME ${TEST_OUTPUT_NAME}
+        SUFFIX "${CMAKE_EXECUTABLE_SUFFIX_CXX}"
+        RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
       if(EL_LINK_FLAGS)
         set_target_properties(tests-${TYPE}-${TESTNAME} PROPERTIES
           LINK_FLAGS ${EL_LINK_FLAGS})
       endif()
-      install(TARGETS tests-${TYPE}-${TESTNAME} DESTINATION bin/tests/${TYPE})
+      install(TARGETS tests-${TYPE}-${TESTNAME}
+        DESTINATION ${CMAKE_INSTALL_BINDIR}/${TEST_INSTALL_DIR})
       if(NOT TESTNAME STREQUAL "SparseLDLRange") #Skip tests that can time out
-        add_test(NAME Tests/${TYPE}/${TESTNAME} 
-          WORKING_DIRECTORY "${TEST_DIR}" COMMAND tests-${TYPE}-${TESTNAME})
+        add_test(NAME Tests/${TYPE}/${TESTNAME}
+          WORKING_DIRECTORY "${OUTPUT_DIR}"
+          COMMAND tests-${TYPE}-${TESTNAME} -platform offscreen)
       endif()
     endforeach()
   endforeach()
@@ -598,16 +710,25 @@ if(EL_EXAMPLES)
       set_source_files_properties("${DRIVER}" PROPERTIES
         OBJECT_DEPENDS "${PREPARED_HEADERS}")
       target_link_libraries(examples-${TYPE}-${EXNAME} El)
+      if(BINARY_SUBDIRECTORIES)
+        set(EXAMPLE_INSTALL_DIR examples/${TYPE})
+        set(EXAMPLE_OUTPUT_NAME ${EXNAME})
+      else()
+        set(EXAMPLE_OUTPUT_NAME examples-${TYPE}-${EXNAME})
+      endif()
       set_target_properties(examples-${TYPE}-${EXNAME} PROPERTIES
-        OUTPUT_NAME ${EXNAME} RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
+        OUTPUT_NAME ${EXAMPLE_OUTPUT_NAME}
+        SUFFIX "${CMAKE_EXECUTABLE_SUFFIX_CXX}"
+        RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
       if(EL_LINK_FLAGS)
         set_target_properties(examples-${TYPE}-${EXNAME} PROPERTIES
           LINK_FLAGS ${EL_LINK_FLAGS})
       endif()
       install(TARGETS examples-${TYPE}-${EXNAME}
-        DESTINATION bin/examples/${TYPE})
-      add_test(NAME Examples/${TYPE}/${EXNAME} WORKING_DIRECTORY "${OUTPUT_DIR}"
-        COMMAND examples-${TYPE}-${EXNAME})
+        DESTINATION ${CMAKE_INSTALL_BINDIR}/${EXAMPLE_INSTALL_DIR})
+      add_test(NAME Examples/${TYPE}/${EXNAME}
+        WORKING_DIRECTORY "${OUTPUT_DIR}"
+        COMMAND examples-${TYPE}-${EXNAME} -platform offscreen)
     endforeach()
   endforeach()
 endif()
@@ -616,7 +737,7 @@ endif()
 # =====
 # While PackageMaker is deprecated, productbuild is not yet supported by CPack.
 # Furthermore, it is possible to download the "Late July 2012" version of
-# PackageMaker (which curiously has a release date of August 7, 2012) from 
+# PackageMaker (which curiously has a release date of August 7, 2012) from
 # Apple, but it appears to be incompatible with Yosemite.
 #
 # Lastly, the current CPack configuration does not yet allow the Python
@@ -626,45 +747,46 @@ set(CPACK_PACKAGE_NAME "Elemental")
 set(CPACK_PACKAGE_VENDOR "libelemental.org")
 set(CPACK_PACKAGE_VERSION_MAJOR ${EL_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${EL_VERSION_MINOR})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY 
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
   "Distributed-memory linear algebra and optimization")
 set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/cmake/El.png")
 include(CPack)
 
 # ProjectConfig
 # =====
-# Create ElConfig.cmake for find_package.
+# Create ElementalConfig.cmake for find_package.
 # Add all targets to the build-tree export set
 export(TARGETS El pmrrr ElSuiteSparse
-  FILE "${PROJECT_BINARY_DIR}/ElTargets.cmake")
+  FILE "${PROJECT_BINARY_DIR}/ElementalTargets.cmake")
 
-# Export the package for use from the build-tree
-# (this registers the build-tree with a global CMake-registry)
-export(PACKAGE El)
+if(NOT CMAKE_EXPORT_NO_PACKAGE_REGISTRY)
+  # Export the package for use from the build-tree
+  # (this registers the build-tree with a global CMake-registry).
+  #
+  # While the NOT CMAKE_EXPORT_NO_PACKAGE_REGISTRY guard would seem to be
+  # redundant, the option was only added circa CMake 3.4.3, and so, rather than
+  # requiring such a new version of CMake entirely for a binary decision, we
+  # can instead manually circumvent the export.
+  export(PACKAGE Elemental)
+endif()
 
-# Create the ElConfig.cmake and ElConfigVersion files
+# Create the ElementalConfig.cmake and ElementalConfigVersion files
 file(RELATIVE_PATH REL_INCLUDE_DIR "${PROJECT_BINARY_DIR}"
-    "${PROJECT_BINARY_DIR}include")
+  "${PROJECT_BINARY_DIR}/include")
 # ... for the build tree
-configure_file("${PROJECT_SOURCE_DIR}/cmake/configure_files/ElConfig.cmake.in"
-    "${PROJECT_BINARY_DIR}/ElConfig.cmake" @ONLY)
+configure_file(
+  "${PROJECT_SOURCE_DIR}/cmake/configure_files/ElementalConfig.cmake.in"
+  "${PROJECT_BINARY_DIR}/ElementalConfig.cmake" @ONLY)
 # ... for both
 configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/configure_files/ElConfigVersion.cmake.in"
-    "${PROJECT_BINARY_DIR}/ElConfigVersion.cmake" @ONLY)
+  "${PROJECT_SOURCE_DIR}/cmake/configure_files/ElementalConfigVersion.cmake.in"
+  "${PROJECT_BINARY_DIR}/ElementalConfigVersion.cmake" @ONLY)
 
-# Install the ElConfig.cmake and ElConfigVersion.cmake
-set(INSTALL_CMAKE_DIR CMake)
+# Install the ElementalConfig.cmake and ElementalConfigVersion.cmake
 install(FILES
-    "${PROJECT_BINARY_DIR}/ElConfig.cmake"
-    "${PROJECT_BINARY_DIR}/ElConfigVersion.cmake"
-    DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+  "${PROJECT_BINARY_DIR}/ElementalConfig.cmake"
+  "${PROJECT_BINARY_DIR}/ElementalConfigVersion.cmake"
+  DESTINATION "${INSTALL_CMAKE_DIR}/elemental" COMPONENT dev)
 
-install(EXPORT ElTargets DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
-
-# Subproject
-# ==========
-# If Elemental is a subproject, then pass some variables to the parent
-if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  include(ElSub)
-endif()
+install(EXPORT ElementalTargets
+  DESTINATION "${INSTALL_CMAKE_DIR}/elemental" COMPONENT dev)

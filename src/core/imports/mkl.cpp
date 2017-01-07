@@ -105,6 +105,7 @@ void MKL_Zimatcopy
 ( char ordering, char trans, size_t rows, size_t cols, 
   MKL_Complex16 alpha, MKL_Complex16* A, size_t ALDim, size_t BLDim );
 
+#ifdef EL_HAVE_MKL_GEMMT
 // This routine corresponds to Elemental's Trrk (Triangular rank-k);
 // Intel chose this name because it updates a single triangle using a GEMM
 void EL_BLAS(sgemmt)
@@ -151,6 +152,7 @@ void EL_BLAS(zgemmt)
   const dcomplex* B, const BlasInt* BLDim,
   const dcomplex* beta,
         dcomplex* C, const BlasInt* CLDim );
+#endif
 
 } // extern "C"
 
@@ -172,7 +174,7 @@ void csrmv
   const BlasInt* pntrb, const BlasInt* pntre,
   const float* x, float beta, float* y )
 {
-    DEBUG_ONLY(CSE cse("mkl::csrmv"))
+    EL_DEBUG_CSE
     char transA = OrientationToChar( orientation );
     if( transA == 'C' )
         transA = 'T';
@@ -188,7 +190,7 @@ void csrmv
   const BlasInt* pntrb, const BlasInt* pntre,
   const double* x, double beta, double* y )
 {
-    DEBUG_ONLY(CSE cse("mkl::csrmv"))
+    EL_DEBUG_CSE
     char transA = OrientationToChar( orientation );
     if( transA == 'C' )
         transA = 'T';
@@ -204,7 +206,7 @@ void csrmv
   const BlasInt* pntrb, const BlasInt* pntre,
   const Complex<float>* x, Complex<float> beta, Complex<float>* y )
 {
-    DEBUG_ONLY(CSE cse("mkl::csrmv"))
+    EL_DEBUG_CSE
     char transA = OrientationToChar( orientation );
     mkl_ccsrmv
     ( &transA, &m, &k, 
@@ -224,7 +226,7 @@ void csrmv
   const BlasInt* pntrb, const BlasInt* pntre,
   const Complex<double>* x, Complex<double> beta, Complex<double>* y )
 {
-    DEBUG_ONLY(CSE cse("mkl::csrmv"))
+    EL_DEBUG_CSE
     char transA = OrientationToChar( orientation );
     mkl_zcsrmv
     ( &transA, &m, &k,
@@ -393,6 +395,7 @@ void imatcopy
       reinterpret_cast<MKL_Complex16*>(A), ALDim, BLDim );
 }
 
+#ifdef EL_HAVE_MKL_GEMMT
 void Trrk
 ( char uplo, char transA, char transB,
   BlasInt n, BlasInt k,
@@ -404,6 +407,7 @@ void Trrk
 {
     EL_BLAS(sgemmt)
     ( &uplo, &transA, &transB,
+      &n, &k,
       &alpha, A, &ALDim, B, &BLDim,
       &beta,  C, &CLDim );
 }
@@ -418,6 +422,7 @@ void Trrk
 {
     EL_BLAS(dgemmt)
     ( &uplo, &transA, &transB,
+      &n, &k,
       &alpha, A, &ALDim, B, &BLDim,
       &beta,  C, &CLDim );
 }
@@ -432,6 +437,7 @@ void Trrk
 {
     EL_BLAS(cgemmt)
     ( &uplo, &transA, &transB,
+      &n, &k,
       &alpha, A, &ALDim, B, &BLDim,
       &beta,  C, &CLDim );
 }
@@ -446,9 +452,11 @@ void Trrk
 {
     EL_BLAS(zgemmt)
     ( &uplo, &transA, &transB,
+      &n, &k,
       &alpha, A, &ALDim, B, &BLDim,
       &beta,  C, &CLDim );
 }
+#endif
 
 } // namespace mkl
 } // namespace El

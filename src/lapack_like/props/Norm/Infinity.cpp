@@ -2,19 +2,19 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #include <El.hpp>
 
 namespace El {
 
-template<typename F> 
-Base<F> InfinityNorm( const Matrix<F>& A )
+template<typename Ring>
+Base<Ring> InfinityNorm( const Matrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("InfinityNorm"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
     const Int height = A.Height();
     const Int width = A.Width();
 
@@ -33,34 +33,33 @@ Base<F> InfinityNorm( const Matrix<F>& A )
     return maxRowSum;
 }
 
-template<typename F>
-Base<F> HermitianInfinityNorm( UpperOrLower uplo, const Matrix<F>& A )
+template<typename Ring>
+Base<Ring> HermitianInfinityNorm( UpperOrLower uplo, const Matrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("HermitianInfinityNorm"))
+    EL_DEBUG_CSE
     return HermitianOneNorm( uplo, A );
 }
 
-template<typename F>
-Base<F> SymmetricInfinityNorm( UpperOrLower uplo, const Matrix<F>& A )
+template<typename Ring>
+Base<Ring> SymmetricInfinityNorm( UpperOrLower uplo, const Matrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("SymmetricInfinityNorm"))
+    EL_DEBUG_CSE
     return HermitianInfinityNorm( uplo, A );
 }
 
-template<typename F> 
-Base<F> InfinityNorm( const AbstractDistMatrix<F>& A )
+template<typename Ring>
+Base<Ring> InfinityNorm( const AbstractDistMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("InfinityNorm"))
+    EL_DEBUG_CSE
     // Compute the partial row sums defined by our local matrix, A[U,V]
-    typedef Base<F> Real;
-
+    typedef Base<Ring> Real;
 
     Real norm;
     if( A.Participating() )
     {
         const Int localHeight = A.LocalHeight();
         const Int localWidth = A.LocalWidth();
-        const Matrix<F>& ALoc = A.LockedMatrix();
+        const Matrix<Ring>& ALoc = A.LockedMatrix();
 
         vector<Real> myPartialRowSums( localHeight );
         for( Int iLoc=0; iLoc<localHeight; ++iLoc )
@@ -92,33 +91,33 @@ Base<F> InfinityNorm( const AbstractDistMatrix<F>& A )
     return norm;
 }
 
-template<typename F>
-Base<F> HermitianInfinityNorm
-( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
+template<typename Ring>
+Base<Ring> HermitianInfinityNorm
+( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("HermitianInfinityNorm"))
+    EL_DEBUG_CSE
     return HermitianOneNorm( uplo, A );
 }
 
-template<typename F>
-Base<F> SymmetricInfinityNorm
-( UpperOrLower uplo, const AbstractDistMatrix<F>& A )
+template<typename Ring>
+Base<Ring> SymmetricInfinityNorm
+( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("SymmetricInfinityNorm"))
+    EL_DEBUG_CSE
     return HermitianInfinityNorm( uplo, A );
 }
 
-template<typename F> 
-Base<F> InfinityNorm( const SparseMatrix<F>& A )
+template<typename Ring>
+Base<Ring> InfinityNorm( const SparseMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("InfinityNorm"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
     const Int height = A.Height();
-    const F* valBuf = A.LockedValueBuffer();
+    const Ring* valBuf = A.LockedValueBuffer();
     const Int* offsetBuf = A.LockedOffsetBuffer();
 
     Real maxRowSum = 0;
-    for( Int i=0; i<height; ++i ) 
+    for( Int i=0; i<height; ++i )
     {
         const Int thisOff = offsetBuf[i];
         const Int nextOff = offsetBuf[i+1];
@@ -135,17 +134,17 @@ Base<F> InfinityNorm( const SparseMatrix<F>& A )
     return maxRowSum;
 }
 
-template<typename F> 
-Base<F> InfinityNorm( const DistSparseMatrix<F>& A )
+template<typename Ring>
+Base<Ring> InfinityNorm( const DistSparseMatrix<Ring>& A )
 {
-    DEBUG_ONLY(CSE cse("InfinityNorm"))
-    typedef Base<F> Real;
+    EL_DEBUG_CSE
+    typedef Base<Ring> Real;
     const Int localHeight = A.LocalHeight();
-    const F* valBuf = A.LockedValueBuffer();
+    const Ring* valBuf = A.LockedValueBuffer();
     const Int* offsetBuf = A.LockedOffsetBuffer();
 
     Real maxLocRowSum = 0;
-    for( Int iLoc=0; iLoc<localHeight; ++iLoc ) 
+    for( Int iLoc=0; iLoc<localHeight; ++iLoc )
     {
         const Int thisOff = offsetBuf[iLoc];
         const Int nextOff = offsetBuf[iLoc+1];
@@ -159,22 +158,32 @@ Base<F> InfinityNorm( const DistSparseMatrix<F>& A )
             maxLocRowSum = rowSum;
     }
 
-    return mpi::AllReduce( maxLocRowSum, mpi::MAX, A.Comm() );
+    return mpi::AllReduce( maxLocRowSum, mpi::MAX, A.Grid().Comm() );
 }
 
-#define PROTO(T) \
-  template Base<T> InfinityNorm( const Matrix<T>& A ); \
-  template Base<T> InfinityNorm ( const AbstractDistMatrix<T>& A ); \
-  template Base<T> HermitianInfinityNorm \
-  ( UpperOrLower uplo, const Matrix<T>& A ); \
-  template Base<T> HermitianInfinityNorm \
-  ( UpperOrLower uplo, const AbstractDistMatrix<T>& A ); \
-  template Base<T> SymmetricInfinityNorm \
-  ( UpperOrLower uplo, const Matrix<T>& A ); \
-  template Base<T> SymmetricInfinityNorm \
-  ( UpperOrLower uplo, const AbstractDistMatrix<T>& A ); \
-  template Base<T> InfinityNorm( const SparseMatrix<T>& A ); \
-  template Base<T> InfinityNorm( const DistSparseMatrix<T>& A );
+template<typename Ring>
+Base<Ring> HermitianTridiagInfinityNorm
+( const Matrix<Base<Ring>>& d, const Matrix<Ring>& e )
+{
+    EL_DEBUG_CSE
+    return HermitianTridiagOneNorm( d, e );
+}
+
+#define PROTO(Ring) \
+  template Base<Ring> InfinityNorm( const Matrix<Ring>& A ); \
+  template Base<Ring> InfinityNorm ( const AbstractDistMatrix<Ring>& A ); \
+  template Base<Ring> HermitianInfinityNorm \
+  ( UpperOrLower uplo, const Matrix<Ring>& A ); \
+  template Base<Ring> HermitianInfinityNorm \
+  ( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A ); \
+  template Base<Ring> SymmetricInfinityNorm \
+  ( UpperOrLower uplo, const Matrix<Ring>& A ); \
+  template Base<Ring> SymmetricInfinityNorm \
+  ( UpperOrLower uplo, const AbstractDistMatrix<Ring>& A ); \
+  template Base<Ring> InfinityNorm( const SparseMatrix<Ring>& A ); \
+  template Base<Ring> InfinityNorm( const DistSparseMatrix<Ring>& A ); \
+  template Base<Ring> HermitianTridiagInfinityNorm \
+  ( const Matrix<Base<Ring>>& d, const Matrix<Ring>& e );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

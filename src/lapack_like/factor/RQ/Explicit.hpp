@@ -2,8 +2,8 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #ifndef EL_RQ_EXPLICIT_HPP
@@ -15,7 +15,7 @@ namespace rq {
 template<typename F>
 void ExplicitTriang( Matrix<F>& A )
 {
-    DEBUG_ONLY(CSE cse("rq::ExplicitTriang"))
+    EL_DEBUG_CSE
     Matrix<F> t;
     Matrix<Base<F>> d;
     Householder( A, t, d );
@@ -23,12 +23,12 @@ void ExplicitTriang( Matrix<F>& A )
 }
 
 template<typename F>
-void ExplicitTriang( ElementalMatrix<F>& A )
+void ExplicitTriang( AbstractDistMatrix<F>& A )
 {
-    DEBUG_ONLY(CSE cse("rq::ExplicitTriang"))
-    DistMatrix<F,MD,STAR> t(A.Grid());
-    DistMatrix<Base<F>,MD,STAR> d(A.Grid());
-    Householder( A, t, d );
+    EL_DEBUG_CSE
+    DistMatrix<F,MD,STAR> householderScalars(A.Grid());
+    DistMatrix<Base<F>,MD,STAR> signature(A.Grid());
+    Householder( A, householderScalars, signature );
     MakeTrapezoidal( UPPER, A, A.Width()-A.Height() );
 }
 
@@ -39,4 +39,4 @@ void ExplicitTriang( ElementalMatrix<F>& A )
 } // namespace rq
 } // namespace El
 
-#endif // ifndef EL_RQ_CHOLESKY_HPP
+#endif // ifndef EL_RQ_EXPLICIT_HPP

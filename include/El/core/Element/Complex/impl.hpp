@@ -765,7 +765,7 @@ Complex<BigFloat>::Complex
 
 Complex<BigFloat>::Complex( const Complex<realType>& a, mpfr_prec_t prec )
 {
-    DEBUG_ONLY(CSE cse("Complex<BigFloat>::Complex"))
+    EL_DEBUG_CSE
     if( &a != this )
     {
         Init( prec );
@@ -775,7 +775,7 @@ Complex<BigFloat>::Complex( const Complex<realType>& a, mpfr_prec_t prec )
           a.LockedImagPointer(),
           mpc::RoundingMode() ); 
     }
-    DEBUG_ONLY(
+    EL_DEBUG_ONLY(
     else
         LogicError("Tried to construct Complex<BigFloat> with itself");
     )
@@ -799,7 +799,7 @@ Complex<BigFloat>::~Complex()
 
 Complex<BigFloat>& Complex<BigFloat>::operator=( Complex<BigFloat>&& a )
 {
-    DEBUG_ONLY(CSE cse("Complex<BigFloat>::operator= [move]"))
+    EL_DEBUG_CSE
     mpc_swap( Pointer(), a.Pointer() );
     std::swap( numLimbs_, a.numLimbs_ );
     return *this;
@@ -1428,7 +1428,7 @@ size_t Complex<BigFloat>::SerializedSize() const
 
 byte* Complex<BigFloat>::Serialize( byte* buf ) const
 {
-    DEBUG_ONLY(CSE cse("Complex<BigFloat>::Serialize"))
+    EL_DEBUG_CSE
     // NOTE: We don't have to necessarily serialize the precisions, as
     //       they are known a priori (as long as the user does not fiddle
     //       with SetPrecision)
@@ -1457,7 +1457,7 @@ byte* Complex<BigFloat>::Serialize( byte* buf ) const
 
 const byte* Complex<BigFloat>::Deserialize( const byte* buf )
 {
-    DEBUG_ONLY(CSE cse("Complex<BigFloat>::Deserialize"))
+    EL_DEBUG_CSE
     // TODO: Ensure that the precisions matched already
 
     std::memcpy( &mpcFloat_->re->_mpfr_prec, buf, sizeof(mpfr_prec_t) );
@@ -1489,7 +1489,7 @@ byte* Complex<BigFloat>::Deserialize( byte* buf )
 bool operator==
 ( const Complex<DoubleDouble>& a, const Complex<DoubleDouble>& b )
 {
-    return a.real() == b.real() && a.imag() == b.imag();
+    return (a.real() == b.real()) && (a.imag() == b.imag());
 }
 
 bool operator!=
@@ -1501,11 +1501,59 @@ bool operator!=
 bool operator==
 ( const Complex<QuadDouble>& a, const Complex<QuadDouble>& b )
 {
-    return a.real() == b.real() && a.imag() == b.imag();
+    return (a.real() == b.real()) && (a.imag() == b.imag());
 }
 
 bool operator!=
 ( const Complex<QuadDouble>& a, const Complex<QuadDouble>& b )
+{
+    return !(a == b);
+}
+
+bool operator==
+( const Complex<DoubleDouble>& a, const DoubleDouble& b )
+{
+    return (a.real() == b) && (a.imag() == DoubleDouble(0));
+}
+
+bool operator!=
+( const Complex<DoubleDouble>& a, const DoubleDouble& b )
+{
+    return !(a == b);
+}
+
+bool operator==
+( const Complex<QuadDouble>& a, const QuadDouble& b )
+{
+    return (a.real() == b) && (a.imag() == QuadDouble(0));
+}
+
+bool operator!=
+( const Complex<QuadDouble>& a, const QuadDouble& b )
+{
+    return !(a == b);
+}
+
+bool operator==
+( const DoubleDouble& a, const Complex<DoubleDouble>& b )
+{
+    return (a == b.real()) && (DoubleDouble(0) == b.imag());
+}
+
+bool operator!=
+( const DoubleDouble& a, const Complex<DoubleDouble>& b )
+{
+    return !(a == b);
+}
+
+bool operator==
+( const QuadDouble& a, const Complex<QuadDouble>& b )
+{
+    return (a == b.real()) && (QuadDouble(0) == b.imag());
+}
+
+bool operator!=
+( const QuadDouble& a, const Complex<QuadDouble>& b )
 {
     return !(a == b);
 }
@@ -1523,6 +1571,34 @@ bool operator!=
 {
     return !(a == b);
 }
+
+bool operator==
+( const Complex<BigFloat>& a, const BigFloat& b )
+{
+    int realRes = mpfr_cmp( a.LockedRealPointer(), b.LockedPointer() );
+    int imagRes = mpfr_cmp_si( a.LockedImagPointer(), 0 );
+    return (realRes == 0) && (imagRes == 0);
+}
+
+bool operator!=
+( const Complex<BigFloat>& a, const BigFloat& b )
+{
+    return !(a == b);
+}
+
+bool operator==
+( const BigFloat& a, const Complex<BigFloat>& b )
+{
+    int realRes = mpfr_cmp( a.LockedPointer(), b.LockedRealPointer() );
+    int imagRes = mpfr_cmp_si( b.LockedImagPointer(), 0 );
+    return (realRes == 0) && (imagRes == 0);
+}
+
+bool operator!=
+( const BigFloat& a, const Complex<BigFloat>& b )
+{
+    return !(a == b);
+}
 #endif
 
 template<typename Real>
@@ -1536,15 +1612,15 @@ operator-( const Complex<Real>& a )
 Complex<DoubleDouble> operator-( const Complex<DoubleDouble>& a )
 {
     Complex<DoubleDouble> aNeg;
-    aNeg.realPart = -aNeg.realPart;
-    aNeg.imagPart = -aNeg.imagPart;
+    aNeg.realPart = -a.realPart;
+    aNeg.imagPart = -a.imagPart;
     return aNeg;
 }
 Complex<QuadDouble> operator-( const Complex<QuadDouble>& a )
 {
     Complex<QuadDouble> aNeg;
-    aNeg.realPart = -aNeg.realPart;
-    aNeg.imagPart = -aNeg.imagPart;
+    aNeg.realPart = -a.realPart;
+    aNeg.imagPart = -a.imagPart;
     return aNeg;
 }
 #endif

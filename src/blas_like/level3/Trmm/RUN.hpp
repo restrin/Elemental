@@ -23,8 +23,8 @@ void LocalAccumulateRUN
   const DistMatrix<T,STAR,MC  >& X,
         DistMatrix<T,MR,  STAR>& ZTrans )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::LocalAccumulateRUN");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( U, X, ZTrans );
       if( U.Height() != U.Width() || U.Height() != X.Width() ||
           U.Height() != ZTrans.Height() )
@@ -66,11 +66,11 @@ void LocalAccumulateRUN
 template<typename T>
 void RUNA
 ( UnitOrNonUnit diag, 
-  const ElementalMatrix<T>& UPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& UPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::RUNA");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( UPre, XPre );
       // TODO: More input checks
     )
@@ -114,11 +114,11 @@ void RUNA
 template<typename T>
 void RUNCOld
 ( UnitOrNonUnit diag, 
-  const ElementalMatrix<T>& UPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& UPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::RUNCOld");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( UPre, XPre );
       if( UPre.Height() != UPre.Width() || XPre.Width() != UPre.Height() )
           LogicError
@@ -166,11 +166,11 @@ void RUNCOld
 template<typename T>
 void RUNC
 ( UnitOrNonUnit diag, 
-  const ElementalMatrix<T>& UPre,
-        ElementalMatrix<T>& XPre )
+  const AbstractDistMatrix<T>& UPre,
+        AbstractDistMatrix<T>& XPre )
 {
-    DEBUG_ONLY(
-      CSE cse("trmm::RUNC");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( UPre, XPre );
       if( UPre.Height() != UPre.Width() || XPre.Width() != UPre.Height() )
           LogicError
@@ -223,10 +223,10 @@ void RUNC
 template<typename T>
 void RUN
 ( UnitOrNonUnit diag,
-  const ElementalMatrix<T>& U,
-        ElementalMatrix<T>& X )
+  const AbstractDistMatrix<T>& U,
+        AbstractDistMatrix<T>& X )
 {
-    DEBUG_ONLY(CSE cse("trmm::RUN"))
+    EL_DEBUG_CSE
     // TODO: Come up with a better routing mechanism
     if( U.Height() > 5*X.Height() )
         RUNA( diag, U, X );

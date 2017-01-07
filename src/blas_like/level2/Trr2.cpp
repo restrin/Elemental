@@ -21,14 +21,14 @@ void Trr2
         Matrix<T>& A, 
   bool conjugate )
 {
-    DEBUG_ONLY(
-      CSE cse("Trr2");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( X.Width() != 2 || Y.Width() != 2 )
           LogicError("X and Y must be of width 2");
     )
     const Int m = A.Height();
     const Int n = A.Width();
-    DEBUG_ONLY(
+    EL_DEBUG_ONLY(
       if( X.Height() != m || Y.Height() != n )
           LogicError("X and Y must conform with A");
     )
@@ -68,13 +68,13 @@ template<typename T>
 void Trr2
 ( UpperOrLower uplo,
   T alpha,
-  const ElementalMatrix<T>& XPre,
-  const ElementalMatrix<T>& YPre,
-        ElementalMatrix<T>& APre,
+  const AbstractDistMatrix<T>& XPre,
+  const AbstractDistMatrix<T>& YPre,
+        AbstractDistMatrix<T>& APre,
   bool conjugate )
 {
-    DEBUG_ONLY(
-      CSE cse("Trr2");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( XPre.Width() != 2 || YPre.Width() != 2 )
           LogicError("X and Y must be of width 2");
     )
@@ -88,7 +88,7 @@ void Trr2
     const Grid& g = A.Grid();
     const Int mLocal = A.LocalHeight();
     const Int nLocal = A.LocalWidth();
-    DEBUG_ONLY(
+    EL_DEBUG_ONLY(
         if( X.Height() != A.Height() || Y.Height() != A.Width() )
             LogicError("X and Y must conform with A");
     )
@@ -149,8 +149,8 @@ void Trr2
     Matrix<T>& A, bool conjugate ); \
   template void Trr2 \
   ( UpperOrLower uplo, \
-    T alpha, const ElementalMatrix<T>& X, const ElementalMatrix<T>& Y, \
-    ElementalMatrix<T>& A, bool conjugate );
+    T alpha, const AbstractDistMatrix<T>& X, const AbstractDistMatrix<T>& Y, \
+    AbstractDistMatrix<T>& A, bool conjugate );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

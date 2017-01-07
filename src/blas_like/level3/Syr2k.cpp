@@ -20,23 +20,24 @@ namespace El {
 template<typename T>
 void Syr2k
 ( UpperOrLower uplo, Orientation orientation,
-  T alpha, const Matrix<T>& A, const Matrix<T>& B, T beta, Matrix<T>& C,
+  T alpha, const Matrix<T>& A, const Matrix<T>& B,
+  T beta,        Matrix<T>& C,
   bool conjugate )
 {
-    DEBUG_ONLY(
-        CSE cse("Syr2k");
-        if( orientation == NORMAL )
-        {
-            if( A.Height() != C.Height() || A.Height() != C.Width() ||
-                B.Height() != C.Height() ||B.Height() != C.Width()    )
-                LogicError("Nonconformal Syr2k");
-        }
-        else 
-        {
-            if( A.Width() != C.Height() || A.Width() != C.Width() ||
-                B.Width() != C.Height() || B.Width() != C.Width()   )
-                LogicError("Nonconformal Syr2k");
-        }
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
+      if( orientation == NORMAL )
+      {
+          if( A.Height() != C.Height() || A.Height() != C.Width() ||
+              B.Height() != C.Height() ||B.Height() != C.Width()    )
+              LogicError("Nonconformal Syr2k");
+      }
+      else 
+      {
+          if( A.Width() != C.Height() || A.Width() != C.Width() ||
+              B.Width() != C.Height() || B.Width() != C.Width()   )
+              LogicError("Nonconformal Syr2k");
+      }
     )
     const char uploChar = UpperOrLowerToChar( uplo );
     const char transChar = OrientationToChar( orientation );
@@ -62,10 +63,11 @@ void Syr2k
 template<typename T>
 void Syr2k
 ( UpperOrLower uplo, Orientation orientation,
-  T alpha, const Matrix<T>& A, const Matrix<T>& B, Matrix<T>& C,
+  T alpha, const Matrix<T>& A, const Matrix<T>& B,
+                 Matrix<T>& C,
   bool conjugate )
 {
-    DEBUG_ONLY(CSE cse("Syr2k"))
+    EL_DEBUG_CSE
     const Int n = ( orientation==NORMAL ? A.Height() : A.Width() );
     C.Resize( n, n );
     Zero( C );
@@ -75,10 +77,10 @@ void Syr2k
 template<typename T>
 void Syr2k
 ( UpperOrLower uplo, Orientation orientation,
-  T alpha, const ElementalMatrix<T>& A, const ElementalMatrix<T>& B,
-  T beta,        ElementalMatrix<T>& C, bool conjugate )
+  T alpha, const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& B,
+  T beta,        AbstractDistMatrix<T>& C, bool conjugate )
 {
-    DEBUG_ONLY(CSE cse("Syr2k"))
+    EL_DEBUG_CSE
     ScaleTrapezoid( beta, uplo, C );
     if( uplo == LOWER && orientation == NORMAL )
         syr2k::LN( alpha, A, B, C, conjugate );
@@ -93,10 +95,10 @@ void Syr2k
 template<typename T>
 void Syr2k
 ( UpperOrLower uplo, Orientation orientation,
-  T alpha, const ElementalMatrix<T>& A, const ElementalMatrix<T>& B,
-                 ElementalMatrix<T>& C, bool conjugate )
+  T alpha, const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& B,
+                 AbstractDistMatrix<T>& C, bool conjugate )
 {
-    DEBUG_ONLY(CSE cse("Syr2k"))
+    EL_DEBUG_CSE
     const Int n = ( orientation==NORMAL ? A.Height() : A.Width() );
     C.Resize( n, n );
     Zero( C );
@@ -114,12 +116,12 @@ void Syr2k
                    Matrix<T>& C, bool conjugate ); \
   template void Syr2k \
   ( UpperOrLower uplo, Orientation orientation, \
-    T alpha, const ElementalMatrix<T>& A, const ElementalMatrix<T>& B, \
-    T beta,        ElementalMatrix<T>& C, bool conjugate ); \
+    T alpha, const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& B, \
+    T beta,        AbstractDistMatrix<T>& C, bool conjugate ); \
   template void Syr2k \
   ( UpperOrLower uplo, Orientation orientation, \
-    T alpha, const ElementalMatrix<T>& A, const ElementalMatrix<T>& B, \
-                   ElementalMatrix<T>& C, bool conjugate );
+    T alpha, const AbstractDistMatrix<T>& A, const AbstractDistMatrix<T>& B, \
+                   AbstractDistMatrix<T>& C, bool conjugate );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE

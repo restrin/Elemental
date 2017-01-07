@@ -20,7 +20,7 @@ template<typename F>
 void LLTUnb
 ( bool conjugate, const Matrix<F>& L, Matrix<F>& X, bool checkIfSingular )
 {
-    DEBUG_ONLY(CSE cse("quasitrsm::LLTUnb"))
+    EL_DEBUG_CSE
     typedef Base<F> Real;
     const Int m = X.Height();
     const Int n = X.Width();
@@ -54,7 +54,7 @@ void LLTUnb
             const F delta22 = LBuf[(k+1)+(k+1)*ldl];
             // Decompose D = L Q
             Real c; F s;
-            const F gamma11 = lapack::Givens( delta11, delta12, c, s );
+            const F gamma11 = Givens( delta11, delta12, c, s );
             const F gamma21 =        c*delta21 + s*delta22;
             const F gamma22 = -Conj(s)*delta21 + c*delta22;
             if( checkIfSingular )
@@ -108,8 +108,8 @@ void LLT
 ( Orientation orientation, 
   const Matrix<F>& L, Matrix<F>& X, bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LLT");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
     )
@@ -150,12 +150,12 @@ void LLT
 template<typename F>
 void LLTLarge
 ( Orientation orientation, 
-  const ElementalMatrix<F>& LPre,
-        ElementalMatrix<F>& XPre,
+  const AbstractDistMatrix<F>& LPre,
+        AbstractDistMatrix<F>& XPre,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LLTLarge");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
     )
@@ -220,12 +220,12 @@ void LLTLarge
 template<typename F>
 void LLTMedium
 ( Orientation orientation, 
-  const ElementalMatrix<F>& LPre,
-        ElementalMatrix<F>& XPre,
+  const AbstractDistMatrix<F>& LPre,
+        AbstractDistMatrix<F>& XPre,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LLTMedium");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
     )
@@ -296,8 +296,8 @@ void LLTSmall
         DistMatrix<F,colDist,STAR>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LLTSmall");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( L, X );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");
@@ -358,8 +358,8 @@ void LLTSmall
         DistMatrix<F,rowDist,STAR>& X,
   bool checkIfSingular )
 {
-    DEBUG_ONLY(
-      CSE cse("quasitrsm::LLTSmall");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( L, X );
       if( orientation == NORMAL )
           LogicError("Expected (Conjugate)Transpose option");

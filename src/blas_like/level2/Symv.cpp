@@ -24,8 +24,8 @@ void Symv
         Matrix<T>& y,
   bool conjugate )
 {
-    DEBUG_ONLY(
-      CSE cse("Symv");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( A.Height() != A.Width() )
           LogicError("A must be square");
       if( ( x.Height() != 1 && x.Width() != 1 ) ||
@@ -60,27 +60,27 @@ template<typename T>
 void Symv
 ( UpperOrLower uplo,
   T alpha,
-  const ElementalMatrix<T>& APre,
-  const ElementalMatrix<T>& x,
+  const AbstractDistMatrix<T>& APre,
+  const AbstractDistMatrix<T>& x,
   T beta,
-        ElementalMatrix<T>& yPre,
+        AbstractDistMatrix<T>& yPre,
   bool conjugate,
   const SymvCtrl<T>& ctrl )
 {
-    DEBUG_ONLY(
-        CSE cse("Symv");
-        AssertSameGrids( APre, x, yPre );
-        if( APre.Height() != APre.Width() )
-            LogicError("A must be square");
-        if( ( x.Width() != 1 && x.Height() != 1 ) ||
-            ( yPre.Width() != 1 && yPre.Height() != 1 ) )
-            LogicError("x and y are assumed to be vectors");
-        const Int xLength = ( x.Width()==1 ? x.Height() : x.Width() );
-        const Int yLength = ( yPre.Width()==1 ? yPre.Height() : yPre.Width() );
-        if( APre.Height() != xLength || APre.Height() != yLength )
-            LogicError
-            ("Nonconformal Symv: \n",DimsString(APre,"A"),"\n",
-             DimsString(x,"x"),"\n",DimsString(yPre,"y"));
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
+      AssertSameGrids( APre, x, yPre );
+      if( APre.Height() != APre.Width() )
+          LogicError("A must be square");
+      if( ( x.Width() != 1 && x.Height() != 1 ) ||
+          ( yPre.Width() != 1 && yPre.Height() != 1 ) )
+          LogicError("x and y are assumed to be vectors");
+      const Int xLength = ( x.Width()==1 ? x.Height() : x.Width() );
+      const Int yLength = ( yPre.Width()==1 ? yPre.Height() : yPre.Width() );
+      if( APre.Height() != xLength || APre.Height() != yLength )
+          LogicError
+          ("Nonconformal Symv: \n",DimsString(APre,"A"),"\n",
+           DimsString(x,"x"),"\n",DimsString(yPre,"y"));
     )
     const Grid& g = APre.Grid();
 
@@ -317,10 +317,10 @@ void LocalRowAccumulate
   template void Symv \
   ( UpperOrLower uplo, \
     T alpha, \
-    const ElementalMatrix<T>& A, \
-    const ElementalMatrix<T>& x, \
+    const AbstractDistMatrix<T>& A, \
+    const AbstractDistMatrix<T>& x, \
     T beta, \
-          ElementalMatrix<T>& y, \
+          AbstractDistMatrix<T>& y, \
     bool conjugate, \
     const SymvCtrl<T>& ctrl ); \
   template void symv::LocalColAccumulate \

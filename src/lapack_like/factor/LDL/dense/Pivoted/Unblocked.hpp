@@ -2,8 +2,8 @@
    Copyright (c) 2009-2016, Jack Poulson
    All rights reserved.
 
-   This file is part of Elemental and is under the BSD 2-Clause License, 
-   which can be found in the LICENSE file in the root directory, or at 
+   This file is part of Elemental and is under the BSD 2-Clause License,
+   which can be found in the LICENSE file in the root directory, or at
    http://opensource.org/licenses/BSD-2-Clause
 */
 #ifndef EL_LDL_PIVOTED_UNBLOCKED_HPP
@@ -14,14 +14,14 @@ namespace ldl {
 namespace pivot {
 
 template<typename F>
-inline LDLPivot
+LDLPivot
 Select( const Matrix<F>& A, LDLPivotType pivotType, Base<F> gamma )
 {
-    DEBUG_ONLY(CSE cse("ldl::pivot::Select"))
+    EL_DEBUG_CSE
     LDLPivot pivot;
     switch( pivotType )
     {
-    case BUNCH_KAUFMAN_A: 
+    case BUNCH_KAUFMAN_A:
     case BUNCH_KAUFMAN_C: pivot = BunchKaufmanA( A, gamma ); break;
     case BUNCH_KAUFMAN_D: pivot = BunchKaufmanD( A, gamma ); break;
     case BUNCH_PARLETT:   pivot = BunchParlett( A, gamma ); break;
@@ -31,14 +31,14 @@ Select( const Matrix<F>& A, LDLPivotType pivotType, Base<F> gamma )
 }
 
 template<typename F>
-inline LDLPivot
+LDLPivot
 Select( const DistMatrix<F>& A, LDLPivotType pivotType, Base<F> gamma )
 {
-    DEBUG_ONLY(CSE cse("ldl::pivot::Select"))
+    EL_DEBUG_CSE
     LDLPivot pivot;
     switch( pivotType )
     {
-    case BUNCH_KAUFMAN_A: 
+    case BUNCH_KAUFMAN_A:
     case BUNCH_KAUFMAN_C: pivot = BunchKaufmanA( A, gamma ); break;
     case BUNCH_KAUFMAN_D: pivot = BunchKaufmanD( A, gamma ); break;
     case BUNCH_PARLETT:   pivot = BunchParlett( A, gamma ); break;
@@ -49,7 +49,7 @@ Select( const DistMatrix<F>& A, LDLPivotType pivotType, Base<F> gamma )
 
 // Unblocked sequential pivoted LDL
 template<typename F>
-inline void
+void
 Unblocked
 ( Matrix<F>& A,
   Matrix<F>& dSub,
@@ -58,8 +58,8 @@ Unblocked
   LDLPivotType pivotType=BUNCH_KAUFMAN_A,
   Base<F> gamma=0 )
 {
-    DEBUG_ONLY(
-      CSE cse("ldl::pivot::Unblocked");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( A.Height() != A.Width() )
           LogicError("A must be square");
     )
@@ -96,7 +96,7 @@ Unblocked
         {
             const Int from = k + pivot.from[l];
             SymmetricSwap( LOWER, A, k+l, from, conjugate );
-            P.RowSwap( k+l, from );
+            P.Swap( k+l, from );
         }
 
         // Update trailing submatrix and store pivots
@@ -135,17 +135,17 @@ Unblocked
 }
 
 template<typename F>
-inline void
+void
 Unblocked
-( ElementalMatrix<F>& APre,
-  ElementalMatrix<F>& dSub, 
+( AbstractDistMatrix<F>& APre,
+  AbstractDistMatrix<F>& dSub,
   DistPermutation& P,
-  bool conjugate=false, 
+  bool conjugate=false,
   LDLPivotType pivotType=BUNCH_KAUFMAN_A,
   Base<F> gamma=0 )
 {
-    DEBUG_ONLY(
-      CSE cse("ldl::pivot::Unblocked");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( APre.Height() != APre.Width() )
           LogicError("A must be square");
       AssertSameGrids( APre, dSub );
@@ -183,7 +183,7 @@ Unblocked
         {
             const Int from = k + pivot.from[l];
             SymmetricSwap( LOWER, A, k+l, from, conjugate );
-            P.RowSwap( k+l, from );
+            P.Swap( k+l, from );
         }
 
 

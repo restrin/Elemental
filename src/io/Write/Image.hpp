@@ -25,7 +25,7 @@ SaveQImage
 ( const QImage& image, string basename="matrix", 
   FileFormat format=PNG )
 {
-    DEBUG_ONLY(CSE cse("write::Image"))
+    EL_DEBUG_CSE
     string filename = basename + "." + FileExtension(format);
     QFile file( filename.c_str() );
     file.open( QIODevice::WriteOnly );
@@ -34,11 +34,10 @@ SaveQImage
 #endif // ifdef EL_HAVE_QT5
 
 template<typename T>
-inline void
-RealPartImage
+void RealPartImage
 ( const Matrix<T>& A, string basename="matrix", FileFormat format=PNG )
 {
-    DEBUG_ONLY(CSE cse("write::RealPartImage"))
+    EL_DEBUG_CSE
 #ifdef EL_HAVE_QT5
     typedef Base<T> Real;
     const Int m = A.Height();
@@ -84,11 +83,10 @@ RealPartImage
 }
 
 template<typename T>
-inline void
-ImagPartImage
+void ImagPartImage
 ( const Matrix<T>& A, string basename="matrix", FileFormat format=PNG )
 {
-    DEBUG_ONLY(CSE cse("write::ImagPartImage"))
+    EL_DEBUG_CSE
 #ifdef EL_HAVE_QT5
     typedef Base<T> Real;
     const Int m = A.Height();
@@ -134,21 +132,19 @@ ImagPartImage
 }
 
 template<typename Real>
-inline void
-Image
+void Image
 ( const Matrix<Real>& A, string basename="matrix", FileFormat format=PNG )
 {
-    DEBUG_ONLY(CSE cse("write::Image"))
+    EL_DEBUG_CSE
     RealPartImage( A, basename, format );
 }
 
 template<typename Real>
-inline void
-Image
+void Image
 ( const Matrix<Complex<Real>>& A, string basename="matrix", 
   FileFormat format=PNG )
 {
-    DEBUG_ONLY(CSE cse("write::Image"))
+    EL_DEBUG_CSE
     RealPartImage( A, basename+"_real", format );
     ImagPartImage( A, basename+"_imag", format );
 }

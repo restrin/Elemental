@@ -13,50 +13,6 @@ namespace El {
 
 namespace lapack {
 
-// Machine constants
-// =================
-
-// Relative machine precision
-template<typename R=double> R MachineEpsilon();
-template<> float MachineEpsilon<float>();
-template<> double MachineEpsilon<double>();
-
-// Minimum number which can be inverted without overflow
-template<typename R=double> R MachineSafeMin();
-template<> float MachineSafeMin<float>();
-template<> double MachineSafeMin<double>();
-
-// Base of the machine, where the number is represented as 
-//   (mantissa) x (base)^(exponent)
-template<typename R=double> R MachineBase();
-template<> float MachineBase<float>();
-template<> double MachineBase<double>();
-
-// Return the relative machine precision multiplied by the base
-template<typename R=double> R MachinePrecision();
-template<> float MachinePrecision<float>();
-template<> double MachinePrecision<double>();
-
-// Return the minimum exponent before (gradual) underflow occurs
-template<typename R=double> R MachineUnderflowExponent();
-template<> float MachineUnderflowExponent<float>();
-template<> double MachineUnderflowExponent<double>();
-
-// Return the underflow threshold: (base)^((underflow exponent)-1)
-template<typename R=double> R MachineUnderflowThreshold();
-template<> float MachineUnderflowThreshold<float>();
-template<> double MachineUnderflowThreshold<double>();
-
-// Return the largest exponent before overflow
-template<typename R=double> R MachineOverflowExponent();
-template<> float MachineOverflowExponent<float>();
-template<> double MachineOverflowExponent<double>();
-
-// Return the overflow threshold: (1-(rel. prec.)) * (base)^(overflow exponent)
-template<typename R=double> R MachineOverflowThreshold();
-template<> float MachineOverflowThreshold<float>();
-template<> double MachineOverflowThreshold<double>();
-
 // For copying column-major matrices
 // =================================
 template<typename T>
@@ -81,78 +37,6 @@ void Copy
 ( char uplo, BlasInt m, BlasInt n, 
   const T* A, BlasInt lda, T* B, BlasInt ldb );
 
-// For safely computing norms without overflow/underflow
-// =====================================================
-
-template<typename Real>
-Real SafeNorm( const Real& alpha, const Real& beta );
-double SafeNorm( const double& alpha, const double& beta );
-
-template<typename Real>
-Real SafeNorm
-( const Real& alpha,
-  const Real& beta,
-  const Real& gamma );
-double SafeNorm
-( const double& alpha,
-  const double& beta,
-  const double& gamma );
-
-template<typename Real>
-Real SafeNorm
-( const Complex<Real>& alpha,
-  const Real& beta );
-template<typename Real>
-Real SafeNorm
-( const Real& alpha,
-  const Complex<Real>& beta );
-
-// Givens rotations
-// ================
-//
-// Given phi and gamma, compute a Givens rotation such that
-//
-//  |       c   s | |   phi |  = | rho |, where c^2 + |s|^2 = 1
-//  | -conj(s)  c | | gamma |    |  0  |
-//
-// This routine uses the stable approach suggested by Kahan and Demmel and
-// returns the value rho.
-//
-
-template<typename Real>
-Real Givens
-( const Real& phi,
-  const Real& gamma,
-        Real& c,
-        Real& s );
-template<typename Real>
-Complex<Real> Givens
-( const Complex<Real>& phi,
-  const Complex<Real>& gamma,
-  Real& c,
-  Complex<Real>& s );
-
-float    Givens
-( const float& phi,
-  const float& gamma,
-  float& c,
-  float& s );
-double   Givens
-( const double& phi,
-  const double& gamma,
-  double& c,
-  double& s );
-scomplex Givens
-( const scomplex& phi,
-  const scomplex& gamma,
-  float& c,
-  scomplex& s );
-dcomplex Givens
-( const dcomplex& phi,
-  const dcomplex& gamma,
-  double& c,
-  dcomplex& s );
-
 // Generate a Householder reflector
 // ================================
 // NOTE: 
@@ -169,6 +53,32 @@ dcomplex Givens
 //
 template<typename F>
 F Reflector( BlasInt n, F& chi, F* x, BlasInt incx );
+
+// Apply a Householder reflector
+// =============================
+// Form either
+//
+//     C := (I - tau v v^H) C
+//
+// or,
+//
+//     C := C (I - tau v v^H)
+//
+// Note that 'work' must be of size n if onLeft and of size m if !onLeft.
+//
+template<typename F>
+void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const F* v, BlasInt vInc, 
+  const F& tau,
+        F* C, BlasInt CLDim );
+template<typename F>
+void ApplyReflector
+( bool onLeft, BlasInt m, BlasInt n,
+  const F* v, BlasInt vInc, 
+  const F& tau,
+        F* C, BlasInt CLDim,
+        F* work );
 
 // Compute the eigen-values/pairs of a symmetric tridiagonal matrix
 // ================================================================
@@ -451,16 +361,16 @@ void BidiagDQDS( BlasInt n, double* d, double* e );
 // Compute the SVD of a bidiagonal matrix using the QR algorithm
 // =============================================================
 
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVT, BlasInt numRowsU,
   float* d, float* e, float* VT, BlasInt ldVT, float* U, BlasInt ldU );
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVT, BlasInt numRowsU, 
   double* d, double* e, double* VT, BlasInt ldVT, double* U, BlasInt ldU );
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVH, BlasInt numRowsU,
   float* d, float* e, scomplex* VH, BlasInt ldVH, scomplex* U, BlasInt ldU );
-void BidiagQRAlg
+void BidiagSVDQRAlg
 ( char uplo, BlasInt n, BlasInt numColsVH, BlasInt numRowsU, 
   double* d, double* e, dcomplex* VH, BlasInt ldVH, dcomplex* U, BlasInt ldU );
 
@@ -596,53 +506,19 @@ void SchurExchange
   Real* work,
   bool testAccuracy=true );
 
-// Put a real 2x2 nonsymmetric matrix into standard form
-// =====================================================
-// Compute the Schur factorization of a real 2x2 nonsymmetric matrix A
-// in a manner similar to xLANV2, returning the cosine and sine terms as well
-// as the real and imaginary parts of the two eigenvalues.
-//
-// Either A is overwritten with its real Schur factor (if it exists), or 
-// it is put into the form 
-//
-//   | alpha00, alpha01 | = | c -s | | beta00 beta01 | | c  s |,
-//   | alpha10, alpha11 |   | s  c | | beta10 beta11 | | -s c |
-//
-// where beta00 = beta11 and beta10*beta01 < 0, so that the two eigenvalues 
-// are beta00 +- sqrt(beta10*beta01).
-//
 template<typename Real>
-void TwoByTwoSchur
-( Real& alpha00, Real& alpha01,
-  Real& alpha10, Real& alpha11,
-  Real& c, Real& s );
+void SchurExchange
+( BlasInt n,
+  Complex<Real>* T, BlasInt TLDim, 
+  BlasInt j1,
+  BlasInt j2 );
 template<typename Real>
-void TwoByTwoSchur
-( Real& alpha00, Real& alpha01,
-  Real& alpha10, Real& alpha11,
-  Real& c, Real& s,
-  Real& lambda0Real, Real& lambda0Imag,
-  Real& lambda1Real, Real& lambda1Imag );
-void TwoByTwoSchur
-( float& alpha00, float& alpha01,
-  float& alpha10, float& alpha11,
-  float& c, float& s );
-void TwoByTwoSchur
-( float& alpha00, float& alpha01,
-  float& alpha10, float& alpha11,
-  float& c, float& s,
-  float& lambda0Real, float& lambda0Imag,
-  float& lambda1Real, float& lambda1Imag );
-void TwoByTwoSchur
-( double& alpha00, double& alpha01,
-  double& alpha10, double& alpha11,
-  double& c, double& s );
-void TwoByTwoSchur
-( double& alpha00, double& alpha01,
-  double& alpha10, double& alpha11,
-  double& c, double& s,
-  double& lambda0Real, double& lambda0Imag,
-  double& lambda1Real, double& lambda1Imag );
+void SchurExchange
+( BlasInt n,
+  Complex<Real>* T, BlasInt TLDim, 
+  Complex<Real>* Q, BlasInt QLDim,
+  BlasInt j1,
+  BlasInt j2 );
 
 // Compute the Schur decomposition of an upper Hessenberg matrix
 // =============================================================
@@ -651,22 +527,26 @@ void HessenbergSchur
 ( BlasInt n,
   float* H, BlasInt ldH,
   scomplex* w,
-  bool fullTriangle=false );
+  bool fullTriangle=false,
+  bool useAED=true );
 void HessenbergSchur
 ( BlasInt n,
   double* H, BlasInt ldH,
   dcomplex* w,
-  bool fullTriangle=false );
+  bool fullTriangle=false,
+  bool useAED=true );
 void HessenbergSchur
 ( BlasInt n,
   scomplex* H, BlasInt ldH,
   scomplex* w,
-  bool fullTriangle=false );
+  bool fullTriangle=false,
+  bool useAED=true );
 void HessenbergSchur
 ( BlasInt n,
   dcomplex* H, BlasInt ldH,
   dcomplex* w,
-  bool fullTriangle=false );
+  bool fullTriangle=false,
+  bool useAED=true );
 
 void HessenbergSchur
 ( BlasInt n,
@@ -674,28 +554,32 @@ void HessenbergSchur
   scomplex* w,
   float* Q, BlasInt ldQ, 
   bool fullTriangle=true,
-  bool multiplyQ=false );
+  bool multiplyQ=false,
+  bool useAED=true );
 void HessenbergSchur
 ( BlasInt n,
   double* H, BlasInt ldH,
   dcomplex* w,
   double* Q, BlasInt ldQ, 
   bool fullTriangle=true,
-  bool multiplyQ=false );
+  bool multiplyQ=false,
+  bool useAED=true );
 void HessenbergSchur
 ( BlasInt n,
   scomplex* H, BlasInt ldH,
   scomplex* w,
   scomplex* Q, BlasInt ldQ, 
   bool fullTriangle=false,
-  bool multiplyQ=false );
+  bool multiplyQ=false,
+  bool useAED=true );
 void HessenbergSchur
 ( BlasInt n,
   dcomplex* H, BlasInt ldH,
   dcomplex* w,
   dcomplex* Q, BlasInt ldQ, 
   bool fullTriangle=false,
-  bool multiplyQ=false );
+  bool multiplyQ=false,
+  bool useAED=true );
 
 // Compute the eigenvalues/pairs of an upper Hessenberg matrix
 // ===========================================================

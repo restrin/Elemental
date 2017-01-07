@@ -19,8 +19,8 @@ void LocalAccumulateLL
         DistMatrix<T,MC,  STAR>& Z_MC_STAR,
         DistMatrix<T,MR,  STAR>& Z_MR_STAR )
 {
-    DEBUG_ONLY(
-      CSE cse("symm::LocalAccumulateLL");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       AssertSameGrids( A, B_MC_STAR, BTrans_STAR_MR, Z_MC_STAR, Z_MR_STAR );
       if( A.Height() != A.Width() ||
           A.Height() != B_MC_STAR.Height() ||
@@ -91,15 +91,13 @@ void LocalAccumulateLL
 template<typename T>
 void LLA
 ( T alpha,
-  const ElementalMatrix<T>& APre,
-  const ElementalMatrix<T>& BPre,
-        ElementalMatrix<T>& CPre,
+  const AbstractDistMatrix<T>& APre,
+  const AbstractDistMatrix<T>& BPre,
+        AbstractDistMatrix<T>& CPre,
   bool conjugate=false )
 {
-    DEBUG_ONLY(
-      CSE cse("symm::LLA");
-      AssertSameGrids( APre, BPre, CPre );
-    )
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(AssertSameGrids( APre, BPre, CPre ))
     const Int m = CPre.Height();
     const Int n = CPre.Width();
     const Int bsize = Blocksize();
@@ -155,15 +153,13 @@ void LLA
 template<typename T>
 void LLC
 ( T alpha,
-  const ElementalMatrix<T>& APre,
-  const ElementalMatrix<T>& BPre,
-        ElementalMatrix<T>& CPre, 
+  const AbstractDistMatrix<T>& APre,
+  const AbstractDistMatrix<T>& BPre,
+        AbstractDistMatrix<T>& CPre, 
   bool conjugate=false )
 {
-    DEBUG_ONLY(
-      CSE cse("symm::LLC");
-      AssertSameGrids( APre, BPre, CPre );
-    )
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(AssertSameGrids( APre, BPre, CPre ))
     const Int m = CPre.Height();
     const Int bsize = Blocksize();
     const Grid& g = APre.Grid();
@@ -220,12 +216,12 @@ void LLC
 template<typename T>
 void LL
 ( T alpha,
-  const ElementalMatrix<T>& A,
-  const ElementalMatrix<T>& B,
-        ElementalMatrix<T>& C,
+  const AbstractDistMatrix<T>& A,
+  const AbstractDistMatrix<T>& B,
+        AbstractDistMatrix<T>& C,
   bool conjugate=false )
 {
-    DEBUG_ONLY(CSE cse("symm::LL"))
+    EL_DEBUG_CSE
     // TODO: Come up with a better routing mechanism
     if( A.Height() > 5*B.Width() )
         symm::LLA( alpha, A, B, C, conjugate );

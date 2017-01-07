@@ -26,8 +26,8 @@ void Trmm
   Orientation orientation, UnitOrNonUnit diag,
   T alpha, const Matrix<T>& A, Matrix<T>& B )
 {
-    DEBUG_ONLY(
-      CSE cse("Trmm");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( A.Height() != A.Width() )
           LogicError("Triangular matrix must be square");
       if( side == LEFT )
@@ -54,9 +54,9 @@ template<typename T>
 void Trmm
 ( LeftOrRight side, UpperOrLower uplo, 
   Orientation orientation, UnitOrNonUnit diag,
-  T alpha, const ElementalMatrix<T>& A, ElementalMatrix<T>& X )
+  T alpha, const AbstractDistMatrix<T>& A, AbstractDistMatrix<T>& X )
 {
-    DEBUG_ONLY(CSE cse("Trmm"))
+    EL_DEBUG_CSE
     X *= alpha;
     if( side == LEFT && uplo == LOWER )
     {
@@ -92,10 +92,10 @@ template<typename T>
 void LocalTrmm
 ( LeftOrRight side, UpperOrLower uplo,
   Orientation orientation, UnitOrNonUnit diag,
-  T alpha, const DistMatrix<T,STAR,STAR>& A, ElementalMatrix<T>& B )
+  T alpha, const DistMatrix<T,STAR,STAR>& A, AbstractDistMatrix<T>& B )
 {
-    DEBUG_ONLY(
-      CSE cse("LocalTrmm");
+    EL_DEBUG_CSE
+    EL_DEBUG_ONLY(
       if( (side == LEFT && B.ColDist() != STAR) ||
           (side == RIGHT && B.RowDist() != STAR) )
           LogicError
@@ -113,11 +113,11 @@ void LocalTrmm
   template void Trmm \
   ( LeftOrRight side, UpperOrLower uplo, \
     Orientation orientation, UnitOrNonUnit diag, \
-    T alpha, const ElementalMatrix<T>& A, ElementalMatrix<T>& B ); \
+    T alpha, const AbstractDistMatrix<T>& A, AbstractDistMatrix<T>& B ); \
   template void LocalTrmm \
   ( LeftOrRight side, UpperOrLower uplo, \
     Orientation orientation, UnitOrNonUnit diag, \
-    T alpha, const DistMatrix<T,STAR,STAR>& A, ElementalMatrix<T>& B );
+    T alpha, const DistMatrix<T,STAR,STAR>& A, AbstractDistMatrix<T>& B );
 
 #define EL_ENABLE_DOUBLEDOUBLE
 #define EL_ENABLE_QUADDOUBLE
