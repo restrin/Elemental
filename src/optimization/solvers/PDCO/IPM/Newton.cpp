@@ -192,8 +192,12 @@ void Newton
 
         D1sq *= beta*beta/(theta);
         D2sq *= theta/(beta*beta);
+    }
 
-        theta = beta*zeta;
+    if( ctrl.print )
+    {
+        Output("  beta = ", beta);
+        Output("  zeta = ", zeta);
     }
 
     // Initialize the data
@@ -235,7 +239,7 @@ void Newton
 
     if( ctrl.print )
     {
-        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter\tstepx\tstepz");
+        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t|cL|oo\t|cU|oo\tcenter\tstepx\tstepz");
         printf("Init :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\n", 
             Log(double(mu))/log10, Log(double(Pfeas))/log10,
             Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
@@ -423,7 +427,7 @@ void Newton
 
         if (converged)
             break;
-    }
+    } // end main for loop
 
     // Reconstruct solution
     // scale?
@@ -445,18 +449,28 @@ void Newton
     Axpy(Real(-1), tmp, zFix);
     UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
 
-    // Undo scaling due to equilibration
-    if( ctrl.outerEquil )
+    // Undo scaling by beta and zeta
+    if( ctrl.scale )
     {
         x *= beta;
         y *= zeta;
         z *= zeta;
-        DiagonalSolve( LEFT, NORMAL, dCol, x );
-        DiagonalSolve( LEFT, NORMAL, dRow, y );
-        DiagonalScale( LEFT, NORMAL, dCol, z );
+        z1 *= zeta;
+        z2 *= zeta;
 
         bl *= beta;
         bu *= beta;
+    }
+
+    // Undo scaling due to equilibration
+    if( ctrl.outerEquil )
+    {
+        DiagonalSolve( LEFT, NORMAL, dCol, x );
+        DiagonalSolve( LEFT, NORMAL, dRow, y );
+        DiagonalScale( LEFT, NORMAL, dCol, z );
+        DiagonalScale( LEFT, NORMAL, dCol, z1 );
+        DiagonalScale( LEFT, NORMAL, dCol, z2 );
+
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
     }
@@ -474,12 +488,37 @@ void Newton
     else
       Output("Result: Failed!");
 
+    // Compute unscaled residuals
+    // TODO: Avoid recomputing some of this stuff
+    phi.grad( x, grad ); // get gradient
+    Copy(D2, D2sq);
+    Copy(D1, D1sq);
+    if( ctrl.outerEquil )
+    {
+        DiagonalScale(LEFT, NORMAL, dRow, D2sq);
+        DiagonalScale(LEFT, NORMAL, dCol, D1sq);
+    }
+    DiagonalScale(LEFT, NORMAL, D2sq, D2sq);
+    DiagonalScale(LEFT, NORMAL, D1sq, D1sq);
+    ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+        b, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
+    ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
+
+    Pfeas = InfinityNorm(r1);
+    Dfeas = InfinityNorm(r2);
+    Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
+
     Output("  Pfeas    = ", Pfeas);
     Output("  Dfeas    = ", Dfeas);
     Output("  Cinf0    = ", Cinf0);
     Output("  ||cL||oo = ", InfinityNorm(cL));
     Output("  ||cU||oo = ", InfinityNorm(cU));
     Output("  center   = ", center);
+
+    Output();
+    Output("  Scaled:   max |x| = ", Max(x)/beta, "\tmax |y| = ", Max(y)/zeta, "\tmax |z| = ", Max(z)/zeta);
+    Output("  Unscaled: max |x| = ", Max(x), "\tmax |y| = ", Max(y), "\tmax |z| = ", Max(z));
+    Output();
 
     Output("  Number active constraints on");
     Output("    Lower bound: ", lowerActive);
@@ -660,8 +699,6 @@ void Newton
 
         D1sq *= beta*beta/(theta);
         D2sq *= theta/(beta*beta);
-
-        theta = beta*zeta;
     }
 
     if( ctrl.print )
@@ -724,7 +761,7 @@ void Newton
 
     if( ctrl.print )
     {
-        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter\tstepx\tstepz");
+        Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t|cL|oo\t|cU|oo\tcenter\tstepx\tstepz");
         printf("Init :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\n", 
             Log(double(mu))/log10, Log(double(Pfeas))/log10,
             Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
@@ -738,7 +775,6 @@ void Newton
     ldl::Separator rootSep;
     ldl::NodeInfo info;
     SparseMatrix<Real> K, KOrig;
-//    ldl::Front<Real> KFront;
     SparseLDLFactorization<Real> sparseLDLFact;
     BisectCtrl bisectCtrl = BisectCtrl();
     bisectCtrl.cutoff = 128; // TODO: Make tunable?
@@ -796,29 +832,21 @@ void Newton
                 if( numIts == 0 )
                 {
                     // Get static nested dissection data
-//                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
-//                    InvertMap( map, invMap );
                     const bool hermitian = true;
                     sparseLDLFact.Initialize( K, hermitian, bisectCtrl );
 
                 }
                 else
-                {
                     sparseLDLFact.ChangeNonzeroValues( K );
-                }
-
-//                KFront.Pull( K, map, info );
+ 
                 if( ctrl.time )
                     ldlTimer.Start();
                 sparseLDLFact.Factor( LDL_2D );
-//                LDL( info, KFront, LDL_2D );
                 if( ctrl.time )
                     ldlTimer.Stop();
 
-//                ldl::SolveAfter( invMap, info, KFront, w );
                 if( ctrl.time )
                     solveAfterTimer.Start();
-//                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
                 reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact, w, ctrl.solveCtrl );
                 if( ctrl.time )
                     solveAfterTimer.Stop();
@@ -903,24 +931,18 @@ void Newton
                 if( numIts == 0 )
                 {
                     // Get static nested dissection data
-//                    NestedDissection( K.LockedGraph(), map, rootSep, info, bisectCtrl );
-//                    InvertMap( map, invMap );
                     const bool hermitian = true;
                     sparseLDLFact.Initialize( K, hermitian, bisectCtrl );
                 }
 
-//                KFront.Pull( K, map, info );
                 if( ctrl.time )
                     ldlTimer.Start();
-//                LDL( info, KFront, LDL_2D );
                 sparseLDLFact.Factor( LDL_2D );
                 if( ctrl.time )
                     ldlTimer.Stop();
 
                 if( ctrl.time )
                     solveAfterTimer.Start();
-//                ldl::SolveAfter( invMap, info, KFront, w );
-//                reg_ldl::SolveAfter( KOrig, regTmp, invMap, info, KFront, w, ctrl.solveCtrl );
                 reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact, w, ctrl.solveCtrl );
                 if( ctrl.time )
                     solveAfterTimer.Stop();
@@ -1071,7 +1093,7 @@ void Newton
 
         if (converged)
             break;
-    }
+    } // end main for loop
 
     // Reconstruct solution
     // scale?
@@ -1099,6 +1121,8 @@ void Newton
         x *= beta;
         y *= zeta;
         z *= zeta;
+        z1 *= zeta;
+        z2 *= zeta;
 
         bl *= beta;
         bu *= beta;
@@ -1110,6 +1134,8 @@ void Newton
         DiagonalSolve( LEFT, NORMAL, dCol, x );
         DiagonalSolve( LEFT, NORMAL, dRow, y );
         DiagonalScale( LEFT, NORMAL, dCol, z );
+        DiagonalScale( LEFT, NORMAL, dCol, z1 );
+        DiagonalScale( LEFT, NORMAL, dCol, z2 );
 
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
@@ -1127,6 +1153,25 @@ void Newton
       Output("Result: Converged!");
     else
       Output("Result: Failed!");
+
+    // Compute unscaled residuals
+    // TODO: Avoid recomputing some of this stuff
+    phi.grad( x, grad ); // get gradient
+    Copy(D2, D2sq);
+    Copy(D1, D1sq);
+    if( ctrl.outerEquil )
+    {
+        DiagonalScale(LEFT, NORMAL, dRow, D2sq);
+        DiagonalScale(LEFT, NORMAL, dCol, D1sq);
+    }
+    DiagonalScale(LEFT, NORMAL, D2sq, D2sq);
+    DiagonalScale(LEFT, NORMAL, D1sq, D1sq);
+    ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+        b, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
+    ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
+    Pfeas = InfinityNorm(r1);
+    Dfeas = InfinityNorm(r2);
+    Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
 
     Output("  Pfeas    = ", Pfeas);
     Output("  Dfeas    = ", Dfeas);
