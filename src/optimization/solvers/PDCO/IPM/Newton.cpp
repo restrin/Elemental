@@ -934,6 +934,8 @@ void Newton
                     const bool hermitian = true;
                     sparseLDLFact.Initialize( K, hermitian, bisectCtrl );
                 }
+                else
+                    sparseLDLFact.ChangeNonzeroValues( K );
 
                 if( ctrl.time )
                     ldlTimer.Start();
