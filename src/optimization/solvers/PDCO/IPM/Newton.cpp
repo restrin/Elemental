@@ -54,6 +54,8 @@ void Newton
     Int m = A.Height();
     Int n = A.Width();
 
+    const double log10 = Log(double(10));
+
     // Index sets to represent IR(ALL) and IR(0)
     vector<Int> ALL_m = IndexRange(m);
     vector<Int> ALL_n = IndexRange(n);
@@ -234,17 +236,11 @@ void Newton
     if( ctrl.print )
     {
         Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter\tstepx\tstepz");
-        Output("Init : \t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
-               Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
-/*
-        Output("Initial feasibility: ");
-        Output("  Pfeas  = ", Pfeas);
-        Output("  Dfeas  = ", Dfeas);
-        Output("  Cinf0  = ", Cinf0);
-        Output("  ||cL||oo = ", InfinityNorm(cL));
-        Output("  ||cU||oo = ", InfinityNorm(cU));
-        Output("  center = ", center);
-*/
+        printf("Init :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\n", 
+            Log(double(mu))/log10, Log(double(Pfeas))/log10,
+            Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
+            Log(double(InfinityNorm(cL)))/log10, Log(double(InfinityNorm(cU)))/log10,
+            Log(double(center))/log10);
     }
 
     // Get transpose
@@ -364,8 +360,11 @@ void Newton
 
         if( ctrl.print )
         {
-            Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
-                Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center,"\t",stepx,"\t",stepz);
+            printf("%d :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.3f\t%1.3f\n", 
+                numIts, Log(double(mu))/log10, Log(double(Pfeas))/log10,
+                Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
+                Log(double(InfinityNorm(cL)))/log10, Log(double(InfinityNorm(cU)))/log10,
+                Log(double(center))/log10, stepx, stepz);
         }
 
 
@@ -525,6 +524,7 @@ void Newton
 
     const Real eps = limits::Epsilon<Real>();
     const Real deltaTmp = ctrl.deltaTmp;
+    const double log10 = Log(double(10));
 
     // Index sets to represent IR(ALL) and IR(0)
     vector<Int> ALL_m = IndexRange(m);
@@ -725,8 +725,11 @@ void Newton
     if( ctrl.print )
     {
         Output("Iter\tmu\tPfeas\tDfeas\tCinf0\t||cL||oo\t||cU||oo\tcenter\tstepx\tstepz");
-        Output("Init : \t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
-               Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center);
+        printf("Init :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\n", 
+            Log(double(mu))/log10, Log(double(Pfeas))/log10,
+            Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
+            Log(double(InfinityNorm(cL)))/log10, Log(double(InfinityNorm(cU)))/log10,
+            Log(double(center))/log10);
     }
 
     // Initialize static portion of the KKT system
@@ -988,8 +991,11 @@ void Newton
 
         if( ctrl.print )
         {
-            Output(numIts, " :\t", mu, "\t", Pfeas, "\t", Dfeas, "\t", 
-	            Cinf0, "\t", InfinityNorm(cL), "\t", InfinityNorm(cU), "\t", center,"\t",stepx,"\t",stepz);
+            printf("%d :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.3f\t%1.3f\n", 
+                numIts, Log(double(mu))/log10, Log(double(Pfeas))/log10,
+                Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
+                Log(double(InfinityNorm(cL)))/log10, Log(double(InfinityNorm(cU)))/log10,
+                Log(double(center))/log10, stepx, stepz);
         }
 
         if( ctrl.adaptiveMu )
