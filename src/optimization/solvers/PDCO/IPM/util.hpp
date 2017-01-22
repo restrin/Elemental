@@ -38,6 +38,17 @@ void Initialize
   bool print );
 
 template<typename Real>
+void CheckVariableInit
+( const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix );
+
+template<typename Real>
 void ResidualPD
 ( const Matrix<Real>& A,
   const vector<Int>& ixSetLow,
@@ -281,6 +292,12 @@ void GetActiveConstraints
   const vector<Int>& ixSetUpp,
         Int& lowerActive,
         Int& upperActive );
+
+template<typename Real>
+void Getz1z2
+( const Matrix<Real>& z,
+        Matrix<Real>& z1,
+        Matrix<Real>& z2 );
 
 } // namespace pdco
 } // namespace El

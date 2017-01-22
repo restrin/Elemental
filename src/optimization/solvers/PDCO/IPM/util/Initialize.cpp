@@ -90,6 +90,51 @@ void Initialize
     }
 }
 
+// Ensure initialized variables are valid
+template<typename Real>
+void CheckVariableInit
+( const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix )
+{
+    // Check if any variables are not initialized
+    if( x.Height() <= 0 || y.Height() <= 0 || z.Height() <= 0 )
+    {
+        RuntimeError("Need to initialize all variables!");
+    }
+
+    // Ensure variables satisfy bounds
+    for( Int i = 0; i < ixSetLow.size(); i++ )
+    {
+        if( x(i,0) <= bl(i,0) )
+        {
+            cout << "Below: i=" << i << " " << x(i,0) << " " << bl(i,0) << endl;
+            RuntimeError("x must be strictly interior to the bounds!");
+        }
+    }
+    for( Int i = 0; i < ixSetUpp.size(); i++ )
+    {
+        if( x(i,0) >= bu(i,0) )
+        {
+            cout << "Above: i=" << i << " " << x(i,0) << " " << bu(i,0) << endl;
+            RuntimeError("x must be strictly interior to the bounds!");
+        }
+    }
+    for( Int i = 0; i < ixSetFix.size(); i++ )
+    {
+        if( x(i,0) == bl(i,0) )
+        {
+            cout << "Fixed: i=" << i << " " << x(i,0) << " " << bl(i,0) << endl;
+            RuntimeError("x must be fixed!");
+        }
+    }
+}
+
 #define PROTO(Real) \
   template void Initialize \
   (       Matrix<Real>& x, \
@@ -105,7 +150,16 @@ void Initialize
     const Real& z0min, \
     const Int& m, \
     const Int& n, \
-    bool print );
+    bool print ); \
+  template void CheckVariableInit \
+  ( const Matrix<Real>& x, \
+    const Matrix<Real>& y, \
+    const Matrix<Real>& z, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+    const vector<Int>& ixSetFix );
 
 #define EL_NO_INT_PROTO
 #define EL_NO_COMPLEX_PROTO

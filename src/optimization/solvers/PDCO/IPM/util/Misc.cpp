@@ -61,6 +61,7 @@ void QueueUpdateSubdiagonal
 }
 
 // Get the number of active bound constraints
+// TODO: Make active threshold relative
 template<typename Real>
 void GetActiveConstraints
 ( const Matrix<Real>& x,
@@ -95,6 +96,25 @@ void GetActiveConstraints
     }
 }
 
+// Separate the variable z into z1 and z2
+template<typename Real>
+void Getz1z2
+( const Matrix<Real>& z,
+        Matrix<Real>& z1,
+        Matrix<Real>& z2 )
+{
+    Int n = z.Height();
+    Zeros(z1, n, 1);
+    Zeros(z2, n, 1);
+    for( Int i = 0; i < n; i++ )
+    {
+        if( z(i,0) > 0 )
+            z1(i,0) = z(i,0);
+        else
+            z2(i,0) = -z(i,0);
+    }
+}
+
 #define PROTO(Real) \
   vector<Int> IndexRange(Int n); \
   template void UpdateSubdiagonal \
@@ -114,7 +134,11 @@ void GetActiveConstraints
     const vector<Int>& ixSetLow, \
     const vector<Int>& ixSetUpp, \
           Int& lowerActive, \
-          Int& upperActive );
+          Int& upperActive ); \
+  template void Getz1z2 \
+  ( const Matrix<Real>& z, \
+          Matrix<Real>& z1, \
+          Matrix<Real>& z2 );
 
 
 

@@ -120,6 +120,9 @@ void Newton
     Matrix<Real> ones;     // Used to set diagonals to one
     bool diagHess = false; // Is the Hessian diagonal?
 
+    // Boolean flag to check if variables already initialized
+    bool initialized = false;
+
     // Initialize some useful variables
     Copy(D2, D2sq);
     DiagonalScale(LEFT, NORMAL, D2, D2sq);
@@ -136,6 +139,13 @@ void Newton
     // Determine index sets for lower bounded variables,
     // upper bounded variables, and fixed variables
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
+
+    // Ensure that all variables are initialized or none of them are
+    if( x.Height() > 0 || y.Height() > 0 || z.Height() > 0 )
+    {
+        pdco::CheckVariableInit(x, y, z, bl, bu, ixSetLow, ixSetUpp, ixSetFix);
+        initialized = true;
+    }
 
     Copy(b, bCopy);
     Copy(A, ACopy); // ACopy = A
@@ -169,10 +179,12 @@ void Newton
     {
         beta = Max(InfinityNorm(b), Real(1));
 
-        // Initialize to get feasible point for gradient estimate
-        pdco::Initialize(x, y, z1, z2, bl, bu, 
-          ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
-
+        if( !initialized )
+        {
+            // Initialize to get feasible point for gradient estimate
+            pdco::Initialize(x, y, z1, z2, bl, bu, 
+              ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+        }
         if( ctrl.outerEquil )
         {
             DiagonalSolve( LEFT, NORMAL, dCol, xin );
@@ -200,10 +212,29 @@ void Newton
         Output("  zeta = ", zeta);
     }
 
-    // Initialize the data
-    pdco::Initialize(x, y, z1, z2, bl, bu, 
-      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+    if( !initialized )
+    {
+        // Initialize the data if required
+        pdco::Initialize(x, y, z1, z2, bl, bu, 
+          ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+    }
+    else
+    {
+        pdco::Getz1z2(z, z1, z2);
+        // Scale the data
+        x *= Real(1)/beta;
+        y *= Real(1)/zeta;
+        z1 *= Real(1)/zeta;
+        z2 *= Real(1)/zeta;
 
+        if( ctrl.outerEquil )
+        {
+            DiagonalScale( LEFT, NORMAL, dCol, x );
+            DiagonalScale( LEFT, NORMAL, dRow, y );
+            DiagonalSolve( LEFT, NORMAL, dCol, z1 );
+            DiagonalSolve( LEFT, NORMAL, dCol, z2 );            
+        }
+    }
     //==== End of Initialization stuff =====
 
     // Compute residuals
@@ -506,14 +537,21 @@ void Newton
 
     Pfeas = InfinityNorm(r1);
     Dfeas = InfinityNorm(r2);
-    Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
+    Real cLInf = InfinityNorm(cL);
+    Real cUInf = InfinityNorm(cU);
+    Cfeas = Max(cLInf, cUInf);
 
-    Output("  Pfeas    = ", Pfeas);
-    Output("  Dfeas    = ", Dfeas);
-    Output("  Cinf0    = ", Cinf0);
-    Output("  ||cL||oo = ", InfinityNorm(cL));
-    Output("  ||cU||oo = ", InfinityNorm(cU));
-    Output("  center   = ", center);
+    Real xInf = InfinityNorm(x);
+    Real zInf = InfinityNorm(z);
+    Output("  Pfeas         = ", Pfeas);
+    Output("  Dfeas         = ", Dfeas);
+    Output("  Cinf0         = ", Cinf0);
+    Output("  |cL|oo        = ", cLInf);
+    Output("  |cU|oo        = ", cUInf);
+    Output("  Cinf0/|x||z|  = ", Cinf0/(xInf * zInf));
+    Output("  |cL|oo/|x||z| = ", cLInf/(xInf * zInf));
+    Output("  |cU|oo/|x||z| = ", cUInf/(xInf * zInf));
+    Output("  center        = ", center);
 
     Output();
     Output("  Scaled:   max |x| = ", Max(x)/beta, "\tmax |y| = ", Max(y)/zeta, "\tmax |z| = ", Max(z)/zeta);
@@ -629,6 +667,9 @@ void Newton
     Matrix<Real> zeros;    // Used to set submatrices to zero
     Matrix<Real> ones;     // Used to set diagonals to one
 
+    // Boolean flag to check if variables already initialized
+    bool initialized = false;
+
     // Initialize some useful variables
     Copy(D2, D2sq);
     DiagonalScale(LEFT, NORMAL, D2, D2sq);
@@ -642,9 +683,17 @@ void Newton
     // ==============================================================
 
     // ======= Begin initialization stuff =======
+
     // Determine index sets for lower bounded variables,
     // upper bounded variables, and fixed variables
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
+
+    // Ensure that all variables are initialized or none of them are
+    if( x.Height() > 0 || y.Height() > 0 || z.Height() > 0 )
+    {
+        pdco::CheckVariableInit(x, y, z, bl, bu, ixSetLow, ixSetUpp, ixSetFix);
+        initialized = true;
+    }
 
     Copy(b, bCopy);
     ACopy = SparseMatrix<Real>(A); // ACopy = A
@@ -676,9 +725,12 @@ void Newton
     {
         beta = Max(InfinityNorm(bCopy), Real(1));
 
-        // Initialize to get feasible point for gradient estimate
-        pdco::Initialize(x, y, z1, z2, bl, bu, 
-          ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+        if( !initialized )
+        {
+            // Initialize to get feasible point for gradient estimate
+            pdco::Initialize(x, y, z1, z2, bl, bu, 
+              ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+        }
 
         if( ctrl.outerEquil )
         {
@@ -707,10 +759,29 @@ void Newton
         Output("  zeta = ", zeta);
     }
 
-    // Initialize the data
-    pdco::Initialize(x, y, z1, z2, bl, bu, 
-      ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+    if( !initialized )
+    {
+        // Initialize the data if required
+        pdco::Initialize(x, y, z1, z2, bl, bu, 
+          ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+    }
+    else
+    {
+        pdco::Getz1z2(z, z1, z2);
+        // Scale the data
+        x *= Real(1)/beta;
+        y *= Real(1)/zeta;
+        z1 *= Real(1)/zeta;
+        z2 *= Real(1)/zeta;
 
+        if( ctrl.outerEquil )
+        {
+            DiagonalScale( LEFT, NORMAL, dCol, x );
+            DiagonalScale( LEFT, NORMAL, dRow, y );
+            DiagonalSolve( LEFT, NORMAL, dCol, z1 );
+            DiagonalSolve( LEFT, NORMAL, dCol, z2 );            
+        }
+    }
     //==== End of Initialization stuff =====
 
     Copy(x, xin);
@@ -1098,7 +1169,6 @@ void Newton
     } // end main for loop
 
     // Reconstruct solution
-    // scale?
     // set x(fix) = bl(fix);
     if( ixSetFix.size() > 0 )
     {
@@ -1173,14 +1243,21 @@ void Newton
     ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
     Pfeas = InfinityNorm(r1);
     Dfeas = InfinityNorm(r2);
-    Cfeas = Max(InfinityNorm(cL), InfinityNorm(cU));
+    Real cLInf = InfinityNorm(cL);
+    Real cUInf = InfinityNorm(cU);
+    Cfeas = Max(cLInf, cUInf);
 
-    Output("  Pfeas    = ", Pfeas);
-    Output("  Dfeas    = ", Dfeas);
-    Output("  Cinf0    = ", Cinf0);
-    Output("  ||cL||oo = ", InfinityNorm(cL));
-    Output("  ||cU||oo = ", InfinityNorm(cU));
-    Output("  center   = ", center);
+    Real xInf = InfinityNorm(x);
+    Real zInf = InfinityNorm(z);
+    Output("  Pfeas         = ", Pfeas);
+    Output("  Dfeas         = ", Dfeas);
+    Output("  Cinf0         = ", Cinf0);
+    Output("  |cL|oo        = ", cLInf);
+    Output("  |cU|oo        = ", cUInf);
+    Output("  Cinf0/|x||z|  = ", Cinf0/(xInf * zInf));
+    Output("  |cL|oo/|x||z| = ", cLInf/(xInf * zInf));
+    Output("  |cU|oo/|x||z| = ", cUInf/(xInf * zInf));
+    Output("  center        = ", center);
 
     Output();
     Output("  Scaled:   max |x| = ", Max(x)/beta, "\tmax |y| = ", Max(y)/zeta, "\tmax |z| = ", Max(z)/zeta);
