@@ -60,6 +60,21 @@ void QueueUpdateSubdiagonal
     }
 }
 
+// Zeros out entries in sparse matrix
+template<typename Real>
+void ZeroSubmatrix
+( SparseMatrix<Real>& A,
+  const vector<Int>& rows,
+  const vector<Int>& cols )
+{
+    for( Int j=0; j < cols.size(); j++ )
+    {
+        for( Int i=0; i < rows.size(); i++ )
+            A.QueueZero(i,j);
+    }
+    A.ProcessQueues();
+}
+
 // Get the number of active bound constraints
 // TODO: Make active threshold relative
 template<typename Real>
@@ -100,19 +115,20 @@ void GetActiveConstraints
 template<typename Real>
 void Getz1z2
 ( const Matrix<Real>& z,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
         Matrix<Real>& z1,
         Matrix<Real>& z2 )
 {
     Int n = z.Height();
-    Zeros(z1, n, 1);
-    Zeros(z2, n, 1);
-    for( Int i = 0; i < n; i++ )
-    {
-        if( z(i,0) > 0 )
-            z1(i,0) = z(i,0);
-        else
-            z2(i,0) = -z(i,0);
-    }
+    Zeros(z1, ixSetLow.size(), 1);
+    Zeros(z2, ixSetUpp.size(), 1);
+
+    for( Int i = 0; i < ixSetLow.size(); i++ )
+        z1(ixSetLow[i],0) = z(ixSetLow[i],0);
+
+    for( Int i = 0; i < ixSetUpp.size(); i++ )
+        z2(ixSetUpp[i],0) = -z(ixSetUpp[i],0);
 }
 
 #define PROTO(Real) \
@@ -127,6 +143,10 @@ void Getz1z2
     const vector<Int>& ixSet, \
     const Real& alpha, \
     const Matrix<Real>& dSub ); \
+  template void ZeroSubmatrix \
+  ( SparseMatrix<Real>& A, \
+    const vector<Int>& rows, \
+    const vector<Int>& cols ); \
   template void GetActiveConstraints \
   ( const Matrix<Real>& x, \
     const Matrix<Real>& bl, \
@@ -137,6 +157,8 @@ void Getz1z2
           Int& upperActive ); \
   template void Getz1z2 \
   ( const Matrix<Real>& z, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
           Matrix<Real>& z1, \
           Matrix<Real>& z2 );
 

@@ -67,6 +67,19 @@ void ResidualPD
 
 template<typename Real>
 void ResidualPD
+( const Matrix<Real>& A,
+  const Matrix<Real>& b,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+  const Matrix<Real>& grad,
+  const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z,
+  Matrix<Real>& r1,
+  Matrix<Real>& r2 );
+
+template<typename Real>
+void ResidualPD
 ( const SparseMatrix<Real>& A,
   const vector<Int>& ixSetLow,
   const vector<Int>& ixSetUpp,
@@ -79,6 +92,19 @@ void ResidualPD
   const Matrix<Real>& y,
   const Matrix<Real>& z1,
   const Matrix<Real>& z2,
+  Matrix<Real>& r1,
+  Matrix<Real>& r2 );
+
+template<typename Real>
+void ResidualPD
+( const SparseMatrix<Real>& A,
+  const Matrix<Real>& b,
+  const Matrix<Real>& D1,
+  const Matrix<Real>& D2,
+  const Matrix<Real>& grad,
+  const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z,
   Matrix<Real>& r1,
   Matrix<Real>& r2 );
 
@@ -281,6 +307,12 @@ void QueueUpdateSubdiagonal
   const Real& alpha,
   const Matrix<Real>& dSub );
 
+template<typename Real>
+void ZeroSubmatrix
+( SparseMatrix<Real>& A,
+  const vector<Int>& rows,
+  const vector<Int>& cols );
+
 vector<Int> IndexRange(Int n);
 
 template<typename Real>
@@ -296,6 +328,8 @@ void GetActiveConstraints
 template<typename Real>
 void Getz1z2
 ( const Matrix<Real>& z,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
         Matrix<Real>& z1,
         Matrix<Real>& z2 );
 

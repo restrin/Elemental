@@ -139,10 +139,8 @@ void FormKKT
     if( ixSetFix.size() > 0 )
     {
         // Fix the Hessian to account for fixed entries
-        auto Hsub = Hess(ALL, ixSetFix);
-        Zeros(Hsub, n, ixSetFix.size());
-        Hsub = Hess(ixSetFix, ALL);
-        Zeros(Hsub, ixSetFix.size(),n);
+        ZeroSubmatrix(Hess, ALL_n, ixSetFix);
+        ZeroSubmatrix(Hess, ixSetFix, ALL_n);
         Matrix<Real> tmp;
         Ones(tmp, ixSetFix.size(), 1);
         QueueUpdateSubdiagonal(Hess, ixSetFix, Real(1), tmp);
@@ -309,10 +307,8 @@ void FormKKT25
     if( ixSetFix.size() > 0 )
     {
         // Fix the Hessian to account for fixed entries
-        auto Hsub = Hess(ALL, ixSetFix);
-        Zeros(Hsub, n, ixSetFix.size());
-        Hsub = Hess(ixSetFix, ALL);
-        Zeros(Hsub, ixSetFix.size(),n);
+        ZeroSubmatrix(Hess, ALL_n, ixSetFix);
+        ZeroSubmatrix(Hess, ixSetFix, ALL_n);
         Matrix<Real> tmp;
         Ones(tmp, ixSetFix.size(), 1);
         QueueUpdateSubdiagonal(Hess, ixSetFix, Real(1), tmp);

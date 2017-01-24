@@ -58,6 +58,41 @@ void ResidualPD
     SetSubmatrix(r2, ixSetFix, ZERO, tmp1); // r2(fix) = 0
 }
 
+template<typename Real>
+void ResidualPD
+( const Matrix<Real>& A,
+  const Matrix<Real>& b,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
+  const Matrix<Real>& grad,
+  const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z,
+  Matrix<Real>& r1,
+  Matrix<Real>& r2 )
+{
+    EL_DEBUG_CSE
+
+    vector<Int> ZERO (1,0);
+    Int n = A.Width();
+
+    Matrix<Real> tmp1;
+
+    // Compute r1 = b - A*x - D2^2*y
+    Copy(b, r1);
+    Gemv(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x
+    Hadamard(D2sq, y, tmp1); // tmp1 = D2^2 y
+    r1 -= tmp1;
+
+    // Compute r2 = grad + D1^2*x - A'*y - z1 + z2
+    Copy(grad, r2);
+    Hadamard(D1sq, x, tmp1); // tmp1 = D1^2*x
+    r2 += tmp1; // r2 = grad + D1^2*x
+
+    Gemv(TRANSPOSE, Real(-1), A, y, Real(1), r2); // r2 = grad + D1^2*x - A'*y
+    Axpy(Real(-1), z, r2); // r2 = grad + D1^2*x - A'*y - z 
+}
+
 // Computes the residuals for the primal-dual equations
 template<typename Real>
 void ResidualPD
@@ -100,6 +135,42 @@ void ResidualPD
 
     Zeros(tmp1, ixSetFix.size(), 1);
     SetSubmatrix(r2, ixSetFix, ZERO, tmp1); // r2(fix) = 0
+}
+
+// Computes the residuals for the primal-dual equations
+template<typename Real>
+void ResidualPD
+( const SparseMatrix<Real>& A,
+  const Matrix<Real>& b,
+  const Matrix<Real>& D1sq,
+  const Matrix<Real>& D2sq,
+  const Matrix<Real>& grad,
+  const Matrix<Real>& x,
+  const Matrix<Real>& y,
+  const Matrix<Real>& z,
+  Matrix<Real>& r1,
+  Matrix<Real>& r2 )
+{
+    EL_DEBUG_CSE
+
+    const vector<Int> ZERO (1,0);
+    const Int n = A.Width();
+
+    Matrix<Real> tmp1;
+
+    // Compute r1 = b - A*x - D2^2*y
+    Copy(b, r1);
+    Multiply(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x
+    Hadamard(D2sq, y, tmp1); // tmp1 = D2^2*y
+    r1 -= tmp1;
+
+    // Compute r2 = grad + D1^2*x - A'*y - z1 + z2
+    Copy(grad, r2);
+    Hadamard(D1sq, x, tmp1); // tmp2 = D1^2*x
+    r2 += tmp1; // r2 = grad + D1^2*x
+
+    Multiply(TRANSPOSE, Real(-1), A, y, Real(1), r2); // r2 = grad + D1^2*x - A'*y
+    Axpy(Real(-1), z, r2); // r2 = grad + D1^2*x - A'*y - z 
 }
 
 // Compute the residuals for the complementarity conditions
@@ -190,6 +261,17 @@ void ResidualC
     Matrix<Real>& r1, \
     Matrix<Real>& r2 ); \
   template void ResidualPD \
+  ( const Matrix<Real>& A, \
+    const Matrix<Real>& b, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
+    const Matrix<Real>& grad, \
+    const Matrix<Real>& x, \
+    const Matrix<Real>& y, \
+    const Matrix<Real>& z, \
+    Matrix<Real>& r1, \
+    Matrix<Real>& r2 ); \
+  template void ResidualPD \
   ( const SparseMatrix<Real>& A, \
     const vector<Int>& ixSetLow, \
     const vector<Int>& ixSetUpp, \
@@ -202,6 +284,17 @@ void ResidualC
     const Matrix<Real>& y, \
     const Matrix<Real>& z1, \
     const Matrix<Real>& z2, \
+    Matrix<Real>& r1, \
+    Matrix<Real>& r2 ); \
+  template void ResidualPD \
+  ( const SparseMatrix<Real>& A, \
+    const Matrix<Real>& b, \
+    const Matrix<Real>& D1sq, \
+    const Matrix<Real>& D2sq, \
+    const Matrix<Real>& grad, \
+    const Matrix<Real>& x, \
+    const Matrix<Real>& y, \
+    const Matrix<Real>& z, \
     Matrix<Real>& r1, \
     Matrix<Real>& r2 ); \
   template void ResidualC \

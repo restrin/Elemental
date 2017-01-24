@@ -220,7 +220,7 @@ void Newton
     }
     else
     {
-        pdco::Getz1z2(z, z1, z2);
+        pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
         // Scale the data
         x *= Real(1)/beta;
         y *= Real(1)/zeta;
@@ -460,32 +460,11 @@ void Newton
             break;
     } // end main for loop
 
-    // Reconstruct solution
-    // scale?
-    // set x(fix) = bl(fix);
-    if( ixSetFix.size() > 0 )
-    {
-        GetSubmatrix(bl, ixSetFix, ZERO, xFix);
-        SetSubmatrix(x, ixSetFix, ZERO, xFix);
-    }
-
-    // Reconstruct z from z1 and z2
-    Matrix<Real> tmp;
-    Zeros(z, n, 1);
-    UpdateSubmatrix(z, ixSetLow, ZERO, Real(1), z1);
-    UpdateSubmatrix(z, ixSetUpp, ZERO, Real(-1), z2);
-    Matrix<Real> zFix;
-    GetSubmatrix(grad, ixSetFix, ZERO, zFix);
-    GetSubmatrix(r2, ixSetFix, ZERO, tmp);
-    Axpy(Real(-1), tmp, zFix);
-    UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
-
     // Undo scaling by beta and zeta
     if( ctrl.scale )
     {
         x *= beta;
         y *= zeta;
-        z *= zeta;
         z1 *= zeta;
         z2 *= zeta;
 
@@ -498,9 +477,12 @@ void Newton
     {
         DiagonalSolve( LEFT, NORMAL, dCol, x );
         DiagonalSolve( LEFT, NORMAL, dRow, y );
-        DiagonalScale( LEFT, NORMAL, dCol, z );
-        DiagonalScale( LEFT, NORMAL, dCol, z1 );
-        DiagonalScale( LEFT, NORMAL, dCol, z2 );
+
+        Matrix<Real> tmp;
+        GetSubmatrix(dCol, ixSetLow, ZERO, tmp);
+        DiagonalScale( LEFT, NORMAL, tmp, z1 );
+        GetSubmatrix(dCol, ixSetUpp, ZERO, tmp);
+        DiagonalScale( LEFT, NORMAL, tmp, z2 );
 
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
@@ -519,9 +501,6 @@ void Newton
     else
       Output("Result: Failed!");
 
-    // Compute unscaled residuals
-    // TODO: Avoid recomputing some of this stuff
-    phi.grad( x, grad ); // get gradient
     Copy(D2, D2sq);
     Copy(D1, D1sq);
     if( ctrl.outerEquil )
@@ -531,8 +510,22 @@ void Newton
     }
     DiagonalScale(LEFT, NORMAL, D2sq, D2sq);
     DiagonalScale(LEFT, NORMAL, D1sq, D1sq);
-    ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+
+    // Reconstruct z from z1 and z2
+    phi.grad( x, grad ); // get gradient
+    ResidualPD(A, ixSetLow, ixSetUpp, IndexRange(0),
         b, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
+    Matrix<Real> tmp;
+    Zeros(z, n, 1);
+    UpdateSubmatrix(z, ixSetLow, ZERO, Real(1), z1);
+    UpdateSubmatrix(z, ixSetUpp, ZERO, Real(-1), z2);
+    Matrix<Real> zFix;
+    GetSubmatrix(r2, ixSetFix, ZERO, zFix);
+    SetSubmatrix(z, ixSetFix, ZERO, zFix);
+
+    // Compute unscaled residuals
+    // TODO: Avoid recomputing some of this stuff
+    ResidualPD(A, b, D1sq, D2sq, grad, x, y, z, r1, r2);
     ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
 
     Pfeas = InfinityNorm(r1);
@@ -699,13 +692,12 @@ void Newton
     ACopy = SparseMatrix<Real>(A); // ACopy = A
     if( ixSetFix.size() > 0 )
     {
-        // Fix b to allow for fixed variables
-        auto xFix = x( ixSetFix, IR(0) );// xFix = bl(ixSetFix)
-        auto Asub = ACopy( ALL, ixSetFix );
-        Multiply(NORMAL, Real(-1), Asub, xFix, Real(1), bCopy); // b = b - A*xFix
+        Matrix<Real> xFix;
+        Zeros(xFix, n, 1);
+        GetSubmatrix(bl, ixSetFix, ZERO, xFix);
+        Multiply(NORMAL, Real(-1), ACopy, xFix, Real(1), bCopy);
 
-        // Zero out columns of A for fixed variables
-        Zeros(Asub, m, ixSetFix.size());
+        ZeroSubmatrix(ACopy, ALL_m, ixSetFix);
     }
 
     // Equilibrate the A matrix
@@ -713,6 +705,12 @@ void Newton
     if( ctrl.outerEquil )
     {
         GeomEquil( ACopy, dRow, dCol, ctrl.print );
+        // Ones(dCol, n, 1);
+        // dCol *= Real(100);
+        // Ones(dRow, m, 1);
+        // // dRow *= Real(1)/Real(100);
+        // ACopy *= Real(1)/Real(100);
+
         DiagonalSolve( LEFT, NORMAL, dRow, bCopy );
 
         // Fix the bounds
@@ -767,7 +765,7 @@ void Newton
     }
     else
     {
-        pdco::Getz1z2(z, z1, z2);
+        pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
         // Scale the data
         x *= Real(1)/beta;
         y *= Real(1)/zeta;
@@ -1168,31 +1166,11 @@ void Newton
             break;
     } // end main for loop
 
-    // Reconstruct solution
-    // set x(fix) = bl(fix);
-    if( ixSetFix.size() > 0 )
-    {
-        GetSubmatrix(bl, ixSetFix, ZERO, xFix);
-        SetSubmatrix(x, ixSetFix, ZERO, xFix);
-    }
-
-    // Reconstruct z from z1 and z2
-    Matrix<Real> tmp;
-    Zeros(z, n, 1);
-    UpdateSubmatrix(z, ixSetLow, ZERO, Real(1), z1);
-    UpdateSubmatrix(z, ixSetUpp, ZERO, Real(-1), z2);
-    Matrix<Real> zFix;
-    GetSubmatrix(grad, ixSetFix, ZERO, zFix);
-    GetSubmatrix(r2, ixSetFix, ZERO, tmp);
-    Axpy(Real(-1), tmp, zFix);
-    UpdateSubmatrix(z, ixSetFix, ZERO, Real(1), zFix);
-
     // Undo scaling by beta and zeta
     if( ctrl.scale )
     {
         x *= beta;
         y *= zeta;
-        z *= zeta;
         z1 *= zeta;
         z2 *= zeta;
 
@@ -1205,9 +1183,12 @@ void Newton
     {
         DiagonalSolve( LEFT, NORMAL, dCol, x );
         DiagonalSolve( LEFT, NORMAL, dRow, y );
-        DiagonalScale( LEFT, NORMAL, dCol, z );
-        DiagonalScale( LEFT, NORMAL, dCol, z1 );
-        DiagonalScale( LEFT, NORMAL, dCol, z2 );
+
+        Matrix<Real> tmp;
+        GetSubmatrix(dCol, ixSetLow, ZERO, tmp);
+        DiagonalScale( LEFT, NORMAL, tmp, z1 );
+        GetSubmatrix(dCol, ixSetUpp, ZERO, tmp);
+        DiagonalScale( LEFT, NORMAL, tmp, z2 );
 
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
@@ -1226,9 +1207,6 @@ void Newton
     else
       Output("Result: Failed!");
 
-    // Compute unscaled residuals
-    // TODO: Avoid recomputing some of this stuff
-    phi.grad( x, grad ); // get gradient
     Copy(D2, D2sq);
     Copy(D1, D1sq);
     if( ctrl.outerEquil )
@@ -1238,9 +1216,24 @@ void Newton
     }
     DiagonalScale(LEFT, NORMAL, D2sq, D2sq);
     DiagonalScale(LEFT, NORMAL, D1sq, D1sq);
-    ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
+
+    // Reconstruct z from z1 and z2
+    phi.grad( x, grad ); // get gradient
+    ResidualPD(A, ixSetLow, ixSetUpp, IndexRange(0),
         b, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
+    Matrix<Real> tmp;
+    Zeros(z, n, 1);
+    UpdateSubmatrix(z, ixSetLow, ZERO, Real(1), z1);
+    UpdateSubmatrix(z, ixSetUpp, ZERO, Real(-1), z2);
+    Matrix<Real> zFix;
+    GetSubmatrix(r2, ixSetFix, ZERO, zFix);
+    SetSubmatrix(z, ixSetFix, ZERO, zFix);
+
+    // Compute unscaled residuals
+    // TODO: Avoid recomputing some of this stuff
+    ResidualPD(A, b, D1sq, D2sq, grad, x, y, z, r1, r2);
     ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
+
     Pfeas = InfinityNorm(r1);
     Dfeas = InfinityNorm(r2);
     Real cLInf = InfinityNorm(cL);

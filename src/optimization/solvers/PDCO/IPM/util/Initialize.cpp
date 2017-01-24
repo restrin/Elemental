@@ -63,6 +63,7 @@ void Initialize
     {
         if( fixSize> 0 && i == ixSetFix[ctrFix] )
         {
+            x(i, 0) = bl(i,0);
             ctrFix++;
             continue;
         }
