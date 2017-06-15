@@ -17,9 +17,32 @@ void IndexDependentFill( Matrix<T>& A, function<T(Int,Int)> func )
     EL_DEBUG_CSE
     const Int m = A.Height();
     const Int n = A.Width();
-    for( Int j=0; j<n; ++j )
+    T* ABuf = A.Buffer();
+    const Int ALDim = A.LDim();
+
+    // Use entry-wise parallelization for column vectors. Otherwise
+    // use column-wise parallelization.
+    if( n == 1 )
+    {
+        EL_PARALLEL_FOR
         for( Int i=0; i<m; ++i )
-            A.Set( i, j, func(i,j) );
+        {
+            ABuf[i] = func(i,0);
+        }
+    }
+    else
+    {
+        EL_PARALLEL_FOR
+        for( Int j=0; j<n; ++j )
+        {
+            EL_SIMD
+            for( Int i=0; i<m; ++i )
+            {
+                ABuf[i+j*ALDim] = func(i,j);
+            }
+        }
+    }
+
 }
 
 template<typename T>
@@ -29,15 +52,36 @@ void IndexDependentFill
     EL_DEBUG_CSE
     const Int mLoc = A.LocalHeight();
     const Int nLoc = A.LocalWidth();
-    for( Int jLoc=0; jLoc<nLoc; ++jLoc )
+    T* ALocBuf = A.Buffer();
+    const Int ALocLDim = A.LDim();
+
+    // Use entry-wise parallelization for column vectors. Otherwise
+    // use column-wise parallelization.
+    if( nLoc == 1 )
     {
-        const Int j = A.GlobalCol(jLoc);
+        EL_PARALLEL_FOR
         for( Int iLoc=0; iLoc<mLoc; ++iLoc )
         {
             const Int i = A.GlobalRow(iLoc);
-            A.SetLocal( iLoc, jLoc, func(i,j) );
+            const Int j = A.GlobalCol(0);
+            ALocBuf[iLoc] = func(i,j);
         }
     }
+    else
+    {
+        EL_PARALLEL_FOR
+        for( Int jLoc=0; jLoc<nLoc; ++jLoc )
+        {
+            EL_SIMD
+            for( Int iLoc=0; iLoc<mLoc; ++iLoc )
+            {
+                const Int i = A.GlobalRow(iLoc);
+                const Int j = A.GlobalCol(jLoc);
+                ALocBuf[iLoc+jLoc*ALocLDim] = func(i,j);
+            }
+        }
+    }
+
 }
 
 #ifdef EL_INSTANTIATE_BLAS_LEVEL1

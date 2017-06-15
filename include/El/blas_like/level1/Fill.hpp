@@ -15,11 +15,30 @@ template<typename T>
 void Fill( Matrix<T>& A, T alpha )
 {
     EL_DEBUG_CSE
-    const Int height = A.Height();
-    const Int width = A.Width();
-    for( Int j=0; j<width; ++j )
-        for( Int i=0; i<height; ++i )
-            A(i,j) = alpha;
+    const Int m = A.Height();
+    const Int n = A.Width();
+    T* ABuf = A.Buffer();
+    const Int ALDim = A.LDim();
+
+    // Iterate over single loop if memory is contiguous. Otherwise
+    // iterate over double loop.
+    if( ALDim == m )
+    {
+        for( Int i=0; i<m*n; ++i )
+        {
+            ABuf[i] = alpha;
+        }
+    }
+    else
+    {
+        for( Int j=0; j<n; ++j )
+        {
+            for( Int i=0; i<m; ++i )
+            {
+                ABuf[i+j*ALDim] = alpha;
+            }
+        }
+    }
 }
 
 template<typename T>
@@ -42,7 +61,6 @@ void Fill( SparseMatrix<T>& A, T alpha )
     EL_DEBUG_CSE
     const Int m = A.Height();
     const Int n = A.Width();
-    A.Resize( m, n );
     Zero( A );
     if( alpha != T(0) )
     {
@@ -60,7 +78,6 @@ void Fill( DistSparseMatrix<T>& A, T alpha )
     EL_DEBUG_CSE
     const Int m = A.Height();
     const Int n = A.Width();
-    A.Resize( m, n );
     Zero( A );
     if( alpha != T(0) )
     {

@@ -31,6 +31,7 @@ void FillDiagonal( AbstractDistMatrix<T>& A, T alpha, Int offset )
     EL_DEBUG_CSE
     const Int height = A.Height();
     const Int localWidth = A.LocalWidth();
+    EL_PARALLEL_FOR
     for( Int jLoc=0; jLoc<localWidth; ++jLoc )
     {
         const Int j = A.GlobalCol(jLoc);

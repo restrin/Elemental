@@ -23,16 +23,56 @@ void Hadamard( const Matrix<T>& A, const Matrix<T>& B, Matrix<T>& C )
 
     const Int height = A.Height();
     const Int width = A.Width();
-    for( Int j=0; j<width; ++j )
-        for( Int i=0; i<height; ++i )
-            C(i,j) = A(i,j)*B(i,j);
+    const T* ABuf = A.LockedBuffer();
+    const T* BBuf = B.LockedBuffer();
+    T* CBuf = C.Buffer();
+    const Int ALDim = A.LDim();
+    const Int BLDim = B.LDim();
+    const Int CLDim = C.LDim();
+
+    // Iterate over single loop if memory is contiguous. Otherwise
+    // iterate over double loop.
+    if( ALDim == height && BLDim == height && CLDim == height )
+    {
+        // Check if output matrix is equal to either input matrix
+        if( CBuf == BBuf )
+        {
+            EL_PARALLEL_FOR
+            for( Int i=0; i<height*width; ++i )
+                CBuf[i] *= ABuf[i];
+        }
+        else if( CBuf == ABuf )
+        {
+            EL_PARALLEL_FOR
+            for( Int i=0; i<height*width; ++i )
+                CBuf[i] *= BBuf[i];
+        }
+        else
+        {
+            EL_PARALLEL_FOR
+            for( Int i=0; i<height*width; ++i )
+                CBuf[i] = ABuf[i] * BBuf[i];
+        }
+    }
+    else
+    {
+        EL_PARALLEL_FOR
+        for( Int j=0; j<width; ++j )
+        {
+            EL_SIMD
+            for( Int i=0; i<height; ++i )
+            {
+                CBuf[i+j*CLDim] = ABuf[i+j*ALDim] * BBuf[i+j*BLDim];
+            }
+        }
+    }
 }
 
 template<typename T>
 void Hadamard
-( const ElementalMatrix<T>& A,
-  const ElementalMatrix<T>& B,
-        ElementalMatrix<T>& C )
+( const AbstractDistMatrix<T>& A,
+  const AbstractDistMatrix<T>& B,
+        AbstractDistMatrix<T>& C )
 {
     EL_DEBUG_CSE
     const DistData& ADistData = A.DistData();
@@ -48,6 +88,9 @@ void Hadamard
         LogicError("A, B, and C must share the same distribution");
     if( A.ColAlign() != B.ColAlign() || A.RowAlign() != B.RowAlign() )
         LogicError("A and B must be aligned");
+    if ( A.BlockHeight() != B.BlockHeight() ||
+         A.BlockWidth() != B.BlockWidth())
+      LogicError("A and B must have the same block size");
     C.AlignWith( A.DistData() );
     C.Resize( A.Height(), A.Width() );
     Hadamard( A.LockedMatrix(), B.LockedMatrix(), C.Matrix() );
@@ -75,9 +118,9 @@ void Hadamard
   EL_EXTERN template void Hadamard \
   ( const Matrix<T>& A, const Matrix<T>& B, Matrix<T>& C ); \
   EL_EXTERN template void Hadamard \
-  ( const ElementalMatrix<T>& A, \
-    const ElementalMatrix<T>& B, \
-          ElementalMatrix<T>& C ); \
+  ( const AbstractDistMatrix<T>& A, \
+    const AbstractDistMatrix<T>& B, \
+          AbstractDistMatrix<T>& C ); \
   EL_EXTERN template void Hadamard \
   ( const DistMultiVec<T>& A, \
     const DistMultiVec<T>& B, \

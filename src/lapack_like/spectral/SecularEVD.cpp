@@ -96,7 +96,8 @@ struct LastState
     Real relErrorBound;
 };
 
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 void EvaluateSecular
 ( const Real& rho,
   const Matrix<Real>& z,
@@ -159,7 +160,8 @@ void EvaluateSecular
         state.relErrorBound += Abs(state.rootRelEst)*state.secularDeriv;
 }
 
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 void EvaluateSecularLast
 ( const Real& rho,
   const Matrix<Real>& z,
@@ -203,7 +205,8 @@ void EvaluateSecularLast
         state.relErrorBound += Abs(state.rootRelEst)*state.secularDeriv;
 }
 
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 void SecularInitialGuess
 ( const Int whichValue,
   const Matrix<Real>& d,
@@ -336,7 +339,8 @@ void SecularInitialGuess
 //
 //   (d(n-1), d(n-1)+rho).
 //
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 void SecularInitialGuessLast
 ( const Matrix<Real>& d,
   const Real& rho,
@@ -440,7 +444,8 @@ void SecularInitialGuessLast
     EvaluateSecularLast( rho, z, state, ctrl.penalizeDerivative );
 }
 
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 void SecularUpdate
 ( bool  initialize,
   Int   whichValue,
@@ -808,7 +813,8 @@ void SecularUpdate
     EvaluateSecular( rho, z, state, ctrl.penalizeDerivative );
 }
 
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 void SecularUpdateLast
 ( bool  initialize,
   const Real& rho,
@@ -917,7 +923,8 @@ void SecularUpdateLast
     EvaluateSecularLast( rho, z, state, ctrl.penalizeDerivative );
 }
 
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 SecularEVDInfo
 SecularInner
 ( Int whichValue,
@@ -1016,7 +1023,8 @@ SecularInner
     return info;
 }
 
-template<typename Real,typename=EnableIf<IsReal<Real>>>
+template<typename Real,
+         typename=EnableIf<IsReal<Real>>>
 SecularEVDInfo
 SecularLast
 ( Int whichValue,
@@ -1128,6 +1136,17 @@ SecularEigenvalue
         return info;
     }
 
+    // Check if the relative two-norm of the update matrix, rho / || d ||_max,
+    // is below a small multiple of machine precision (if so, we may ignore it).
+    const Real relativeUpdateTwoNorm = rho / Max( Abs(d(0)), Abs(d(n-1)) );
+    const Real globalDeflateFudge = Real(10);
+    const Real globalDeflateTol = globalDeflateFudge * limits::Epsilon<Real>();
+    if( relativeUpdateTwoNorm <= globalDeflateTol )
+    {
+        eigenvalue = d(whichValue);
+        return info;
+    }
+
     if( k < n-1 )
     {
         secular_evd::State<Real> state;
@@ -1189,6 +1208,19 @@ SecularEigenvalue
         return info;
     }
 
+    // Check if the relative two-norm of the update matrix, rho / || d ||_max,
+    // is below a small multiple of machine precision (if so, we may ignore it).
+    const Real relativeUpdateTwoNorm = rho / Max( Abs(d(0)), Abs(d(n-1)) );
+    const Real globalDeflateFudge = Real(10);
+    const Real globalDeflateTol = globalDeflateFudge * limits::Epsilon<Real>();
+    if( relativeUpdateTwoNorm <= globalDeflateTol )
+    {
+        eigenvalue = d(whichValue);
+        for( Int i=0; i<n; ++i )
+            dMinusShift(i) = d(i) - eigenvalue;
+        return info;
+    }
+
     if( k < n-1 )
     {
         secular_evd::State<Real> state;
@@ -1225,6 +1257,18 @@ SecularEVD
     if( n == 0 )
     {
         Q.Resize( n, n );
+        return info;
+    }
+
+    // Check if the relative two-norm of the update matrix, rho / || d ||_max,
+    // is below a small multiple of machine precision (if so, we may ignore it).
+    const Real relativeUpdateTwoNorm = rho / Max( Abs(d(0)), Abs(d(n-1)) );
+    const Real globalDeflateFudge = Real(10);
+    const Real globalDeflateTol = globalDeflateFudge * limits::Epsilon<Real>();
+    if( relativeUpdateTwoNorm <= globalDeflateTol )
+    {
+        w = d;
+        Identity( Q, n, n );
         return info;
     }
 
