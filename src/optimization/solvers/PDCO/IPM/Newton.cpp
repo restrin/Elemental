@@ -33,7 +33,7 @@ static Timer totalTimer, ldlTimer,
 
 template<typename Real>
 void Newton
-( const PDCOObj<Real>& phi,
+(       PDCOObj<Real>& phi,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
         Matrix<Real>  bl,
@@ -172,6 +172,10 @@ void Newton
         // Fix the bounds
         DiagonalScale( LEFT, NORMAL, dCol, bl );
         DiagonalScale( LEFT, NORMAL, dCol, bu );
+
+        // Add scaling to PDCOObj
+        phi.dRow = &dRow;
+        phi.dCol = &dCol;
     }
 
     // Scale input data
@@ -185,14 +189,7 @@ void Newton
             pdco::Initialize(x, y, z1, z2, bl, bu, 
               ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
         }
-        if( ctrl.outerEquil )
-        {
-            DiagonalSolve( LEFT, NORMAL, dCol, xin );
-            phi.grad( x, grad ); // get gradient
-            DiagonalSolve( LEFT, NORMAL, dCol, grad );            
-        }
-        else
-            phi.grad( x, grad ); // get gradient
+        phi.grad( x, grad); // get gradient
 
         zeta = Max(InfinityNorm(grad),Real(1));
 
@@ -204,6 +201,10 @@ void Newton
 
         D1sq *= beta*beta/(theta);
         D2sq *= theta/(beta*beta);
+
+        phi.beta = beta;
+        phi.theta = theta;
+        phi.zeta = zeta;
     }
 
     if( ctrl.print )
@@ -240,19 +241,8 @@ void Newton
     // Compute residuals
     Copy(x, xin);
     xin *= beta;
-    if( ctrl.outerEquil )
-    {
-        DiagonalSolve( LEFT, NORMAL, dCol, xin );
-        phi.grad( xin, grad ); // get gradient
-        phi.hess( xin, Hess ); // get Hessian
-        DiagonalSolve( LEFT, NORMAL, dCol, grad );
-        SymmetricDiagonalSolve( dCol, Hess );
-    }
-    else
-    {
-        phi.grad(xin, grad); // get gradient
-        phi.hess(xin, Hess); // get Hessian
-    }
+    phi.grad(xin, grad); // get gradient
+    phi.hess(xin, Hess); // get Hessian
     grad *= beta/theta;
     Hess *= beta*beta/theta;
 
@@ -434,19 +424,8 @@ void Newton
         // Update gradient and Hessian
         Copy(x, xin);
         xin *= beta;
-        if( ctrl.outerEquil )
-        {
-            DiagonalSolve( LEFT, NORMAL, dCol, xin );
-            phi.grad( xin, grad ); // get gradient
-            phi.hess( xin, Hess ); // get Hessian
-            DiagonalSolve( LEFT, NORMAL, dCol, grad );
-            SymmetricDiagonalSolve( dCol, Hess );
-        }
-        else
-        {
-            phi.grad(xin, grad); // get gradient
-            phi.hess(xin, Hess); // get Hessian
-        }
+        phi.grad(xin, grad); // get gradient
+        phi.hess(xin, Hess); // get Hessian
         grad *= beta/theta;
         Hess *= beta*beta/theta;
 
@@ -470,6 +449,10 @@ void Newton
 
         bl *= beta;
         bu *= beta;
+
+        phi.beta = 1;
+        phi.theta = 1;
+        phi.zeta = 1;
     }
 
     // Undo scaling due to equilibration
@@ -486,6 +469,9 @@ void Newton
 
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
+
+        phi.dRow = NULL;
+        phi.dCol = NULL;
     }
 
     Int lowerActive;
@@ -558,7 +544,7 @@ void Newton
 
 template<typename Real>
 void Newton
-( const PDCOObj<Real>& phi,
+(       PDCOObj<Real>& phi,
   const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
         Matrix<Real>  bl,
@@ -641,7 +627,7 @@ void Newton
     Real stepx;            // Step size for x, y
     Real stepz;            // Step size for z1, z2
     Real stepmu;           // Step size for mu
-    Matrix<Real> xin;      // Scaled x variable for input to phi
+    Matrix<Real> xin;
 
     // For scaling purposes
     Real beta = Real(1);
@@ -671,8 +657,6 @@ void Newton
 
     Ones( xmbl, n, 1 );
     Ones( bumx, n, 1 );
-
-    Zeros( xin, n, 1 );
     // ==============================================================
 
     // ======= Begin initialization stuff =======
@@ -705,17 +689,15 @@ void Newton
     if( ctrl.outerEquil )
     {
         GeomEquil( ACopy, dRow, dCol, ctrl.print );
-        // Ones(dCol, n, 1);
-        // dCol *= Real(100);
-        // Ones(dRow, m, 1);
-        // // dRow *= Real(1)/Real(100);
-        // ACopy *= Real(1)/Real(100);
 
         DiagonalSolve( LEFT, NORMAL, dRow, bCopy );
 
         // Fix the bounds
         DiagonalScale( LEFT, NORMAL, dCol, bl );
         DiagonalScale( LEFT, NORMAL, dCol, bu );
+
+        phi.dRow = &dRow;
+        phi.dCol = &dCol;
     }
 
     // Scale input data
@@ -730,14 +712,7 @@ void Newton
               ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
         }
 
-        if( ctrl.outerEquil )
-        {
-            DiagonalSolve( LEFT, NORMAL, dCol, xin );
-            phi.grad( x, grad ); // get gradient
-            DiagonalSolve( LEFT, NORMAL, dCol, grad );            
-        }
-        else
-            phi.grad( x, grad ); // get gradient
+        phi.grad( x, grad ); // get gradient
 
         zeta = Max(InfinityNorm(grad),Real(1));
 
@@ -784,37 +759,17 @@ void Newton
 
     Copy(x, xin);
     xin *= beta;
-    if( ctrl.outerEquil )
+    if( ctrl.time )
+        gradTimer.Start();
+    phi.grad( xin, grad ); // get gradient
+    if( ctrl.time )
     {
-        DiagonalSolve( LEFT, NORMAL, dCol, xin );
-        if( ctrl.time )
-            gradTimer.Start();
-        phi.grad( xin, grad ); // get gradient
-        if( ctrl.time )
-        {
-            gradTimer.Stop();
-            hessTimer.Start();
-        }
-        phi.sparseHess( xin, Hess ); // get Hessian
-        if( ctrl.time )
-            hessTimer.Stop();
-        DiagonalSolve( LEFT, NORMAL, dCol, grad );
-        SymmetricDiagonalSolve( dCol, Hess );
+        gradTimer.Stop();
+        hessTimer.Start();
     }
-    else
-    {
-        if( ctrl.time )
-            gradTimer.Start();
-        phi.grad( xin, grad ); // get gradient
-        if( ctrl.time )
-        {
-            gradTimer.Stop();
-            hessTimer.Start();
-        }
-        phi.sparseHess( xin, Hess ); // get Hessian
-        if( ctrl.time )
-            hessTimer.Stop();
-    }
+    phi.sparseHess( xin, Hess ); // get Hessian
+    if( ctrl.time )
+        hessTimer.Stop();
     grad *= beta/theta;
     Hess *= beta*beta/theta;
 
@@ -1122,37 +1077,17 @@ void Newton
         // Update gradient and Hessian
         Copy(x, xin);
         xin *= beta;
-        if( ctrl.outerEquil )
+        if( ctrl.time )
+            gradTimer.Start();
+        phi.grad( xin, grad ); // get gradient
+        if( ctrl.time )
         {
-            DiagonalSolve( LEFT, NORMAL, dCol, xin );
-            if( ctrl.time )
-                gradTimer.Start();
-            phi.grad( xin, grad ); // get gradient
-            if( ctrl.time )
-            {
-                gradTimer.Stop();
-                hessTimer.Start();
-            }
-            phi.sparseHess( xin, Hess ); // get Hessian
-            if( ctrl.time )
-                hessTimer.Stop();
-            DiagonalSolve( LEFT, NORMAL, dCol, grad );
-            SymmetricDiagonalSolve( dCol, Hess );
+            gradTimer.Stop();
+            hessTimer.Start();
         }
-        else
-        {
-            if( ctrl.time )
-                gradTimer.Start();
-            phi.grad( xin, grad ); // get gradient
-            if( ctrl.time )
-            {
-                gradTimer.Stop();
-                hessTimer.Start();
-            }
-            phi.sparseHess( xin, Hess ); // get Hessian
-            if( ctrl.time )
-                hessTimer.Stop();
-        }
+        phi.sparseHess( xin, Hess ); // get Hessian
+        if( ctrl.time )
+            hessTimer.Stop();
         grad *= beta/theta;
         Hess *= beta*beta/theta;
 
@@ -1192,6 +1127,9 @@ void Newton
 
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
+
+        phi.dRow = NULL;
+        phi.dCol = NULL;
     }
 
     Int lowerActive;
@@ -1279,7 +1217,7 @@ void Newton
 
 #define PROTO(Real) \
   template void Newton \
-  ( const pdco::PDCOObj<Real>& phi, \
+  (       pdco::PDCOObj<Real>& phi, \
     const Matrix<Real>& A, \
     const Matrix<Real>& b, \
           Matrix<Real>  bl, \
@@ -1292,7 +1230,7 @@ void Newton
           Matrix<Real>& z, \
     const PDCOCtrl<Real>& ctrl ); \
   template void Newton \
-  ( const pdco::PDCOObj<Real>& phi, \
+  (       pdco::PDCOObj<Real>& phi, \
     const SparseMatrix<Real>& A, \
     const Matrix<Real>& b, \
           Matrix<Real>  bl, \

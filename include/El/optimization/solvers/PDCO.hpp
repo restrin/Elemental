@@ -122,21 +122,71 @@ struct Ctrl
 
 // Structure representing objective function for pdco solver
 template<typename Real>
-struct PDCOObj
+class PDCOObj
 {
-    // First argument is primal variable x
-    // Second argument is output
-    void (*obj)(Matrix<Real>&, Real&) = 0; // Objective value
-    void (*grad)(Matrix<Real>&, Matrix<Real>&) = 0; // Gradient
-    void (*hess)(Matrix<Real>&, Matrix<Real>&) = 0; // Hessian
-    void (*sparseHess)(Matrix<Real>&, SparseMatrix<Real>&) = 0; // Sparse Hessian
+    public:
+        // Function handles for computing objective, gradient and Hessian.
+        // First argument is primal variable x,
+        // Second argument is output.
+        void (*objLocal)(Matrix<Real>&, Real&) = 0; // Objective value
+        void (*gradLocal)(Matrix<Real>&, Matrix<Real>&) = 0; // Gradient
+        void (*hessLocal)(Matrix<Real>&, Matrix<Real>&) = 0; // Hessian
+        void (*sparseHessLocal)(Matrix<Real>&, SparseMatrix<Real>&) = 0; // Sparse Hessian
+
+        Matrix<Real> * dRow = NULL;
+        Matrix<Real> * dCol = NULL;
+        Real beta = 1;
+        Real theta = 1;
+        Real zeta = 1;
+
+    public:
+        void obj(Matrix<Real>& x, Real& val)
+        {
+            Real beta = this->beta;
+            if( this->dCol )
+                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x );
+            this->objLocal( x, val );
+        }
+
+        void grad(Matrix<Real>& x, Matrix<Real>& g)
+        {
+            Real beta = this->beta;
+            Real theta = this->theta;
+            if( this->dCol )
+                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x );
+            this->gradLocal( x, g );
+            if( this->dCol )
+                DiagonalSolve( LEFT, NORMAL, *(this->dCol), g );
+        }
+
+        void hess(Matrix<Real>& x, Matrix<Real>& H)
+        {
+            Real beta = this->beta;
+            Real theta = this->theta;
+            if( this->dCol )
+                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x ); 
+            this->hessLocal( x, H );
+            if( this->dCol )
+                SymmetricDiagonalSolve( *(this->dCol), H);
+        }
+
+        void sparseHess(Matrix<Real>& x, SparseMatrix<Real>& H)
+        {
+            Real beta = this->beta;
+            Real theta = this->theta;
+            if( this->dCol )
+                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x ); 
+            this->sparseHessLocal( x, H );
+            if( this->dCol )
+                SymmetricDiagonalSolve( *(this->dCol), H);
+        }
 };
 
 } // namespace pdco 
 
 template<typename Real>
 void PDCO
-( const pdco::PDCOObj<Real>& phi,
+(       pdco::PDCOObj<Real>& phi,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
@@ -151,7 +201,7 @@ void PDCO
 
 template<typename Real>
 void PDCO
-( const pdco::PDCOObj<Real>& phi,
+(       pdco::PDCOObj<Real>& phi,
   const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,

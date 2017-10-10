@@ -87,7 +87,7 @@ Real MaxZStepSize
 
 template<typename Real>
 bool Linesearch
-( const PDCOObj<Real>& phi,
+(       PDCOObj<Real>& phi,
   const Real& mu,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
@@ -174,16 +174,7 @@ bool Linesearch
         // Compute residuals
         Copy( x, xin );
         xin *= beta;
-        if( ctrl.outerEquil )
-        {
-            DiagonalSolve( LEFT, NORMAL, dCol, xin );
-            phi.grad( xin, grad ); // get gradient
-            DiagonalSolve( LEFT, NORMAL, dCol, grad );
-        }
-        else
-        {
-            phi.grad(xin, grad); // get gradient
-        }
+        phi.grad(xin, grad); // get gradient
         grad *= beta/theta;
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
           b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);
@@ -221,7 +212,7 @@ bool Linesearch
 
 template<typename Real>
 bool Linesearch
-( const PDCOObj<Real>& phi,
+(       PDCOObj<Real>& phi,
   const Real& mu,
   const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
@@ -307,16 +298,7 @@ bool Linesearch
         // Compute residuals
         Copy( x, xin );
         xin *= beta;
-        if( ctrl.outerEquil )
-        {
-            DiagonalSolve( LEFT, NORMAL, dCol, xin );
-            phi.grad( xin, grad ); // get gradient
-            DiagonalSolve( LEFT, NORMAL, dCol, grad );
-        }
-        else
-        {
-            phi.grad(xin, grad); // get gradient
-        }
+        phi.grad(xin, grad); // get gradient
         grad *= beta/theta;
 
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
@@ -356,7 +338,7 @@ bool Linesearch
 
 #define PROTO(Real) \
   template bool Linesearch \
-  ( const PDCOObj<Real>& phi, \
+  (       PDCOObj<Real>& phi, \
     const Real& mu, \
     const Matrix<Real>& A, \
     const Matrix<Real>& b, \
@@ -388,7 +370,7 @@ bool Linesearch
     const Real& theta, \
     const PDCOCtrl<Real>& ctrl ); \
   template bool Linesearch \
-  ( const PDCOObj<Real>& phi, \
+  (       PDCOObj<Real>& phi, \
     const Real& mu, \
     const SparseMatrix<Real>& A, \
     const Matrix<Real>& b, \

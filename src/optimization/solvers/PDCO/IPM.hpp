@@ -13,7 +13,7 @@ namespace pdco {
 
 template<typename Real>
 void Newton
-( const pdco::PDCOObj<Real>& phi,
+(       pdco::PDCOObj<Real>& phi,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
         Matrix<Real>  bl,
@@ -28,7 +28,7 @@ void Newton
 
 template<typename Real>
 void Newton
-( const pdco::PDCOObj<Real>& phi,
+(       pdco::PDCOObj<Real>& phi,
   const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
         Matrix<Real> bl,

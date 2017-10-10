@@ -125,7 +125,7 @@ void ResidualC
 
 template<typename Real>
 bool Linesearch
-( const PDCOObj<Real>& phi,
+(       PDCOObj<Real>& phi,
   const Real& mu,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
@@ -159,7 +159,7 @@ bool Linesearch
 
 template<typename Real>
 bool Linesearch
-( const PDCOObj<Real>& phi,
+(       PDCOObj<Real>& phi,
   const Real& mu,
   const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 

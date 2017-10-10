@@ -13,7 +13,7 @@ namespace El {
 
 template<typename Real>
 void PDCO
-( const pdco::PDCOObj<Real>& phi,
+(       pdco::PDCOObj<Real>& phi,
   const Matrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
@@ -33,7 +33,7 @@ void PDCO
 
 template<typename Real>
 void PDCO
-( const pdco::PDCOObj<Real>& phi,
+(       pdco::PDCOObj<Real>& phi,
   const SparseMatrix<Real>& A,
   const Matrix<Real>& b, 
   const Matrix<Real>& bl,
@@ -53,7 +53,7 @@ void PDCO
 
 #define PROTO(Real) \
   template void PDCO \
-  ( const pdco::PDCOObj<Real>& phi, \
+  (     pdco::PDCOObj<Real>& phi, \
   const Matrix<Real>& A, \
   const Matrix<Real>& b, \
   const Matrix<Real>& bl, \
@@ -64,9 +64,9 @@ void PDCO
         Matrix<Real>& r, \
         Matrix<Real>& y, \
         Matrix<Real>& z, \
-    const pdco::Ctrl<Real>& ctrl ); \
+  const pdco::Ctrl<Real>& ctrl ); \
   template void PDCO \
-  ( const pdco::PDCOObj<Real>& phi, \
+  (     pdco::PDCOObj<Real>& phi, \
   const SparseMatrix<Real>& A, \
   const Matrix<Real>& b, \
   const Matrix<Real>& bl, \
@@ -77,7 +77,7 @@ void PDCO
         Matrix<Real>& r, \
         Matrix<Real>& y, \
         Matrix<Real>& z, \
-    const pdco::Ctrl<Real>& ctrl );
+  const pdco::Ctrl<Real>& ctrl );
 
 #define EL_NO_INT_PROTO
 #define EL_NO_COMPLEX_PROTO
