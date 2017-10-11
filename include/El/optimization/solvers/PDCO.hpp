@@ -133,52 +133,67 @@ class PDCOObj
         void (*hessLocal)(Matrix<Real>&, Matrix<Real>&) = 0; // Hessian
         void (*sparseHessLocal)(Matrix<Real>&, SparseMatrix<Real>&) = 0; // Sparse Hessian
 
-        Matrix<Real> * dRow = NULL;
-        Matrix<Real> * dCol = NULL;
+        Matrix<Real> scale;
         Real beta = 1;
         Real theta = 1;
         Real zeta = 1;
 
+        Matrix<Real> xin;
+
     public:
+        PDCOObj(Int n)
+        {
+            Zeros( this->xin, n, 1 );
+            Ones( this->scale, n, 1 );
+        }
+
         void obj(Matrix<Real>& x, Real& val)
         {
             Real beta = this->beta;
-            if( this->dCol )
-                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x );
-            this->objLocal( x, val );
+            Copy(x, this->xin);
+            this->xin *= beta;
+
+            DiagonalSolve( LEFT, NORMAL, this->scale, this->xin );
+            this->objLocal( this->xin, val );
         }
 
         void grad(Matrix<Real>& x, Matrix<Real>& g)
         {
             Real beta = this->beta;
             Real theta = this->theta;
-            if( this->dCol )
-                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x );
-            this->gradLocal( x, g );
-            if( this->dCol )
-                DiagonalSolve( LEFT, NORMAL, *(this->dCol), g );
+            Copy(x, this->xin);
+            this->xin *= beta;
+
+            DiagonalSolve( LEFT, NORMAL, this->scale, this->xin );
+            this->gradLocal( this->xin, g );
+            DiagonalSolve( LEFT, NORMAL, this->scale, g );
+            g *= beta/theta;
         }
 
         void hess(Matrix<Real>& x, Matrix<Real>& H)
         {
             Real beta = this->beta;
             Real theta = this->theta;
-            if( this->dCol )
-                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x ); 
-            this->hessLocal( x, H );
-            if( this->dCol )
-                SymmetricDiagonalSolve( *(this->dCol), H);
+            Copy(x, this->xin);
+            this->xin *= beta;
+            
+            DiagonalSolve( LEFT, NORMAL, this->scale, this->xin ); 
+            this->hessLocal( this->xin, H );
+            SymmetricDiagonalSolve( this->scale, H);
+            H *= beta*beta/theta;
         }
 
         void sparseHess(Matrix<Real>& x, SparseMatrix<Real>& H)
         {
             Real beta = this->beta;
             Real theta = this->theta;
-            if( this->dCol )
-                DiagonalSolve( LEFT, NORMAL, *(this->dCol), x ); 
-            this->sparseHessLocal( x, H );
-            if( this->dCol )
-                SymmetricDiagonalSolve( *(this->dCol), H);
+            Copy(x, this->xin);
+            this->xin *= beta;
+            
+            DiagonalSolve( LEFT, NORMAL, this->scale, this->xin ); 
+            this->sparseHessLocal( this->xin, H );
+            SymmetricDiagonalSolve( this->scale, H);
+            H *= beta*beta/theta;
         }
 };
 

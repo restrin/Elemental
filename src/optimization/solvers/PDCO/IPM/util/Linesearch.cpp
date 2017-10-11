@@ -172,10 +172,10 @@ bool Linesearch
 
         // Compute residuals
         // Compute residuals
-        Copy( x, xin );
-        xin *= beta;
-        phi.grad(xin, grad); // get gradient
-        grad *= beta/theta;
+        // Copy( x, xin );
+        // xin *= beta;
+        phi.grad(x, grad); // get gradient
+        // grad *= beta/theta;
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
           b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);
 
@@ -296,10 +296,10 @@ bool Linesearch
         Axpy(stepz, dz2, z2New); // z2New = z2 + stepz*dz2
 
         // Compute residuals
-        Copy( x, xin );
-        xin *= beta;
-        phi.grad(xin, grad); // get gradient
-        grad *= beta/theta;
+        // Copy( x, xin );
+        // xin *= beta;
+        phi.grad(x, grad); // get gradient
+        // grad *= beta/theta;
 
         ResidualPD(A, ixSetLow, ixSetUpp, ixSetFix,
           b, D1sq, D2sq, grad, xNew, yNew, z1New, z2New, r1, r2);

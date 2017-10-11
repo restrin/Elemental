@@ -174,8 +174,7 @@ void Newton
         DiagonalScale( LEFT, NORMAL, dCol, bu );
 
         // Add scaling to PDCOObj
-        phi.dRow = &dRow;
-        phi.dCol = &dCol;
+        Copy(dCol, phi.scale);
     }
 
     // Scale input data
@@ -239,12 +238,8 @@ void Newton
     //==== End of Initialization stuff =====
 
     // Compute residuals
-    Copy(x, xin);
-    xin *= beta;
-    phi.grad(xin, grad); // get gradient
-    phi.hess(xin, Hess); // get Hessian
-    grad *= beta/theta;
-    Hess *= beta*beta/theta;
+    phi.grad(x, grad); // get gradient
+    phi.hess(x, Hess); // get Hessian
 
     if( Hess.Width() == 1 ) // TODO: Better check?
       diagHess = true;
@@ -422,12 +417,8 @@ void Newton
         }
 
         // Update gradient and Hessian
-        Copy(x, xin);
-        xin *= beta;
-        phi.grad(xin, grad); // get gradient
-        phi.hess(xin, Hess); // get Hessian
-        grad *= beta/theta;
-        Hess *= beta*beta/theta;
+        phi.grad(x, grad); // get gradient
+        phi.hess(x, Hess); // get Hessian
 
         // Recompute residuals
         ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
@@ -470,8 +461,7 @@ void Newton
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
 
-        phi.dRow = NULL;
-        phi.dCol = NULL;
+        Ones(phi.scale, n, 1);
     }
 
     Int lowerActive;
@@ -696,8 +686,7 @@ void Newton
         DiagonalScale( LEFT, NORMAL, dCol, bl );
         DiagonalScale( LEFT, NORMAL, dCol, bu );
 
-        phi.dRow = &dRow;
-        phi.dCol = &dCol;
+        Copy(dCol, phi.scale);
     }
 
     // Scale input data
@@ -724,6 +713,10 @@ void Newton
 
         D1sq *= beta*beta/(theta);
         D2sq *= theta/(beta*beta);
+
+        phi.beta = beta;
+        phi.theta = theta;
+        phi.zeta = zeta;
     }
 
     if( ctrl.print )
@@ -757,21 +750,17 @@ void Newton
     }
     //==== End of Initialization stuff =====
 
-    Copy(x, xin);
-    xin *= beta;
     if( ctrl.time )
         gradTimer.Start();
-    phi.grad( xin, grad ); // get gradient
+    phi.grad( x, grad ); // get gradient
     if( ctrl.time )
     {
         gradTimer.Stop();
         hessTimer.Start();
     }
-    phi.sparseHess( xin, Hess ); // get Hessian
+    phi.sparseHess( x, Hess ); // get Hessian
     if( ctrl.time )
         hessTimer.Stop();
-    grad *= beta/theta;
-    Hess *= beta*beta/theta;
 
     // Compute residuals
     ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
@@ -1075,21 +1064,17 @@ void Newton
         }
 
         // Update gradient and Hessian
-        Copy(x, xin);
-        xin *= beta;
         if( ctrl.time )
             gradTimer.Start();
-        phi.grad( xin, grad ); // get gradient
+        phi.grad( x, grad ); // get gradient
         if( ctrl.time )
         {
             gradTimer.Stop();
             hessTimer.Start();
         }
-        phi.sparseHess( xin, Hess ); // get Hessian
+        phi.sparseHess( x, Hess ); // get Hessian
         if( ctrl.time )
             hessTimer.Stop();
-        grad *= beta/theta;
-        Hess *= beta*beta/theta;
 
         // Recompute residuals
         ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
@@ -1111,6 +1096,10 @@ void Newton
 
         bl *= beta;
         bu *= beta;
+
+        phi.beta = 1;
+        phi.theta = 1;
+        phi.zeta = 1;
     }
 
     // Undo scaling due to equilibration
@@ -1128,8 +1117,7 @@ void Newton
         DiagonalSolve( LEFT, NORMAL, dCol, bl );
         DiagonalSolve( LEFT, NORMAL, dCol, bu );
 
-        phi.dRow = NULL;
-        phi.dCol = NULL;
+        Ones(phi.scale, n, 1);
     }
 
     Int lowerActive;
