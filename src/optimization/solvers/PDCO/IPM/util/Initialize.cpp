@@ -94,15 +94,17 @@ void Initialize
 // Ensure initialized variables are valid
 template<typename Real>
 void CheckVariableInit
-( const Matrix<Real>& x,
-  const Matrix<Real>& y,
-  const Matrix<Real>& z,
+(       Matrix<Real>& x,
+        Matrix<Real>& y,
+        Matrix<Real>& z,
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
   const vector<Int>& ixSetLow,
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix )
 {
+    const Real eps = limits::Epsilon<Real>();
+
     // Check if any variables are not initialized
     if( x.Height() <= 0 || y.Height() <= 0 || z.Height() <= 0 )
     {
@@ -112,28 +114,71 @@ void CheckVariableInit
     // Ensure variables satisfy bounds
     for( Int i = 0; i < ixSetLow.size(); i++ )
     {
-        if( x(i,0) <= bl(i,0) )
+        Int ix = ixSetLow[i];
+        if( x(ix,0) <= bl(ix,0) )
         {
-            cout << "Below: i=" << i << " " << x(i,0) << " " << bl(i,0) << endl;
+            cout << "Below: i=" << ix << " " << x(ix,0) << " " << bl(ix,0) << endl;
             RuntimeError("x must be strictly interior to the bounds!");
         }
     }
     for( Int i = 0; i < ixSetUpp.size(); i++ )
     {
-        if( x(i,0) >= bu(i,0) )
+        Int ix = ixSetUpp[i];
+        if( x(ix,0) >= bu(ix,0) )
         {
-            cout << "Above: i=" << i << " " << x(i,0) << " " << bu(i,0) << endl;
+            cout << "Above: i=" << ix << " " << x(ix,0) << " " << bu(ix,0) << endl;
             RuntimeError("x must be strictly interior to the bounds!");
         }
     }
     for( Int i = 0; i < ixSetFix.size(); i++ )
     {
-        if( x(i,0) == bl(i,0) )
+        Int ix = ixSetFix[i];
+        if( Abs(x(ix,0) - bl(ix,0)) >= Pow(eps, Real(0.25)) )
         {
-            cout << "Fixed: i=" << i << " " << x(i,0) << " " << bl(i,0) << endl;
+            cout << "Fixed: i=" << ix << " " << x(ix,0) << " " << bl(ix,0) << endl;
             RuntimeError("x must be fixed!");
         }
+        else
+            x(ix, 0) = bl(ix, 0);
     }
+}
+
+template<typename Real>
+Real GetMu
+( const Matrix<Real>& x,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix )
+{
+    vector<Int> ZERO (1,0);
+    Real mu = 0;
+    if( ixSetLow.size() > 0 )
+    {
+        Matrix<Real> xl, xlSub;
+        Copy(x, xl);
+        xl -= bl;
+        GetSubmatrix(xl, ixSetLow, ZERO, xlSub);
+        DiagonalScale(LEFT, NORMAL, z1, xlSub);
+        mu = EntrywiseNorm(xlSub, Real(1)) / Real(ixSetLow.size());
+    }
+
+    if( ixSetUpp.size() > 0 )
+    {
+        Matrix<Real> xu, xuSub;
+        Copy(bu, xu);
+        xu -= x;
+        GetSubmatrix(xu, ixSetUpp, ZERO, xuSub);
+        DiagonalScale(LEFT, NORMAL, z2, xuSub);
+        Real lowEntries = ixSetLow.size();
+        Real totEntries = Real(ixSetUpp.size() + lowEntries);
+        mu = (mu * lowEntries + EntrywiseNorm(xuSub, Real(1))) / totEntries;
+    }
+
+    return mu;
 }
 
 #define PROTO(Real) \
@@ -153,9 +198,18 @@ void CheckVariableInit
     const Int& n, \
     bool print ); \
   template void CheckVariableInit \
+  (       Matrix<Real>& x, \
+          Matrix<Real>& y, \
+          Matrix<Real>& z, \
+    const Matrix<Real>& bl, \
+    const Matrix<Real>& bu, \
+    const vector<Int>& ixSetLow, \
+    const vector<Int>& ixSetUpp, \
+    const vector<Int>& ixSetFix ); \
+  template Real GetMu \
   ( const Matrix<Real>& x, \
-    const Matrix<Real>& y, \
-    const Matrix<Real>& z, \
+    const Matrix<Real>& z1, \
+    const Matrix<Real>& z2, \
     const Matrix<Real>& bl, \
     const Matrix<Real>& bu, \
     const vector<Int>& ixSetLow, \

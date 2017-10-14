@@ -44,6 +44,7 @@ void Newton
         Matrix<Real>& r,
         Matrix<Real>& y,
         Matrix<Real>& z,
+        PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl )
 {
     EL_DEBUG_CSE
@@ -94,7 +95,6 @@ void Newton
     Real Cinf0;            // Complementarity convergence criteria
 
     // Artificial variables, step directions and step sizes
-    Matrix<Real> xFix;
     Matrix<Real> z1;
     Matrix<Real> z2;
     Matrix<Real> dx;       // Primal step direction
@@ -104,7 +104,6 @@ void Newton
     Real stepx;            // Step size for x, y
     Real stepz;            // Step size for z1, z2
     Real stepmu;           // Step size for mu
-    Matrix<Real> xin;      // Scaled x variable for input to phi
 
     // For scaling purposes
     Real beta = 1;
@@ -153,7 +152,7 @@ void Newton
     if( ixSetFix.size() > 0 )
     {
         // Fix b to allow for fixed variables
-        Matrix<Real> Asub;
+        Matrix<Real> xFix, Asub;
         GetSubmatrix(bl, ixSetFix, ZERO, xFix); // xFix = bl(ixSetFix)
         GetSubmatrix(A, ALL_m, ixSetFix, Asub); // Asub = A(:,ixSetFix)
         Gemv(NORMAL, Real(-1), Asub, xFix, Real(1), bCopy); // b = b - A*xFix
@@ -362,7 +361,7 @@ void Newton
         // Return stepx, stepz
         bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1sq, D2sq, 
           x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
-          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, dCol, beta, theta, ctrl);
+          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
 
         if( !success )
         {
@@ -384,7 +383,7 @@ void Newton
                 numIts, Log(double(mu))/log10, Log(double(Pfeas))/log10,
                 Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
                 Log(double(InfinityNorm(cL)))/log10, Log(double(InfinityNorm(cU)))/log10,
-                Log(double(center))/log10, stepx, stepz);
+                Log(double(center))/log10, double(stepx), double(stepz));
         }
 
 
@@ -545,6 +544,7 @@ void Newton
         Matrix<Real>& r,
         Matrix<Real>& y,
         Matrix<Real>& z,
+        PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl )
 {
     EL_DEBUG_CSE
@@ -564,7 +564,7 @@ void Newton
         totalTimer.Start();
     }
 
-    // ========= Declarations of oft re-used variables ==============
+    // ============== Declarations of oft re-used variables ====================
     Int m = A.Height();
     Int n = A.Width();
 
@@ -577,47 +577,45 @@ void Newton
     vector<Int> ALL_n = IndexRange(n);
     vector<Int> ZERO (1,0);
 
-    vector<Int> ixSetLow;  // Index set for lower bounded variables
-    vector<Int> ixSetUpp;  // Index set for upper bounded variables
-    vector<Int> ixSetFix;  // Index set for fixed bounded variables
+    vector<Int> ixSetLow;       // Index set for lower bounded variables
+    vector<Int> ixSetUpp;       // Index set for upper bounded variables
+    vector<Int> ixSetFix;       // Index set for fixed bounded variables
 
     // For objective function
-    Matrix<Real> grad;     // For gradient of phi
-    SparseMatrix<Real> Hess;     // For hessian of phi
+    Matrix<Real> grad;          // For gradient of phi
+    SparseMatrix<Real> Hess;    // For hessian of phi
 
     // Matrices used by KKT system
-    Matrix<Real> bCopy;    // Modified b due to fixed variables
-    Matrix<Real> D2sq;     // D2sq = D2^2
-    Matrix<Real> D1sq;     // D1sqp = D1^2
-    SparseMatrix<Real> ACopy;    // Used for KKT system
-    SparseMatrix<Real> H;        // Used for KKT system
-    Matrix<Real> dRow;     // Row scaling when equilibrating
-    Matrix<Real> dCol;     // Column scaling when equilibrating
+    Matrix<Real> bCopy;         // Modified b due to fixed variables
+    Matrix<Real> D2sq;          // D2sq = D2^2
+    Matrix<Real> D1sq;          // D1sqp = D1^2
+    SparseMatrix<Real> ACopy;   // Used for KKT system
+    SparseMatrix<Real> H;       // Used for KKT system
+    Matrix<Real> dRow;          // Row scaling when equilibrating
+    Matrix<Real> dCol;          // Column scaling when equilibrating
 
     // Various residuals and convergence measures
-    Matrix<Real> w;        // Residual for KKT system
-    Matrix<Real> r1;       // Primal residual
-    Matrix<Real> r2;       // Dual residual
-    Matrix<Real> cL;       // Lower bound complementarity residual
-    Matrix<Real> cU;       // Upper bound complementarity residual
-    Real center;           // Centering parameter
-    Real Pfeas;            // Primal feasibility
-    Real Dfeas;            // Dual feasibility
-    Real Cfeas;            // Complementarity feasibility
-    Real Cinf0;            // Complementarity convergence criteria
+    Matrix<Real> w;             // Residual for KKT system
+    Matrix<Real> r1;            // Primal residual
+    Matrix<Real> r2;            // Dual residual
+    Matrix<Real> cL;            // Lower bound complementarity residual
+    Matrix<Real> cU;            // Upper bound complementarity residual
+    Real center;                // Centering parameter
+    Real Pfeas;                 // Primal feasibility
+    Real Dfeas;                 // Dual feasibility
+    Real Cfeas;                 // Complementarity feasibility
+    Real Cinf0;                 // Complementarity convergence criteria
 
     // Artificial variables, step directions and step sizes
-    Matrix<Real> xFix;
-    Matrix<Real> z1;
-    Matrix<Real> z2;
-    Matrix<Real> dx;       // Primal step direction
-    Matrix<Real> dy;       // Dual step direction
-    Matrix<Real> dz1;      // Complementarity step direction
-    Matrix<Real> dz2;      // Complementarity step direction
-    Real stepx;            // Step size for x, y
-    Real stepz;            // Step size for z1, z2
-    Real stepmu;           // Step size for mu
-    Matrix<Real> xin;
+    Matrix<Real> z1;            // Dual for lower bounded variables
+    Matrix<Real> z2;            // Dual for upper bounded variables
+    Matrix<Real> dx;            // Primal step direction
+    Matrix<Real> dy;            // Dual step direction
+    Matrix<Real> dz1;           // Complementarity step direction
+    Matrix<Real> dz2;           // Complementarity step direction
+    Real stepx;                 // Step size for x, y
+    Real stepz;                 // Step size for z1, z2
+    Real stepmu;                // Step size for mu
 
     // For scaling purposes
     Real beta = Real(1);
@@ -625,16 +623,16 @@ void Newton
     Real theta = Real(1);
 
     // Variables to avoid recomputation
-    Matrix<Real> xmbl;     // x-bl
-    Matrix<Real> bumx;     // bu-x
+    Matrix<Real> xmbl;          // x-bl
+    Matrix<Real> bumx;          // bu-x
 
     Real mulast = 0.1*ctrl.optTol; // Final value of mu
     Real mu = Max(ctrl.mu0,mulast);
     bool converged = false;
 
     // Miscellaneous
-    Matrix<Real> zeros;    // Used to set submatrices to zero
-    Matrix<Real> ones;     // Used to set diagonals to one
+    Matrix<Real> zeros;         // Used to set submatrices to zero
+    Matrix<Real> ones;          // Used to set diagonals to one
 
     // Boolean flag to check if variables already initialized
     bool initialized = false;
@@ -647,12 +645,10 @@ void Newton
 
     Ones( xmbl, n, 1 );
     Ones( bumx, n, 1 );
-    // ==============================================================
+ 
+    // ================= Begin variable initialization =========================
 
-    // ======= Begin initialization stuff =======
-
-    // Determine index sets for lower bounded variables,
-    // upper bounded variables, and fixed variables
+    // Determine index sets for lower bounded, upper bounded, fixed variables
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
 
     // Ensure that all variables are initialized or none of them are
@@ -666,9 +662,11 @@ void Newton
     ACopy = SparseMatrix<Real>(A); // ACopy = A
     if( ixSetFix.size() > 0 )
     {
-        Matrix<Real> xFix;
+        Matrix<Real> xFix, xFixSub;
+        Zeros(xFixSub, ixSetFix.size(), 1);
         Zeros(xFix, n, 1);
-        GetSubmatrix(bl, ixSetFix, ZERO, xFix);
+        GetSubmatrix(bl, ixSetFix, ZERO, xFixSub);
+        SetSubmatrix(xFix, ixSetFix, ZERO, xFixSub);
         Multiply(NORMAL, Real(-1), ACopy, xFix, Real(1), bCopy);
 
         ZeroSubmatrix(ACopy, ALL_m, ixSetFix);
@@ -688,7 +686,7 @@ void Newton
 
         Copy(dCol, phi.scale);
     }
-
+    
     // Scale input data
     if( ctrl.scale )
     {
@@ -698,7 +696,8 @@ void Newton
         {
             // Initialize to get feasible point for gradient estimate
             pdco::Initialize(x, y, z1, z2, bl, bu, 
-              ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+              ixSetLow, ixSetUpp, ixSetFix,
+              ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
         }
 
         phi.grad( x, grad ); // get gradient
@@ -718,7 +717,7 @@ void Newton
         phi.theta = theta;
         phi.zeta = zeta;
     }
-
+    
     if( ctrl.print )
     {
         Output("  beta = ", beta);
@@ -729,7 +728,8 @@ void Newton
     {
         // Initialize the data if required
         pdco::Initialize(x, y, z1, z2, bl, bu, 
-          ixSetLow, ixSetUpp, ixSetFix, ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
+          ixSetLow, ixSetUpp, ixSetFix,
+          ctrl.x0min, ctrl.z0min, m, n, ctrl.print);
     }
     else
     {
@@ -747,6 +747,8 @@ void Newton
             DiagonalSolve( LEFT, NORMAL, dCol, z1 );
             DiagonalSolve( LEFT, NORMAL, dCol, z2 );            
         }
+
+        cout << GetMu( x, z1, z2, bl, bu, ixSetLow, ixSetUpp, ixSetFix ) << endl;
     }
     //==== End of Initialization stuff =====
 
@@ -778,8 +780,8 @@ void Newton
         printf("Init :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\n", 
             Log(double(mu))/log10, Log(double(Pfeas))/log10,
             Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
-            Log(double(InfinityNorm(cL)))/log10, Log(double(InfinityNorm(cU)))/log10,
-            Log(double(center))/log10);
+            Log(double(InfinityNorm(cL)))/log10,
+            Log(double(InfinityNorm(cU)))/log10, Log(double(center))/log10);
     }
 
     // Initialize static portion of the KKT system
@@ -831,7 +833,6 @@ void Newton
                     ixSetLow, ixSetUpp, ixSetFix, K );
                 if( ctrl.time )
                     kktTimer.Stop();
-
                 if( ctrl.time )
                     kktrhsTimer.Start();
                 // Form the right-hand side
@@ -860,7 +861,8 @@ void Newton
 
                 if( ctrl.time )
                     solveAfterTimer.Start();
-                reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact, w, ctrl.solveCtrl );
+                reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact,
+                    w, ctrl.solveCtrl );
                 if( ctrl.time )
                     solveAfterTimer.Stop();
 
@@ -878,7 +880,8 @@ void Newton
                 DiagonalScale(LEFT, NORMAL, z1, dz1);
                 dz1 *= -1;
                 dz1 += cL;
-                DiagonalSolve(LEFT, NORMAL, tmp2, dz1); // dz1 = (x-bl)^-1 * (cL - z1*dx)
+                // dz1 = (x-bl)^-1 * (cL - z1*dx)
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz1);
 
                 // Compute dz2
                 Copy(bu, tmp1);
@@ -887,7 +890,8 @@ void Newton
                 GetSubmatrix(dx, ixSetUpp, ZERO, dz2);
                 DiagonalScale(LEFT, NORMAL, z2, dz2);
                 dz2 += cU;
-                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz2 = (bu-x)^-1 * (cU + z2*dx)
+                // dz2 = (bu-x)^-1 * (cU + z2*dx)
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz2);
             }
                 break;
             case Method::LDL25:
@@ -958,7 +962,8 @@ void Newton
 
                 if( ctrl.time )
                     solveAfterTimer.Start();
-                reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact, w, ctrl.solveCtrl );
+                reg_ldl::SolveAfter( KOrig, regTmp, sparseLDLFact,
+                    w, ctrl.solveCtrl );
                 if( ctrl.time )
                     solveAfterTimer.Stop();
 
@@ -990,7 +995,8 @@ void Newton
                 DiagonalScale(LEFT, NORMAL, z1, dz1);
                 dz1 *= -1;
                 dz1 += cL;
-                DiagonalSolve(LEFT, NORMAL, tmp2, dz1); // dz2 = (x-bl)^-1 * (cL - z1*dx)
+                // dz2 = (x-bl)^-1 * (cL - z1*dx)
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz1);
 
                 // Compute dz2
                 Copy(bu, tmp1);
@@ -999,7 +1005,8 @@ void Newton
                 GetSubmatrix(dx, ixSetUpp, ZERO, dz2);
                 DiagonalScale(LEFT, NORMAL, z2, dz2);
                 dz2 += cU;
-                DiagonalSolve(LEFT, NORMAL, tmp2, dz2); // dz1 = (bu-x)^-1 * (cU + z2*dx)
+                // dz1 = (bu-x)^-1 * (cU + z2*dx)
+                DiagonalSolve(LEFT, NORMAL, tmp2, dz2);
             }
                 break;
             default:
@@ -1010,7 +1017,7 @@ void Newton
         // Return stepx, stepz
         bool success = Linesearch(phi, mu, ACopy, bCopy, bl, bu, D1sq, D2sq, 
           x, y, z1, z2, r1, r2, center, Cinf0, cL, cU, stepx, stepz,
-          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, dCol, beta, theta, ctrl);
+          dx, dy, dz1, dz2, ixSetLow, ixSetUpp, ixSetFix, ctrl);
 
         if( !success )
         {
@@ -1031,8 +1038,9 @@ void Newton
             printf("%d :\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.1f\t%1.3f\t%1.3f\n", 
                 numIts, Log(double(mu))/log10, Log(double(Pfeas))/log10,
                 Log(double(Dfeas))/log10, Log(double(Cinf0))/log10, 
-                Log(double(InfinityNorm(cL)))/log10, Log(double(InfinityNorm(cU)))/log10,
-                Log(double(center))/log10, stepx, stepz);
+                Log(double(InfinityNorm(cL)))/log10,
+                Log(double(InfinityNorm(cU)))/log10,
+                Log(double(center))/log10, double(stepx), double(stepz));
         }
 
         if( ctrl.adaptiveMu )
@@ -1080,7 +1088,8 @@ void Newton
         ResidualPD(ACopy, ixSetLow, ixSetUpp, ixSetFix,
           bCopy, D1sq, D2sq, grad, x, y, z1, z2, r1, r2);
 
-        ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2, center, Cinf0, cL, cU);
+        ResidualC(mu, ixSetLow, ixSetUpp, bl, bu, x, z1, z2,
+            center, Cinf0, cL, cU);
 
         if (converged)
             break;
@@ -1179,13 +1188,24 @@ void Newton
     Output("  center        = ", center);
 
     Output();
-    Output("  Scaled:   max |x| = ", Max(x)/beta, "\tmax |y| = ", Max(y)/zeta, "\tmax |z| = ", Max(z)/zeta);
-    Output("  Unscaled: max |x| = ", Max(x), "\tmax |y| = ", Max(y), "\tmax |z| = ", Max(z));
+    Output("  Scaled:   max |x| = ", Max(x)/beta,
+        "\tmax |y| = ", Max(y)/zeta,
+        "\tmax |z| = ", Max(z)/zeta);
+    Output("  Unscaled: max |x| = ", Max(x),
+        "\tmax |y| = ", Max(y),
+        "\tmax |z| = ", Max(z));
     Output();
 
     Output("  Number active constraints on");
     Output("    Lower bound: ", lowerActive);
     Output("    Upper bound: ", upperActive);
+
+    Copy(x, result.x);
+    Copy(y, result.y);
+    Copy(z, result.z);
+    result.feaTol = Pfeas;
+    result.optTol = Dfeas;
+    result.mu = mu;
 
     if( ctrl.time )
     {
@@ -1200,7 +1220,6 @@ void Newton
         Output("    Hessian time:      ", hessTimer.Total());
         Output("    Grad time:         ", gradTimer.Total());
     }
-
 }
 
 #define PROTO(Real) \
@@ -1216,6 +1235,7 @@ void Newton
           Matrix<Real>& r, \
           Matrix<Real>& y, \
           Matrix<Real>& z, \
+          PDCOResult<Real>& result, \
     const PDCOCtrl<Real>& ctrl ); \
   template void Newton \
   (       pdco::PDCOObj<Real>& phi, \
@@ -1229,6 +1249,7 @@ void Newton
           Matrix<Real>& r, \
           Matrix<Real>& y, \
           Matrix<Real>& z, \
+          PDCOResult<Real>& result, \
     const PDCOCtrl<Real>& ctrl );
 
 #define EL_NO_INT_PROTO

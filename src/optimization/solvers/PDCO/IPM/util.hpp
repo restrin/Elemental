@@ -39,9 +39,20 @@ void Initialize
 
 template<typename Real>
 void CheckVariableInit
+(       Matrix<Real>& x,
+        Matrix<Real>& y,
+        Matrix<Real>& z,
+  const Matrix<Real>& bl,
+  const Matrix<Real>& bu,
+  const vector<Int>& ixSetLow,
+  const vector<Int>& ixSetUpp,
+  const vector<Int>& ixSetFix );
+
+template<typename Real>
+Real GetMu
 ( const Matrix<Real>& x,
-  const Matrix<Real>& y,
-  const Matrix<Real>& z,
+  const Matrix<Real>& z1,
+  const Matrix<Real>& z2,
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
   const vector<Int>& ixSetLow,
@@ -152,9 +163,6 @@ bool Linesearch
   const vector<Int>& ixSetLow,
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
-  const Matrix<Real>& dCol,
-  const Real& beta,
-  const Real& theta,
   const PDCOCtrl<Real>& ctrl );
 
 template<typename Real>
@@ -186,9 +194,6 @@ bool Linesearch
   const vector<Int>& ixSetLow,
   const vector<Int>& ixSetUpp,
   const vector<Int>& ixSetFix,
-  const Matrix<Real>& dCol,
-  const Real& beta,
-  const Real& theta,
   const PDCOCtrl<Real>& ctrl );
 
 template<typename Real>

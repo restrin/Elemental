@@ -70,7 +70,7 @@ void ZeroSubmatrix
     for( Int j=0; j < cols.size(); j++ )
     {
         for( Int i=0; i < rows.size(); i++ )
-            A.QueueZero(i,j);
+            A.QueueZero(rows[i], cols[j]);
     }
     A.ProcessQueues();
 }
@@ -125,10 +125,12 @@ void Getz1z2
     Zeros(z2, ixSetUpp.size(), 1);
 
     for( Int i = 0; i < ixSetLow.size(); i++ )
-        z1(ixSetLow[i],0) = z(ixSetLow[i],0);
+        if( z(ixSetLow[i], 0) >= 0 )
+          z1(i,0) = z(ixSetLow[i],0);
 
     for( Int i = 0; i < ixSetUpp.size(); i++ )
-        z2(ixSetUpp[i],0) = -z(ixSetUpp[i],0);
+        if( z(ixSetUpp[i], 0) < 0 )
+          z2(i,0) = -z(ixSetUpp[i],0);
 }
 
 #define PROTO(Real) \

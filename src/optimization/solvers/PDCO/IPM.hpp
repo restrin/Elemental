@@ -24,6 +24,7 @@ void Newton
         Matrix<Real>& r,
         Matrix<Real>& y,
         Matrix<Real>& z,
+        PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl=PDCOCtrl<Real>() );
 
 template<typename Real>
@@ -39,6 +40,7 @@ void Newton
         Matrix<Real>& r,
         Matrix<Real>& y,
         Matrix<Real>& z,
+        PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl=PDCOCtrl<Real>() );
 
 } // namespace pdco
