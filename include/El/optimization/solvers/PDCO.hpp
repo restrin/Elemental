@@ -126,6 +126,8 @@ struct PDCOResult
     Matrix<Real> x;
     Matrix<Real> y;
     Matrix<Real> z;
+    Matrix<Real> z1;
+    Matrix<Real> z2;
 
     Real feaTol;
     Real optTol;

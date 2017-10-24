@@ -686,7 +686,7 @@ void Newton
 
         Copy(dCol, phi.scale);
     }
-    
+
     // Scale input data
     if( ctrl.scale )
     {
@@ -733,7 +733,10 @@ void Newton
     }
     else
     {
-        pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
+        // pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
+        Copy(result.z1, z1);
+        Copy(result.z2, z2);
+
         // Scale the data
         x *= Real(1)/beta;
         y *= Real(1)/zeta;
@@ -744,11 +747,13 @@ void Newton
         {
             DiagonalScale( LEFT, NORMAL, dCol, x );
             DiagonalScale( LEFT, NORMAL, dRow, y );
-            DiagonalSolve( LEFT, NORMAL, dCol, z1 );
-            DiagonalSolve( LEFT, NORMAL, dCol, z2 );            
-        }
 
-        cout << GetMu( x, z1, z2, bl, bu, ixSetLow, ixSetUpp, ixSetFix ) << endl;
+            Matrix<Real> tmp;
+            GetSubmatrix(dCol, ixSetLow, ZERO, tmp);
+            DiagonalSolve( LEFT, NORMAL, tmp, z1 );
+            GetSubmatrix(dCol, ixSetUpp, ZERO, tmp);
+            DiagonalSolve( LEFT, NORMAL, tmp, z2 );          
+        }
     }
     //==== End of Initialization stuff =====
 
@@ -1203,6 +1208,8 @@ void Newton
     Copy(x, result.x);
     Copy(y, result.y);
     Copy(z, result.z);
+    Copy(z1, result.z1);
+    Copy(z2, result.z2);
     result.feaTol = Pfeas;
     result.optTol = Dfeas;
     result.mu = mu;
