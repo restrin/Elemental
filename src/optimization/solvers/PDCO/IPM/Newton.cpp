@@ -40,10 +40,7 @@ void Newton
         Matrix<Real>  bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x,
-        Matrix<Real>& r,
-        Matrix<Real>& y,
-        Matrix<Real>& z,
+        PDCOPoint<Real>& xyz,
         PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl )
 {
@@ -61,6 +58,10 @@ void Newton
     vector<Int> ALL_m = IndexRange(m);
     vector<Int> ALL_n = IndexRange(n);
     vector<Int> ZERO (1,0);
+
+    Matrix<Real> x;             // x variable
+    Matrix<Real> y;             // y variable
+    Matrix<Real> z;             // z variable
 
     vector<Int> ixSetLow;  // Index set for lower bounded variables
     vector<Int> ixSetUpp;  // Index set for upper bounded variables
@@ -133,6 +134,11 @@ void Newton
     else if( ctrl.method == Method::LDLy )
         Zeros(S, n, n);
     // ==============================================================
+
+    // Obtain x, y and z variables
+    Copy(xyz.x, x);
+    Copy(xyz.y, y);
+    Copy(xyz.z, z);
 
     // ======= Begin initialization stuff =======
     // Determine index sets for lower bounded variables,
@@ -219,7 +225,13 @@ void Newton
     }
     else
     {
-        pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
+        if( xyz.z1.Height() <= 0 || xyz.z2.Height() <= 0 )
+            pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
+        else
+        {
+            Copy(xyz.z1, z1);
+            Copy(xyz.z2, z2);
+        }
         // Scale the data
         x *= Real(1)/beta;
         y *= Real(1)/zeta;
@@ -529,6 +541,15 @@ void Newton
     Output("  Number active constraints on");
     Output("    Lower bound: ", lowerActive);
     Output("    Upper bound: ", upperActive);
+
+    Copy(x, xyz.x);
+    Copy(y, xyz.y);
+    Copy(z, xyz.z);
+    Copy(z1, xyz.z1);
+    Copy(z2, xyz.z2);
+    result.feaTol = Pfeas;
+    result.optTol = Dfeas;
+    result.mu = mu;
 }
 
 template<typename Real>
@@ -540,10 +561,7 @@ void Newton
         Matrix<Real>  bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x,
-        Matrix<Real>& r,
-        Matrix<Real>& y,
-        Matrix<Real>& z,
+        PDCOPoint<Real>& xyz,
         PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl )
 {
@@ -576,6 +594,10 @@ void Newton
     vector<Int> ALL_m = IndexRange(m);
     vector<Int> ALL_n = IndexRange(n);
     vector<Int> ZERO (1,0);
+
+    Matrix<Real> x;             // x variable
+    Matrix<Real> y;             // y variable
+    Matrix<Real> z;             // z variable
 
     vector<Int> ixSetLow;       // Index set for lower bounded variables
     vector<Int> ixSetUpp;       // Index set for upper bounded variables
@@ -647,6 +669,11 @@ void Newton
     Ones( bumx, n, 1 );
  
     // ================= Begin variable initialization =========================
+
+    // Obtain x, y and z variables
+    Copy(xyz.x, x);
+    Copy(xyz.y, y);
+    Copy(xyz.z, z);
 
     // Determine index sets for lower bounded, upper bounded, fixed variables
     pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
@@ -733,9 +760,13 @@ void Newton
     }
     else
     {
-        // pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
-        Copy(result.z1, z1);
-        Copy(result.z2, z2);
+        if( xyz.z1.Height() <= 0 || xyz.z2.Height() <= 0 )
+            pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
+        else
+        {
+            Copy(xyz.z1, z1);
+            Copy(xyz.z2, z2);
+        }
 
         // Scale the data
         x *= Real(1)/beta;
@@ -1205,11 +1236,11 @@ void Newton
     Output("    Lower bound: ", lowerActive);
     Output("    Upper bound: ", upperActive);
 
-    Copy(x, result.x);
-    Copy(y, result.y);
-    Copy(z, result.z);
-    Copy(z1, result.z1);
-    Copy(z2, result.z2);
+    Copy(x, xyz.x);
+    Copy(y, xyz.y);
+    Copy(z, xyz.z);
+    Copy(z1, xyz.z1);
+    Copy(z2, xyz.z2);
     result.feaTol = Pfeas;
     result.optTol = Dfeas;
     result.mu = mu;
@@ -1238,10 +1269,7 @@ void Newton
           Matrix<Real>  bu, \
     const Matrix<Real>& D1, \
     const Matrix<Real>& D2, \
-          Matrix<Real>& x, \
-          Matrix<Real>& r, \
-          Matrix<Real>& y, \
-          Matrix<Real>& z, \
+          PDCOPoint<Real>& xyz, \
           PDCOResult<Real>& result, \
     const PDCOCtrl<Real>& ctrl ); \
   template void Newton \
@@ -1252,10 +1280,7 @@ void Newton
           Matrix<Real>  bu, \
     const Matrix<Real>& D1, \
     const Matrix<Real>& D2, \
-          Matrix<Real>& x, \
-          Matrix<Real>& r, \
-          Matrix<Real>& y, \
-          Matrix<Real>& z, \
+          PDCOPoint<Real>& xyz, \
           PDCOResult<Real>& result, \
     const PDCOCtrl<Real>& ctrl );
 

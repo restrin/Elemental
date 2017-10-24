@@ -20,10 +20,7 @@ void Newton
         Matrix<Real>  bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x, 
-        Matrix<Real>& r,
-        Matrix<Real>& y,
-        Matrix<Real>& z,
+        PDCOPoint<Real>& xyz,
         PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl=PDCOCtrl<Real>() );
 
@@ -36,10 +33,7 @@ void Newton
         Matrix<Real> bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x, 
-        Matrix<Real>& r,
-        Matrix<Real>& y,
-        Matrix<Real>& z,
+        PDCOPoint<Real>& xyz,
         PDCOResult<Real>& result,
   const PDCOCtrl<Real>& ctrl=PDCOCtrl<Real>() );
 

@@ -20,16 +20,13 @@ void PDCO
   const Matrix<Real>& bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x, 
-        Matrix<Real>& r,
-        Matrix<Real>& y,
-        Matrix<Real>& z, 
+        pdco::PDCOPoint<Real>& xyz,
         pdco::PDCOResult<Real>& result,
   const pdco::Ctrl<Real>& ctrl )
 {
     EL_DEBUG_CSE
 
-    pdco::Newton(phi, A, b, bl, bu, D1, D2, x, r, y, z, result, ctrl.pdcoCtrl);
+    pdco::Newton(phi, A, b, bl, bu, D1, D2, xyz, result, ctrl.pdcoCtrl);
 }
 
 template<typename Real>
@@ -41,16 +38,13 @@ void PDCO
   const Matrix<Real>& bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x, 
-        Matrix<Real>& r,
-        Matrix<Real>& y,
-        Matrix<Real>& z, 
+        pdco::PDCOPoint<Real>& xyz,
         pdco::PDCOResult<Real>& result,
   const pdco::Ctrl<Real>& ctrl )
 {
     EL_DEBUG_CSE
 
-    pdco::Newton(phi, A, b, bl, bu, D1, D2, x, r, y, z, result, ctrl.pdcoCtrl);
+    pdco::Newton(phi, A, b, bl, bu, D1, D2, xyz, result, ctrl.pdcoCtrl);
 }
 
 #define PROTO(Real) \
@@ -62,10 +56,7 @@ void PDCO
   const Matrix<Real>& bu, \
   const Matrix<Real>& D1, \
   const Matrix<Real>& D2, \
-        Matrix<Real>& x, \
-        Matrix<Real>& r, \
-        Matrix<Real>& y, \
-        Matrix<Real>& z, \
+        pdco::PDCOPoint<Real>& xyz, \
         pdco::PDCOResult<Real>& result, \
   const pdco::Ctrl<Real>& ctrl ); \
   template void PDCO \
@@ -76,10 +67,7 @@ void PDCO
   const Matrix<Real>& bu, \
   const Matrix<Real>& D1, \
   const Matrix<Real>& D2, \
-        Matrix<Real>& x, \
-        Matrix<Real>& r, \
-        Matrix<Real>& y, \
-        Matrix<Real>& z, \
+        pdco::PDCOPoint<Real>& xyz, \
         pdco::PDCOResult<Real>& result, \
   const pdco::Ctrl<Real>& ctrl );
 

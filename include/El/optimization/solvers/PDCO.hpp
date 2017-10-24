@@ -123,15 +123,19 @@ struct Ctrl
 template<typename Real>
 struct PDCOResult
 {
+    Real feaTol;
+    Real optTol;
+    Real mu;
+};
+
+template<typename Real>
+struct PDCOPoint
+{
     Matrix<Real> x;
     Matrix<Real> y;
     Matrix<Real> z;
     Matrix<Real> z1;
     Matrix<Real> z2;
-
-    Real feaTol;
-    Real optTol;
-    Real mu;
 };
 
 // Structure representing objective function for pdco solver
@@ -222,10 +226,7 @@ void PDCO
   const Matrix<Real>& bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x,
-        Matrix<Real>& r, 
-        Matrix<Real>& y,
-        Matrix<Real>& z,
+        pdco::PDCOPoint<Real>& xyz,
         pdco::PDCOResult<Real>& result, 
   const pdco::Ctrl<Real>& ctrl=pdco::Ctrl<Real>() );
 
@@ -238,10 +239,7 @@ void PDCO
   const Matrix<Real>& bu,
   const Matrix<Real>& D1,
   const Matrix<Real>& D2,
-        Matrix<Real>& x,
-        Matrix<Real>& r, 
-        Matrix<Real>& y,
-        Matrix<Real>& z,
+        pdco::PDCOPoint<Real>& xyz,
         pdco::PDCOResult<Real>& result, 
   const pdco::Ctrl<Real>& ctrl=pdco::Ctrl<Real>());
 
