@@ -23,7 +23,9 @@ void ClassifyBounds
         vector<Int>& ixSetLow,
         vector<Int>& ixSetUpp,
         vector<Int>& ixSetFix,
-  bool print )
+        vector<Int>& ixblopos,
+        vector<Int>& ixbupneg,
+        bool print )
 {
     EL_DEBUG_CSE
     
@@ -51,12 +53,16 @@ void ClassifyBounds
         if( limits::IsFinite(bl.Get(i,0)) )
         {
             ixSetLow.push_back(i);
+            if( bl(i, 0) > 0)
+                ixblopos.push_back(i);
             ctrLow++;
         }
         // Upper bounded?
         if( limits::IsFinite(bu.Get(i,0)) )
         {
             ixSetUpp.push_back(i);
+            if( bu(i, 0) < 0)
+                ixbupneg.push_back(i);
             ctrUpp++;
         }
     }
@@ -77,7 +83,9 @@ void ClassifyBounds
             vector<Int>& ixSetLow, \
             vector<Int>& ixSetUpp, \
             vector<Int>& ixSetFix, \
-      bool print );
+            vector<Int>& ixblopos, \
+            vector<Int>& ixbupneg, \
+            bool print );
 
 #define EL_NO_INT_PROTO
 #define EL_NO_COMPLEX_PROTO

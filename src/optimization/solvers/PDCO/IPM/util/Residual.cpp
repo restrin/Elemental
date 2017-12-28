@@ -117,7 +117,7 @@ void ResidualPD
     const Int n = A.Width();
 
     Matrix<Real> tmp1;
-
+    
     // Compute r1 = b - A*x - D2^2*y
     Copy(b, r1);
     Multiply(NORMAL, Real(-1), A, x, Real(1), r1); // r1 = b - A*x

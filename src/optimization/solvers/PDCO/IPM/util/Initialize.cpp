@@ -70,21 +70,31 @@ void Initialize
         if( lowSize > 0 && uppSize > 0
             && i == ixSetLow[ctrLow] && i == ixSetUpp[ctrUpp] )
         {
-            Real val = Real(0.5)*(bl.Get(i,0) + bu.Get(i,0));
-            x.Set(i, 0, val);
+            if( !(bl(i, 0) < x(i, 0) && x(i, 0) < bu(i, 0)) )
+            {
+                if( bu(i, 0) - bl(i, 0) < 2*x0min)
+                    x(i, 0) = Real(0.5)*(bl(i,0) + bu(i,0));
+                else
+                {
+                    x(i, 0) = Max(bl(i, 0) + x0min, x(i, 0));
+                    x(i, 0) = Min(bu(i, 0) - x0min, x(i, 0));
+                }
+            }
             ctrLow++;
             ctrUpp++;
             continue;
         }
         if( lowSize > 0 && i == ixSetLow[ctrLow] )
         {
-            x.Set(i, 0, bl.Get(i,0) + x0min);
+            if( bl(i,0) + x0min > x(i, 0) )
+                x.Set(i, 0, bl.Get(i,0) + x0min);
             ctrLow++;
             continue;
         }
         if( uppSize > 0 && i == ixSetUpp[ctrUpp] )
         {
-            x.Set(i, 0, bu.Get(i,0) - x0min);
+            if( bu(i, 0) - x0min < x(i, 0) )
+                x.Set(i, 0, bu.Get(i,0) - x0min);
             ctrUpp++;
             continue;
         }
@@ -97,6 +107,8 @@ void CheckVariableInit
 (       Matrix<Real>& x,
         Matrix<Real>& y,
         Matrix<Real>& z,
+        Matrix<Real>& z1,
+        Matrix<Real>& z2,
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
   const vector<Int>& ixSetLow,
@@ -106,7 +118,8 @@ void CheckVariableInit
     const Real eps = limits::Epsilon<Real>();
 
     // Check if any variables are not initialized
-    if( x.Height() <= 0 || y.Height() <= 0 || z.Height() <= 0 )
+    if( x.Height() <= 0 || y.Height() <= 0 ||
+        ( z.Height() <= 0 && (z1.Height() <= 0 || z2.Height() <= 0)) )
     {
         RuntimeError("Need to initialize all variables!");
     }
@@ -201,6 +214,8 @@ Real GetMu
   (       Matrix<Real>& x, \
           Matrix<Real>& y, \
           Matrix<Real>& z, \
+          Matrix<Real>& z1, \
+          Matrix<Real>& z2, \
     const Matrix<Real>& bl, \
     const Matrix<Real>& bu, \
     const vector<Int>& ixSetLow, \

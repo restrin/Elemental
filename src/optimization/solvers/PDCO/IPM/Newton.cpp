@@ -66,6 +66,8 @@ void Newton
     vector<Int> ixSetLow;  // Index set for lower bounded variables
     vector<Int> ixSetUpp;  // Index set for upper bounded variables
     vector<Int> ixSetFix;  // Index set for fixed bounded variables
+    vector<Int> ixblopos;  // Index set for bl > 0
+    vector<Int> ixbupneg;  // Index set for bu < 0
 
     // For objective function
     Matrix<Real> grad;     // For gradient of phi
@@ -139,16 +141,20 @@ void Newton
     Copy(xyz.x, x);
     Copy(xyz.y, y);
     Copy(xyz.z, z);
+    Copy(xyz.z1, z1);
+    Copy(xyz.z2, z2);
 
     // ======= Begin initialization stuff =======
     // Determine index sets for lower bounded variables,
     // upper bounded variables, and fixed variables
-    pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
+    pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix,
+        ixblopos, ixbupneg, ctrl.print);
 
     // Ensure that all variables are initialized or none of them are
-    if( x.Height() > 0 || y.Height() > 0 || z.Height() > 0 )
+    if( x.Height() > 0 || y.Height() > 0 || z.Height() > 0
+        || z1.Height() > 0 || z2.Height() > 0 )
     {
-        pdco::CheckVariableInit(x, y, z, bl, bu, ixSetLow, ixSetUpp, ixSetFix);
+        pdco::CheckVariableInit(x, y, z, z1, z2, bl, bu, ixSetLow, ixSetUpp, ixSetFix);
         initialized = true;
     }
 
@@ -227,11 +233,7 @@ void Newton
     {
         if( xyz.z1.Height() <= 0 || xyz.z2.Height() <= 0 )
             pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
-        else
-        {
-            Copy(xyz.z1, z1);
-            Copy(xyz.z2, z2);
-        }
+        
         // Scale the data
         x *= Real(1)/beta;
         y *= Real(1)/zeta;
@@ -521,10 +523,19 @@ void Newton
     Real cUInf = InfinityNorm(cU);
     Cfeas = Max(cLInf, cUInf);
 
+    Zeros(D1sq, n, 1);
+    Zeros(D2sq, m, 1);
+    ResidualPD(A, b, D1sq, D2sq, grad, x, y, z, r1, r2);
+    Real Pfeas_unreg = InfinityNorm(r1);
+    Real Dfeas_unreg = InfinityNorm(r2);
+
     Real xInf = InfinityNorm(x);
     Real zInf = InfinityNorm(z);
-    Output("  Pfeas         = ", Pfeas);
-    Output("  Dfeas         = ", Dfeas);
+    Output(" Regularized\t\t\tUnregularized");
+    Output("  Pfeas         = ", Pfeas,
+        "\t  Pfeas         = ", Pfeas_unreg);
+    Output("  Dfeas         = ", Dfeas,
+        "\t  Dfeas         = ", Dfeas_unreg);
     Output("  Cinf0         = ", Cinf0);
     Output("  |cL|oo        = ", cLInf);
     Output("  |cU|oo        = ", cUInf);
@@ -602,6 +613,8 @@ void Newton
     vector<Int> ixSetLow;       // Index set for lower bounded variables
     vector<Int> ixSetUpp;       // Index set for upper bounded variables
     vector<Int> ixSetFix;       // Index set for fixed bounded variables
+    vector<Int> ixblopos;       // Index set for bl > 0
+    vector<Int> ixbupneg;       // Index set for bu < 0
 
     // For objective function
     Matrix<Real> grad;          // For gradient of phi
@@ -674,14 +687,18 @@ void Newton
     Copy(xyz.x, x);
     Copy(xyz.y, y);
     Copy(xyz.z, z);
+    Copy(xyz.z1, z1);
+    Copy(xyz.z2, z2);
 
     // Determine index sets for lower bounded, upper bounded, fixed variables
-    pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix, ctrl.print);
+    pdco::ClassifyBounds(bl, bu, ixSetLow, ixSetUpp, ixSetFix,
+        ixblopos, ixbupneg, ctrl.print);
 
     // Ensure that all variables are initialized or none of them are
-    if( x.Height() > 0 || y.Height() > 0 || z.Height() > 0 )
+    if( x.Height() > 0 || y.Height() > 0 || z.Height() > 0
+        || z1.Height() > 0 || z2.Height() > 0 )
     {
-        pdco::CheckVariableInit(x, y, z, bl, bu, ixSetLow, ixSetUpp, ixSetFix);
+        pdco::CheckVariableInit(x, y, z, z1, z2, bl, bu, ixSetLow, ixSetUpp, ixSetFix);
         initialized = true;
     }
 
@@ -698,7 +715,6 @@ void Newton
 
         ZeroSubmatrix(ACopy, ALL_m, ixSetFix);
     }
-
     // Equilibrate the A matrix
     // TODO: Adjust feas- and opt-tol?
     if( ctrl.outerEquil )
@@ -717,7 +733,18 @@ void Newton
     // Scale input data
     if( ctrl.scale )
     {
-        beta = Max(InfinityNorm(bCopy), Real(1));
+        Matrix<Real> rhs, xTmp, xTmpSub;
+        Copy(bCopy, rhs);
+        Zeros(xTmp, n, 1);
+        Zeros(xTmpSub, ixblopos.size(), 1);
+        GetSubmatrix(bl, ixblopos, ZERO, xTmpSub);
+        SetSubmatrix(xTmp, ixblopos, ZERO, xTmpSub);
+        Zeros(xTmpSub, ixbupneg.size(), 1);
+        GetSubmatrix(bu, ixbupneg, ZERO, xTmpSub);
+        SetSubmatrix(xTmp, ixbupneg, ZERO, xTmpSub);
+        Multiply(NORMAL, Real(-1), ACopy, xTmp, Real(1), rhs);
+
+        beta = Max(InfinityNorm(rhs), Real(1));
 
         if( !initialized )
         {
@@ -762,11 +789,6 @@ void Newton
     {
         if( xyz.z1.Height() <= 0 || xyz.z2.Height() <= 0 )
             pdco::Getz1z2(z, ixSetLow, ixSetUpp, z1, z2);
-        else
-        {
-            Copy(xyz.z1, z1);
-            Copy(xyz.z2, z2);
-        }
 
         // Scale the data
         x *= Real(1)/beta;
@@ -1211,10 +1233,19 @@ void Newton
     Real cUInf = InfinityNorm(cU);
     Cfeas = Max(cLInf, cUInf);
 
+    Zeros(D1sq, n, 1);
+    Zeros(D2sq, m, 1);
+    ResidualPD(A, b, D1sq, D2sq, grad, x, y, z, r1, r2);
+    Real Pfeas_unreg = InfinityNorm(r1);
+    Real Dfeas_unreg = InfinityNorm(r2);
+
     Real xInf = InfinityNorm(x);
     Real zInf = InfinityNorm(z);
-    Output("  Pfeas         = ", Pfeas);
-    Output("  Dfeas         = ", Dfeas);
+    Output(" Regularized\t\t\tUnregularized");
+    Output("  Pfeas         = ", Pfeas,
+        "\t  Pfeas         = ", Pfeas_unreg);
+    Output("  Dfeas         = ", Dfeas,
+        "\t  Dfeas         = ", Dfeas_unreg);
     Output("  Cinf0         = ", Cinf0);
     Output("  |cL|oo        = ", cLInf);
     Output("  |cU|oo        = ", cUInf);

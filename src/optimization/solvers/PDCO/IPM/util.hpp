@@ -18,7 +18,9 @@ void ClassifyBounds
         vector<Int>& ixSetLow,
         vector<Int>& ixSetUpp,
         vector<Int>& ixSetFix,
-  bool print );
+        vector<Int>& ixblopos,
+        vector<Int>& ixbupneg,
+        bool print );
 
 template<typename Real>
 void Initialize
@@ -42,6 +44,8 @@ void CheckVariableInit
 (       Matrix<Real>& x,
         Matrix<Real>& y,
         Matrix<Real>& z,
+        Matrix<Real>& z1,
+        Matrix<Real>& z2,
   const Matrix<Real>& bl,
   const Matrix<Real>& bu,
   const vector<Int>& ixSetLow,
